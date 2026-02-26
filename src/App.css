@@ -1,0 +1,112 @@
+.App {
+  text-align: center;
+  display: flex;
+}
+
+.App-logo {
+  height: 40vmin;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .App-logo {
+    animation: App-logo-spin infinite 20s linear;
+  }
+}
+
+.App-header {
+  /* background-color: #282c34; */
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(10px + 2vmin);
+  color: white;
+}
+
+.App-link {
+  color: #61dafb;
+}
+
+@keyframes App-logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.content {
+  transition: margin-left 0.3s ease; 
+  /* margin-left: 10px; */
+  overflow-x: auto;
+}
+
+.container {
+  display: flex;
+  flex: auto;
+}
+
+/* Sidebar Styling */
+.sidebar {
+  background: linear-gradient(to left, #00aae9 50%, #1a69ac);
+  align-items: center;
+}
+
+.bars {
+  display: block;
+  margin-bottom: 20px;
+}
+
+.top_section {
+  display: flex;
+  align-items: center;
+}
+
+.link {
+  display: flex;
+  color: white;
+  gap: 20px;
+  padding-bottom: 10px;
+  margin-bottom: 5px;
+  justify-content: center;
+  -ms-flex-align: center;
+  padding-top: 10px;
+}
+
+.link:hover {
+  background: white;
+  color: #1674bb;
+  width: 100%;
+  height: auto;
+}
+
+.bottom_section {
+  display: inline-flex;
+  margin-top: 50px;
+  align-items: inherit;
+}
+
+/* Calendar Styling */
+.calendar-container {
+  width: 80%; /* Set a maximum width for the calendar container */
+  margin: 0 auto; /* Center the calendar horizontally */
+}
+
+.custom-calendar {
+  height: 500px; /* Set a fixed height for the calendar */
+}
+
+/* Dropdown */
+.dropdown-menu{
+  min-width: 100%;
+  padding: 0;
+  margin: 0;
+  border: 1px solid #ccc; 
+  border-radius: 5;
+  box-shadow: 0 0 0 0;
+  background-color: #f8f9fa;
+  gap: 10px;
+}

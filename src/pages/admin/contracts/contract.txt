@@ -1,0 +1,231 @@
+import { Box, IconButton } from "@mui/material";
+import React, { useEffect, useState } from "react";
+import { DataGrid,GridActionsCellItem } from "@mui/x-data-grid";
+import { tokens } from "../../../theme";
+import { useTheme } from "@emotion/react";
+import ExportButton from "../../../components/admin/ExportButton";
+import { useNavigate } from "react-router-dom";
+import SearchIcon from "@mui/icons-material/Search";
+import Tooltip from '@mui/material/Tooltip';
+import RemoveCircleIcon from "@mui/icons-material/RemoveCircle";
+import InputBase from "@mui/material/InputBase";
+import EditIcon from "@mui/icons-material/Edit";
+import axiosInstance from "../../../utils/axiosInstance";
+import { useSelector, useDispatch } from "react-redux";
+import formatDate from "../../../components/global/dateFormatter";
+import AirtimeAdminVoucher from "../../../components/global/AirtimeAdminVoucher";
+
+const AdminContracts = () => {
+  const navigate = useNavigate();
+  const theme = useTheme();
+  const colors = tokens(theme.palette.mode);
+  const dispatch = useDispatch();
+  const currentUser = useSelector((state) => state.auth.user);
+  const [userData, setUserData] = useState(null);
+  const { role } = useSelector((state) => state.auth);
+  const handleClose = () => setModalOpen(false);
+  const [modalOpen, setModalOpen] = useState(false);
+
+  const [data, setData] = useState([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await axiosInstance.get(`/contracts/staffContracts`);
+        setData(response.data);
+        console.log("data :", response.data)
+      } catch (error) {
+        // console.log(error);
+        throw error;
+      }
+    };
+
+    fetchData();
+  }, [dispatch]);
+
+  const handleContractSelection = async (id) =>{
+    if(!id) return
+    console.log("Here is the conract id: ",id)
+    try{
+       const response = await axiosInstance.get(
+        `/contracts/single/${id}`
+      );
+      console.log("My response for single data: ",response.data)
+      setUserData(response.data || {}); // Assuming you want the first element in the array
+      setModalOpen(true);
+    }catch (error) {
+      console.error("Error fetching user data:", error);
+    }
+  }
+
+  const columns = [
+    { field: "id", headerName: "#", width: 100 },
+    { field: "FullName", headerName: "Full Name", width: 200 },
+    { field: "PackageName", headerName: "Package", width: 180 },
+    { field: "DeviceName", headerName: "Device Name", width: 180 },
+    { field: "DevicePrice", headerName: "Device Price", width: 180 },
+    { field: "DeviceMonthlyPrice", headerName: "Device Monthly Price", width: 180 },
+    { field: "ContractStartDate", headerName: "Allocation Date", width: 110 },
+    { field: "ContractEndDate", headerName: "Allocation Date", width: 110 },
+    { field: "MSISDN", headerName: "MSISDN", width: 120 },
+    {
+      field: "SubscriptionStatus",
+      headerName: "Subscription Status",
+      width: 150,
+    },
+    {
+      field: "ApprovalStatus",
+      headerName: "Status",
+      width: 100,
+    },
+    {
+      field: "actions",
+      type: "actions",
+      headerName: "Actions",
+      width: 100,
+      cellClassName: "actions",
+      getActions: ({ row }) => [
+        <GridActionsCellItem
+          icon={<EditIcon />}
+          label="Edit"
+          className="textPrimary"
+          onClick={() => handleContractSelection(row.id)}
+          color="inherit"
+        />,
+      ],
+    },
+    // { field: "EmployeeCode", headerName: "Employee Code", width: 180 },
+  ];
+
+  const mapDataToRows = (data) => {
+    return data.map((bundle, index) => ({
+      id: bundle.ContractNumber,
+      FullName: bundle.FullName,
+      PackageName: bundle.PackageName,
+      DeviceName: bundle.DeviceName,
+      DevicePrice: bundle.DevicePrice,
+      DeviceMonthlyPrice: bundle.DeviceMonthlyPrice,
+      ContractStartDate: formatDate(bundle.ContractStartDate),
+      ContractEndDate: formatDate(bundle.ContractEndDate),
+      MSISDN: bundle.MSISDN,
+      SubscriptionStatus: bundle.SubscriptionStatus,
+      ApprovalStatus: bundle.ApprovalStatus
+      // EmployeeCode: bundle.EmployeeCode,
+    }));
+  };
+
+  const rows = mapDataToRows(data);
+
+  const [searchText, setSearchText] = useState("");
+  const [filteredRows, setFilteredRows] = useState(rows);
+
+  const handleSearchChange = (event) => {
+    const searchText = event.target.value.toLowerCase();
+    setSearchText(searchText);
+
+    const filteredData =
+      searchText === ""
+        ? data
+        : data.filter(
+            (contract) =>
+              contract.FullName.toLowerCase().includes(searchText) ||
+              contract.PackageName.toLowerCase().includes(searchText)
+          );
+
+    setFilteredRows(mapDataToRows(filteredData));
+  };
+
+  useEffect(() => {
+    setFilteredRows(mapDataToRows(data));
+  }, [data]);
+
+  return (
+    <Box m="2px" className="">
+      <div
+        style={{
+          height: 500,
+          width: "96%",
+          marginLeft: "auto",
+          marginRight: "auto",
+        }}
+      >
+        {/* <h3>Employees</h3> */}
+        <div style={{ display: "flex", justifyContent: "space-between" }}>
+          <Box
+            display="flex"
+            backgroundColor={colors.primary[400]}
+            borderRadius="3px"
+            width="200px"
+          >
+            <InputBase
+              sx={{ ml: 2, flex: 1 }}
+              placeholder="Search"
+              onChange={handleSearchChange}
+            />
+            <IconButton type="button" sx={{ p: 1 }}>
+              <SearchIcon />
+            </IconButton>
+          </Box>
+          <ExportButton data={rows} fileName="All Staff Contracts" />
+        </div>
+        {
+          modalOpen && (
+           <AirtimeAdminVoucher
+            style={{ height: "100%" }}
+            open={modalOpen}
+            handleClose={handleClose}
+            userData={userData}
+            role={role}
+          />
+          )
+        }
+        <Box
+          m="20px 0 0 0"
+          height="55vh"
+          //   width = "80%"
+          //   margin = "auto"
+          //   marginTop={"10px"}
+          sx={{
+            "& .MuiDataGrid-root": {
+              border: "none",
+            },
+            "& .MuiDataGrid-cell": {
+              borderBottom: "none",
+            },
+            "& .name-column--cell": {
+              color: colors.greenAccent[300],
+            },
+            "& .MuiDataGrid-columnHeaders": {
+              backgroundColor: colors.grey[900],
+              borderBottom: "none",
+            },
+            "& .MuiDataGrid-virtualScroller": {
+              backgroundColor: colors.primary[400],
+            },
+            "& .MuiDataGrid-footerContainer": {
+              borderTop: "none",
+              backgroundColor: colors.grey[900],
+            },
+            "& .MuiCheckbox-root": {
+              color: `${colors.greenAccent[200]} !important`,
+            },
+            "& .MuiDataGrid-toolbarContainer .MuiButton-text": {
+              color: `${colors.grey[100]} !important`,
+            },
+          }}
+        >
+          <DataGrid
+            rows={filteredRows}
+            columns={columns}
+            pageSize={5}
+            rowsPerPageOptions={[5, 10, 20]}
+            checkboxSelection
+            disableSelectionOnClick
+          />
+        </Box>
+      </div>
+    </Box>
+  );
+};
+
+export default AdminContracts;

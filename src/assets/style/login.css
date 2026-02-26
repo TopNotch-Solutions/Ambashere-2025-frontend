@@ -1,0 +1,385 @@
+.login-parent-div{
+    display: flex;
+    width: 100%;
+    height: 100vh;
+
+}
+
+.login-parent-div .blue-image-frame{
+    width: 55%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background:  linear-gradient(to right, #1A69AC,#00AAE9);
+}
+.login-parent-div .blue-image-frame img{
+    height: 400px;
+    width: 400px;
+}
+
+.login-parent-div .login-frame {
+    background-color: rgb(243, 243, 243);
+}
+
+.login-parent-div .login-frame{
+    width: 45%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+.login-parent-div .login-frame .my-logo-mtc{
+    height: 80px;
+    width: 80px;
+}
+
+.login-parent-div .login-frame .slogen{
+    margin-top: -1px;
+     font-family: "Outfit", sans-serif;
+     color: black;
+     font-weight: 700;
+     
+}
+.login-parent-div .login-frame .parent{
+    position: relative;
+    
+}
+.login-parent-div .login-frame .parent .images-div{
+    
+    width: 600px;
+    
+    height: 400px;
+    position: relative;
+}
+.login-parent-div .login-frame .parent .images-div .iphone{
+    position: absolute;
+    top: -70px;
+    height: 200px;
+    width: 200px;
+    right: 15px;
+}
+.login-parent-div .login-frame .parent .images-div .login180{
+     position: absolute;
+     top: 160px;
+     width: 120px;
+     height: 50px;
+     left: -30px;
+}
+.login-parent-div .login-frame .parent .images-div .login50{
+     position: absolute;
+     top: 360px;
+     width: 120px;
+     height: 50px;
+     right: 25px;
+}
+.login-parent-div .login-frame .parent .login{
+    
+    width: 440px;
+    margin-top: 2rem;
+    position: absolute;
+     padding: 1rem 2rem;
+    top: 0;
+    
+    background-color: white;
+    border-radius: 5px;
+     box-shadow: 3px 3px 3px 6px rgba(122, 121, 121, 0.26); 
+    left: 50px;
+    height: 400px;
+}
+.login{
+    width: 100%;
+    height: 80%;
+    /* overflow:hidden; */
+    display: table;
+}
+.login .error {
+    margin-top: 0.25rem;
+    font-size: 80%;
+    color: #dc3545;
+  }
+.login .enter{
+    margin-top: -15px;
+    font-family: "Outfit", sans-serif;
+     font-family: 600;
+     color: #898989;
+}
+.login  form{
+    margin-top: 2rem;
+    margin-bottom: 3rem;
+    padding: 0 0 0 0;
+}
+.login h4{
+     font-family: "Outfit", sans-serif;
+     font-family: 600;
+     color: #3D434A;
+}
+.login form .input-div{
+    margin-bottom: 15px;
+}
+.login form .radio{
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+}
+.login form .radio .my-radio{
+    font-family: "Plus Jakarta Sans", sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    color: black;
+}
+.login form .input-div label{
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+    color: black;
+    font-family: "Plus Jakarta Sans", sans-serif;
+}
+.login form .input-div input{
+    width: 100%;
+    padding: 10px;
+    outline: none;
+    border: 1px solid rgba(22, 116, 187, 0.5);
+    border-radius: 5px;
+}
+.login form .show-div{
+    position: relative;
+}
+.login form .show-div .show{
+    position: absolute;
+    top: 25px;
+    cursor: pointer;
+    right: 10px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #3D434A;
+    font-family: "Plus Jakarta Sans", sans-serif;
+}
+.login form button{
+    width:100%;
+    cursor: pointer;
+    padding: 10px 0;
+    outline: none;
+    font-family: "Outfit", sans-serif;
+    font-weight: 700;
+    border: none;
+    border-radius: 5px;
+    color: white;
+    background: linear-gradient(to right, #1A69AC,#00AAE9);
+}
+@media screen and (max-width:1608px) {
+    .login-parent-div .blue-image-frame{
+    width: 45%;
+    
+}
+.login-parent-div .blue-image-frame img{
+    height: 350px;
+}
+
+.login-parent-div .login-frame{
+    width: 55%;
+    
+}
+}
+@media screen and (max-width:1307px){
+     .login-parent-div .blue-image-frame{
+    width: 40%;
+    
+}
+.login-parent-div .blue-image-frame img{
+    height: 250px;
+}
+
+.login-parent-div .login-frame{
+    width: 60%;
+    
+}
+.login-parent-div .login-frame .parent .images-div{
+   
+    width: 400px;
+    
+    height: 400px;
+    position: relative;
+}
+.login-parent-div .login-frame .parent .login{
+
+    width: 340px;
+    margin-top: 2rem;
+    position: absolute;
+     padding: 10px 1rem;
+    top: 0;
+    border-radius: 5px;
+     box-shadow: 3px 3px 3px 6px rgba(122, 121, 121, 0.26); 
+    left: 10px;
+    height: 350px;
+}
+.login-parent-div .login-frame .parent .images-div .iphone{
+    position: absolute;
+    top: -70px;
+    height: 200px;
+    right: -60px;
+}
+.login-parent-div .login-frame .parent .images-div .login180{
+     position: absolute;
+     top: 150px;
+     width: 120px;
+     left: -60px;
+}
+.login-parent-div .login-frame .parent .images-div .login50{
+     position: absolute;
+     top: 370px;
+     width: 120px;
+     right: -60px;
+}
+.login form button{
+    width: 330px;
+    cursor: pointer;
+    padding: 10px 0;
+    outline: none;
+    font-family: "Outfit", sans-serif;
+    font-weight: 700;
+    border: none;
+    border-radius: 5px;
+    color: white;
+
+}
+}
+@media screen and (max-width:896px){
+     .login-parent-div .blue-image-frame{
+    display: none;
+    
+}
+.login-parent-div .blue-image-frame img{
+    height: 350px;
+}
+
+.login-parent-div .login-frame{
+    width: 100%;
+     background: linear-gradient(to right, #1A69AC,#00AAE9);
+}
+.login-parent-div .login-frame .slogen{
+    margin-bottom: 3rem;
+}
+.login-parent-div .login-frame .my-logo-mtc{
+    height: 60px;
+    margin-bottom: 1rem;
+}
+}
+@media screen and (max-width:520px){
+    .login-parent-div .login-frame .my-logo-mtc{
+    height: 60px;
+    margin-bottom: 10px;
+}
+.login-parent-div .login-frame .slogen{
+    margin-top: -1px;
+     font-size: 13px;
+}
+.login-parent-div .login-frame .parent{
+    position: relative;
+    margin-top: -2rem;
+}
+.login-parent-div .login-frame .parent .images-div{
+   
+    width: 330px;
+    
+    height: 400px;
+    position: relative;
+}
+.login-parent-div .login-frame .parent .login{
+
+    width: 270px;
+    margin-top: 2rem;
+    position: absolute;
+     padding: 10px 1rem;
+    top: 0;
+    border-radius: 5px;
+     box-shadow: 3px 3px 3px 6px rgba(122, 121, 121, 0.26); 
+    left: 10px;
+    height: 350px;
+}
+.login form button{
+    width: 260px;
+    cursor: pointer;
+    padding: 10px 0;
+    outline: none;
+    font-family: "Outfit", sans-serif;
+    font-weight: 700;
+    border: none;
+    border-radius: 5px;
+    color: white;
+
+}
+.login-parent-div .login-frame .parent .images-div .iphone{
+    position: absolute;
+    top: -20px;
+    height: 100px;
+    right: -30px;
+}
+.login-parent-div .login-frame .parent .images-div .login180{
+     position: absolute;
+     top: 150px;
+     width: 70px;
+     left: -30px;
+}
+.login-parent-div .login-frame .parent .images-div .login50{
+     position: absolute;
+     top: 370px;
+     width: 70px;
+     right: -30px;
+}
+}
+@media screen and (max-width:400px){
+     .login-parent-div .login-frame .my-logo-mtc{
+    height: 50px;
+    margin-bottom: 10px;
+}
+.login-parent-div .login-frame .parent .images-div{
+   
+    width: 260px;
+    
+    height: 400px;
+    position: relative;
+}
+.login-parent-div .login-frame .parent .login{
+
+    width: 210px;
+    margin-top: 2rem;
+    position: absolute;
+     padding: 10px 1rem;
+    top: 0;
+    border-radius: 5px;
+     box-shadow: 3px 3px 3px 6px rgba(122, 121, 121, 0.26); 
+    left: 10px;
+    height: 350px;
+}
+.login form button{
+    width: 200px;
+    cursor: pointer;
+    padding: 10px 0;
+    outline: none;
+    font-family: "Outfit", sans-serif;
+    font-weight: 700;
+    border: none;
+    border-radius: 5px;
+    color: white;
+
+}
+.login-parent-div .login-frame .parent .images-div .iphone{
+    position: absolute;
+    top: -20px;
+    height: 100px;
+    right: -30px;
+}
+.login-parent-div .login-frame .parent .images-div .login180{
+     position: absolute;
+     top: 150px;
+     width: 70px;
+     left: -30px;
+}
+.login-parent-div .login-frame .parent .images-div .login50{
+     position: absolute;
+     top: 370px;
+     width: 70px;
+     right: -30px;
+}
+}

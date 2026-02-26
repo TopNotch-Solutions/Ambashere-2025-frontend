@@ -1,0 +1,127 @@
+@import url('https://fonts.googleapis.com/css2?family=Arimo:ital,wght@0,400..700;1,400..700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cardo:ital,wght@0,400;0,700;1,400&display=swap');
+
+html, 
+body,
+#root,
+.app,
+.content {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', 'Arimo', 'Cardo',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  height: 100%;
+  width: 100%;
+  
+  font-family: "Arimo", sans-serif, "Cardo", sans-serif;
+}
+
+.app {
+  display: flex;
+  position: relative;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+/* Track */
+::-webkit-scrollbar-track {
+  background: #e0e0e0;
+}
+
+/* Handle */
+::-webkit-scrollbar-thumb {
+  background: #888;
+}
+
+/* Handle on hover */
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+@media print {
+  /* This is the key rule to remove browser-added headers, footers, and page numbers */
+  @page {
+    margin: 0 !important; /* Forces all page margins to zero */
+    size: auto; /* Allows the browser to determine the page size based on content */
+  }
+
+  /* Optional: Further clean up body margins/padding */
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /*
+   * You've already done this well in your component with sx={{ "@media print": { display: "none" } }}
+   * If you had elements outside your component that you needed to hide, you would add classes here.
+   */
+  .hide-on-print {
+    display: none !important;
+  }
+
+  /* If you have any elements that should *only* appear on print, e.g., signature lines */
+  .show-on-print {
+    display: block !important; /* or flex, grid, etc. */
+  }
+}
+
+/* --- Print Specific Styles --- */
+@media print {
+  .print-hidden,
+  .MuiFormControl-root.print-hidden,
+  .MuiInputBase-root.print-hidden {
+    display: none !important;
+  }
+
+  .print-text-field-display {
+    /* Styles for the container of the label and value when *visible* (i.e., on print) */
+    /* display: flex; No longer needed here, already set by .show-on-print */
+    flex-direction: column;
+    margin-bottom: 1rem;
+  }
+
+  .print-text-field-label {
+    font-size: 0.85em;
+    color: #666;
+    margin-bottom: 0.2em;
+  }
+
+  .print-text-field-value {
+    font-size: 1em;
+    padding-bottom: 2px;
+    border-bottom: 1px solid #4f4e4e;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    line-height: 1.2em; 
+  }
+
+  /* Specific handling for Select (if it renders as a FormControl like TextField) */
+  .MuiSelect-select.print-hidden {
+    display: none !important;
+  }
+
+  /* Ensure text fields and selects print their values correctly without UI elements */
+  .MuiInputBase-root,
+  .MuiInputBase-input,
+  .MuiSelect-select {
+    border: none !important;
+    background-color: transparent !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color: #636262 !important;
+  }
+  .MuiInputLabel-root {
+    display: none !important;
+  }
+
+  /* If you have any specific elements that should only show on print that are *not* the form fields: */
+  .approval-table-only-print { /* Example class if you want to apply this to the table */
+    display: block !important;
+  }
+}

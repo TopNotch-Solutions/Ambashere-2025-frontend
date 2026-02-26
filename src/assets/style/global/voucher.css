@@ -1,0 +1,9 @@
+.bold-row .MuiDataGrid-cell {
+    font-weight: bold;
+  }
+  
+  .red-row .MuiDataGrid-cell {
+    color: red;
+    font-weight: bold;
+  }
+  
