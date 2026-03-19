@@ -1,0 +1,33 @@
+.admin-handsets-page .admin-handsets-wrap {
+  width: 98%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.admin-handsets-page .handset-hero {
+  width: 98%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.admin-handsets-page .admin-handsets-toolbar {
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.admin-handsets-page .admin-handsets-search {
+  border: 1px solid #dbe7f3;
+  background: #ffffff;
+}
+
+.admin-handsets-page .admin-handsets-actions {
+  gap: 0.75rem;
+  align-items: center;
+}
+
+@media (max-width: 768px) {
+  .admin-handsets-page .admin-handsets-actions {
+    width: 100%;
+    justify-content: flex-start !important;
+  }
+}

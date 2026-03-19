@@ -1,0 +1,9 @@
+.admin-dashboard-page .admin-dashboard-card {
+  background: #ffffff;
+  border: 1px solid #e2ebf4;
+  border-radius: 12px;
+}
+
+.admin-dashboard-page .admin-dashboard-grid {
+  margin-top: 0.4rem;
+}

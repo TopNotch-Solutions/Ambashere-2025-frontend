@@ -123,3 +123,157 @@
 
   }
 }
+
+/* Revamp overrides */
+.login-page {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #f5f9ff 0%, #eef4fb 100%);
+  overflow-x: hidden;
+}
+
+.login-layout {
+  width: 100%;
+}
+
+.left-box {
+  padding: 3rem;
+  background: linear-gradient(135deg, #0f4f86 0%, #0a7dc4 55%, #00aae9 100%);
+}
+
+.hero-content {
+  max-width: 540px;
+  color: #ffffff;
+}
+
+.mtc-logo-login {
+  max-width: 420px;
+}
+
+.hero-title {
+  font-size: clamp(1.6rem, 2.2vw, 2.2rem);
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.hero-subtitle {
+  font-size: 1rem;
+  line-height: 1.6;
+  opacity: 0.95;
+}
+
+.hero-points {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.hero-points li {
+  margin-bottom: 0.55rem;
+  font-size: 0.98rem;
+}
+
+.login-right-panel {
+  padding: 1.75rem 0;
+}
+
+.login-form-shell {
+  max-width: 540px;
+}
+
+.login-card {
+  border: 1px solid #e2ebf5;
+  border-radius: 16px !important;
+  box-shadow: 0 16px 40px rgba(35, 73, 110, 0.12) !important;
+}
+
+.brand-logo {
+  width: 84px;
+  height: 84px;
+  object-fit: contain;
+}
+
+.text-header {
+  color: #1f2f44;
+  font-weight: 700;
+}
+
+.brand-tagline {
+  color: #5e7188;
+  font-size: 0.93rem;
+  line-height: 1.5;
+}
+
+.signin-title {
+  color: #1f2f44;
+  font-size: 1.45rem;
+  font-weight: 700;
+  margin-bottom: 0.35rem;
+}
+
+.signin-copy {
+  color: #6a7e95;
+  font-size: 0.94rem;
+}
+
+.login-card label {
+  color: #24364b;
+  font-weight: 600;
+}
+
+.login-card .form-control {
+  min-height: 44px;
+  border: 1px solid #cbd9e8;
+  border-radius: 8px;
+  font-size: 0.95rem;
+}
+
+.login-card .form-control:focus {
+  border-color: #1a69ac;
+  box-shadow: 0 0 0 0.2rem rgba(26, 105, 172, 0.13);
+}
+
+.show-password,
+.show-password-top {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #4f647d;
+  font-weight: 700;
+}
+
+.submission {
+  width: 100%;
+  min-height: 46px;
+  border-radius: 8px;
+  font-size: 0.97rem;
+  transition: transform 0.15s ease, filter 0.2s ease;
+}
+
+.submission:hover {
+  filter: brightness(0.95);
+}
+
+.submission:active {
+  transform: translateY(1px);
+}
+
+.submission:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.cooldown-text {
+  color: #c62828;
+  text-align: center;
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 991px) {
+  .login-right-panel {
+    padding: 1rem 0;
+  }
+
+  .login-form-shell {
+    max-width: 100%;
+  }
+}

@@ -9,13 +9,14 @@ const ViewButton = ({ onClick }) => {
       variant="contained"
       onClick={onClick}
       style={{
-        backgroundColor: "#00AAE9",
+        background: "linear-gradient(to right, #1A69AC, #00AAE9)",
         color: "#fff",
-        padding: "6px",
-        paddingLeft: "10px",
-        borderRadius: "5px",
+        padding: "8px 16px",
+        borderRadius: "8px",
         cursor: "pointer",
-        width: "50%",
+        border: "1px solid #0f69ac",
+        textTransform: "none",
+        fontWeight: 700,
       }}
     >
       View

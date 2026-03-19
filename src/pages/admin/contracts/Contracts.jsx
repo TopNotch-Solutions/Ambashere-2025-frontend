@@ -341,6 +341,9 @@ import axiosInstance from "../../../utils/axiosInstance";
 import { useSelector, useDispatch } from "react-redux";
 import formatDate from "../../../components/global/dateFormatter";
 import AirtimeAdminVoucher from "../../../components/global/AirtimeAdminVoucher";
+import "../../../assets/style/global/handsetBenefitSimulator.css";
+import "../../../assets/style/global/benefits.css";
+import "../../../assets/style/global/adminContracts.css";
 
 const AdminContracts = () => {
   const navigate = useNavigate();
@@ -471,33 +474,33 @@ const AdminContracts = () => {
   }, [data]);
 
   return (
-    <Box m="2px" className="">
-      <div
-        style={{
-          height: 500,
-          width: "96%",
-          marginLeft: "auto",
-          marginRight: "auto",
-        }}
-      >
-        {/* <h3>Employees</h3> */}
-        <div style={{ display: "flex", justifyContent: "space-between" }}>
+    <Box m="2px" className="handset-simulator-page admin-contracts-page">
+      <div className="handset-hero mb-4">
+        <div>
+          <h2 className="handset-title">Contracts</h2>
+          <p className="handset-subtitle mb-0">
+            Track all staff contracts, allocations, and subscription statuses.
+          </p>
+        </div>
+      </div>
+      <div className="admin-contracts-wrap">
+        <div className="d-flex justify-content-between admin-contracts-toolbar">
           <Box
+            className="admin-contracts-search"
             display="flex"
-            backgroundColor={colors.primary[400]}
-            borderRadius="3px"
-            width="200px"
+            borderRadius="8px"
+            width="260px"
           >
             <InputBase
               sx={{ ml: 2, flex: 1 }}
-              placeholder="Search"
+              placeholder="Search full name or package"
               onChange={handleSearchChange}
             />
             <IconButton type="button" sx={{ p: 1 }}>
               <SearchIcon />
             </IconButton>
           </Box>
-          <ExportButton data={rows} fileName="All Staff Contracts" />
+          <ExportButton data={rows} fileName="All Staff Contracts" className="benefits-cta-btn" />
         </div>
         {
           modalOpen && (
@@ -513,9 +516,7 @@ const AdminContracts = () => {
         <Box
           m="20px 0 0 0"
           height="55vh"
-          //   width = "80%"
-          //   margin = "auto"
-          //   marginTop={"10px"}
+          className="handset-form-card shadow-sm benefits-table-card"
           sx={{
             "& .MuiDataGrid-root": {
               border: "none",
@@ -545,14 +546,16 @@ const AdminContracts = () => {
             },
           }}
         >
-          <DataGrid
-            rows={filteredRows}
-            columns={columns}
-            pageSize={5}
-            rowsPerPageOptions={[5, 10, 20]}
-            checkboxSelection
-            disableSelectionOnClick
-          />
+          <div className="benefits-grid-wrap">
+            <DataGrid
+              rows={filteredRows}
+              columns={columns}
+              pageSize={5}
+              rowsPerPageOptions={[5, 10, 20]}
+              checkboxSelection
+              disableSelectionOnClick
+            />
+          </div>
         </Box>
       </div>
     </Box>

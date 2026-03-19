@@ -1,21 +1,67 @@
 import React, { useEffect, useState } from "react";
-import { TextField, FormControl, MenuItem, Select, InputLabel } from "@mui/material";
-import DownloadDevicePriceList from "../../../components/user/DownloadDevicePriceList";
+import {
+  TextField,
+  FormControl,
+  MenuItem,
+  Select,
+  InputLabel,
+  Alert,
+} from "@mui/material";
+import axiosInstance from "../../../utils/axiosInstance.jsx";
+import "../../../assets/style/global/handsetBenefitSimulator.css";
 
 const HandsetBenfitSimulator = () => {
   const [deviceName, setDeviceName] = useState("");
   const [devicePrice, setDevicePrice] = useState("");
   const [topupPayment, setTopupPayment] = useState(0); // Initial topupPayment
   const [handsetAllocation, setHandsetAllocation] = useState("");
+  const [devices, setDevices] = useState([]);
+  const [isLoadingDevices, setIsLoadingDevices] = useState(false);
+  const [devicesError, setDevicesError] = useState("");
+  const selectedDevice = devices.find((d) => d.device_name === deviceName);
+
+  const formatCurrency = (value) => {
+    const numberValue = Number(value) || 0;
+    return `N$ ${numberValue.toLocaleString("en-NA", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+  };
+
+  useEffect(() => {
+    const fetchDevices = async () => {
+      try {
+        setIsLoadingDevices(true);
+        setDevicesError("");
+        const response = await axiosInstance.get(
+          "/pricelist/device-price-list"
+        );
+        const list = response?.data?.data || [];
+        setDevices(list);
+      } catch (error) {
+        console.error("Failed to load device price list", error);
+        setDevicesError("Unable to load device price list.");
+      } finally {
+        setIsLoadingDevices(false);
+      }
+    };
+
+    fetchDevices();
+  }, []);
 
   // Handle device name change
   const handleDeviceNameChange = (event) => {
-    setDeviceName(event.target.value);
-  };
+    const selectedName = event.target.value;
+    setDeviceName(selectedName);
 
-  // Handle device price change
-  const handleDevicePriceChange = (event) => {
-    setDevicePrice(parseFloat(event.target.value) || 0);
+    const match = devices.find(
+      (device) => device.device_name === selectedName
+    );
+    if (match) {
+      setDevicePrice(match.staff_discounted_amount ?? match.amount ?? 0);
+    } else {
+      setDevicePrice(0);
+    }
   };
 
   // Handle airtime allocation change
@@ -34,39 +80,32 @@ const HandsetBenfitSimulator = () => {
   }, [devicePrice, handsetAllocation]);
 
   return (
-    <div className="container-main m-3">
-      <div className="row d-flex flex-column flex-md-row justify-content-around m-auto">
+    <div className="container-main m-3 handset-simulator-page">
+      <div className="handset-hero mb-4">
         <div>
-          <div className="row mb-2">
-                      <div className="col-lg-9">
-                        <h2>Handset Benefit Simulator.</h2>
-                        <p>
-                           Don't know how much you need to use from your handset benefit to get
-            that new phone you're looking for? Or you simply want to prepare
-            yourself mentally and financially for the amount you'll pay once-off
-            and the amount you'll need for the top-up? Then look no further
-            because this is where your questions will be answered. Please find
-            the simulator below:
-                        </p>
-                      </div>
-                      <div className="col-sm-2 h-25 mt-4">
-                        <DownloadDevicePriceList />
-                      </div>
-                    </div>
-         
+          <h2 className="handset-title">Handset Benefit Simulator</h2>
+          <p className="handset-subtitle mb-0">
+            Select your handset allocation and preferred device to instantly see
+            your estimated once-off access payment.
+          </p>
         </div>
+      </div>
 
-        <div className="justify-content-center">
-          <form className="form shadow p-4">
-            {/* <div className="row">
-            <div className="col">
-              <h2 className="text-center">Calculate your benefits</h2>
+      <div className="row g-4">
+        <div className="col-12 col-xl-8">
+          <form className="handset-form-card shadow-sm">
+            <div className="form-header">
+              <h5 className="mb-1">Calculate your handset contribution</h5>
+              <p className="mb-0">
+                Values update automatically based on the selected device list.
+              </p>
             </div>
-          </div>
 
-          <p className="text-center">
-            Please fill in all the information below
-          </p> */}
+            {devicesError && (
+              <Alert severity="error" className="mb-3">
+                {devicesError}
+              </Alert>
+            )}
 
             <div className="row">
               <div className="col-md-6">
@@ -76,36 +115,33 @@ const HandsetBenfitSimulator = () => {
                     name="HandsetAllocation"
                     value={handsetAllocation}
                     onChange={handleHandsetAllocationChange}
+                    label="Handset Allocation"
                   >
-                    <MenuItem value="8000">8000</MenuItem>
-                    <MenuItem value="9000">9000</MenuItem>
-                    <MenuItem value="10000">10000</MenuItem>
-                    <MenuItem value="12000">12000</MenuItem>
+                    <MenuItem value="8000">N$ 8,000</MenuItem>
+                    <MenuItem value="9000">N$ 9,000</MenuItem>
+                    <MenuItem value="10000">N$ 10,000</MenuItem>
+                    <MenuItem value="12000">N$ 12,000</MenuItem>
                   </Select>
                 </FormControl>
               </div>
 
-              {/* <div className="col-md-6">
-                <TextField
-                  name="HandsetAllocation"
-                  label="Handset Allocation"
-                  type="number"
-                  value={handsetAllocation}
-                  onChange={handleHandsetAllocationChange}
-                  fullWidth
-                  margin="normal"
-                />
-              </div> */}
-
               <div className="col-md-6">
-                <TextField
-                  name="DeviceName"
-                  label="Device Name"
-                  value={deviceName}
-                  onChange={handleDeviceNameChange}
-                  fullWidth
-                  margin="normal"
-                />
+                <FormControl fullWidth margin="normal">
+                  <InputLabel>Device Name</InputLabel>
+                  <Select
+                    name="DeviceName"
+                    value={deviceName}
+                    label="Device Name"
+                    onChange={handleDeviceNameChange}
+                    disabled={isLoadingDevices || !!devicesError}
+                  >
+                    {devices.map((device) => (
+                      <MenuItem key={device.id} value={device.device_name}>
+                        {device.device_name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               </div>
             </div>
 
@@ -113,32 +149,70 @@ const HandsetBenfitSimulator = () => {
               <div className="col-md-6">
                 <TextField
                   name="DevicePrice"
-                  label="Device Price"
-                  type="number"
-                  value={devicePrice}
-                  onChange={handleDevicePriceChange}
+                  label="Device Price (Staff Discounted)"
+                  type="text"
+                  value={formatCurrency(devicePrice)}
                   fullWidth
                   margin="normal"
+                  InputProps={{
+                    readOnly: true,
+                  }}
                 />
               </div>
 
               <div className="col-md-6">
                 <TextField
-                  sx={{
-                    "& .MuiInputBase-input.Mui-disabled": {
-                      WebkitTextFillColor: "black",
-                    },
-                  }}
                   name="Topup"
                   label="Access Payment"
                   fullWidth
                   margin="normal"
-                  disabled
-                  value={"N$ " + topupPayment}
+                  sx={{
+                    "& .MuiInputBase-input": {
+                      color: topupPayment > 0 ? "#d32f2f" : "#22354d",
+                      WebkitTextFillColor: topupPayment > 0 ? "#d32f2f" : "#22354d",
+                      fontWeight: 600,
+                    },
+                  }}
+                  InputProps={{
+                    readOnly: true,
+                  }}
+                  value={formatCurrency(topupPayment)}
                 />
               </div>
             </div>
+
+            <p className="simulator-note mb-0">
+              Access Payment = Device Price - Handset Allocation (minimum N$
+              0.00)
+            </p>
           </form>
+        </div>
+
+        <div className="col-12 col-xl-4">
+          <div className="handset-summary-card shadow-sm">
+            <h6 className="summary-title">Summary</h6>
+            <div className="summary-row">
+              <span>Selected device</span>
+              <strong>{deviceName || "Not selected"}</strong>
+            </div>
+            <div className="summary-row">
+              <span>Device group</span>
+              <strong>{selectedDevice?.device_group || "-"}</strong>
+            </div>
+            <div className="summary-row">
+              <span>Allocation</span>
+              <strong>{formatCurrency(handsetAllocation)}</strong>
+            </div>
+            <div className="summary-row">
+              <span>Device price</span>
+              <strong>{formatCurrency(devicePrice)}</strong>
+            </div>
+            <hr className="summary-divider" />
+            <div className={`summary-row total-row ${topupPayment > 0 ? "total-row-danger" : ""}`}>
+              <span>Access payment</span>
+              <strong>{formatCurrency(topupPayment)}</strong>
+            </div>
+          </div>
         </div>
       </div>
     </div>

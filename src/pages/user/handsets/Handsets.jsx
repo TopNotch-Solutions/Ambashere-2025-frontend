@@ -16,6 +16,8 @@ import HandsetVoucher from "../../../components/global/HandsetVoucher";
 import ShareIMEIModal from "../../../components/user/ShareIMEIModal";
 import formatDate from "../../../components/global/dateFormatter";
 import Swal from "sweetalert2";
+import "../../../assets/style/global/handsetBenefitSimulator.css";
+import "../../../assets/style/global/benefits.css";
 
 const UserHandsets = () => {
   const theme = useTheme();
@@ -263,68 +265,53 @@ const UserHandsets = () => {
     new Date(dataAllocation[0].RenewalDate) <= today); 
 
   return (
-    <div className="container-main m-3">
-      <div className="row d-flex flex-column flex-md-row justify-content-around m-auto">
+    <div className="container-main m-3 handset-simulator-page benefits-page">
+      <div className="handset-hero mb-4">
         <div>
-          <h2>My Handsets</h2>
-          <p>
-            Keep track of your handset benefits, view your current packages and
-            monthly updates.
+          <h2 className="handset-title">My Handsets</h2>
+          <p className="handset-subtitle mb-0">
+            Keep track of your handset benefits, active handset details, and renewal timeline.
           </p>
         </div>
-
+      </div>
+      <div className="row d-flex flex-column flex-md-row justify-content-around m-auto">
         {/* Learn More */}
         {dataAllocation.length > 0 ? (
-          <Box>
-            <div
-              className="col-12 col-lg-11 rounded-3 d-flex justify-content-around flex-column p-4 b-g mx-auto"
-              style={{ backgroundColor: "#F5F5F5" }}
-            >
-              <div className="position-relative">
-                <div className="d-flex row">
-                  {/* Qualifying Allowance */}
-                  <div className="col-sm-4 border-end border-light-subtle p-4">
-                    <div className="row g-5">
-                      <div className="col-md-6">
-                        <h5>Active Handset</h5>
-                        <p>{dataAllocation[0].HandsetName}</p>
-                      </div>
-                      <div
-                        className="col-sm-2 align-self-start rounded-3 shadow d-flex justify-content-center p-2"
-                        style={{ backgroundColor: "#0096D6", color: "white" }}
-                      >
-                        <PhoneIphoneIcon fontSize="large" />
-                      </div>
+          <Box className="col-12 col-lg-11">
+            <div className="handset-summary-card shadow-sm benefits-stats-card">
+              <div className="row g-3">
+                <div className="col-sm-4">
+                  <div className="benefit-metric">
+                    <div>
+                      <h5>Active Handset</h5>
+                      <h3>{dataAllocation[0].HandsetName}</h3>
+                    </div>
+                    <div className="benefit-metric-icon">
+                      <PhoneIphoneIcon fontSize="large" />
                     </div>
                   </div>
+                </div>
 
-                  <div className="col-sm-4 border-end border-light-subtle p-4">
-                    <div className="row g-5">
-                      <div className="col-md-6">
-                        <h5>Handset Price</h5>
-                        <p>N$ {dataAllocation[0].HandsetPrice}</p>
-                      </div>
-                      <div
-                        className="col-sm-2 align-self-start rounded-3 shadow d-flex justify-content-center p-2"
-                        style={{ backgroundColor: "#0096D6", color: "white" }}
-                      >
-                        <FaMoneyBillTrendUp fontSize="large" />
-                      </div>
+                <div className="col-sm-4">
+                  <div className="benefit-metric">
+                    <div>
+                      <h5>Handset Price</h5>
+                      <h3>N$ {dataAllocation[0].HandsetPrice}</h3>
+                    </div>
+                    <div className="benefit-metric-icon">
+                      <FaMoneyBillTrendUp fontSize="large" />
                     </div>
                   </div>
+                </div>
 
-                  <div className="col-sm-4 p-4">
-                    <div className="row g-5">
-                      <div className="col-md-6">
-                        <h5>New Handset Due:</h5>
-                        <p>{formatDate(dataAllocation[0]?.RenewalDate) || "Pending Announcement"}</p>
-                      </div>
-                      <div
-                        className="col-sm-2 align-self-start rounded-3 shadow d-flex justify-content-center p-2"
-                        style={{ backgroundColor: "#0096D6", color: "white" }}
-                      >
-                        <CalendarMonthIcon fontSize="large" />
-                      </div>
+                <div className="col-sm-4">
+                  <div className="benefit-metric">
+                    <div>
+                      <h5>New Handset Due</h5>
+                      <h3>{formatDate(dataAllocation[0]?.RenewalDate) || "Pending"}</h3>
+                    </div>
+                    <div className="benefit-metric-icon">
+                      <CalendarMonthIcon fontSize="large" />
                     </div>
                   </div>
                 </div>
@@ -355,8 +342,9 @@ const UserHandsets = () => {
         <div className="col-12 col-lg-11 ml-1 d-flex flex-column">
           <div className="m-1 m-sm-3">
             <Box
-              m="40px 0 0 0"
+              m="0"
               height="100%"
+              className="handset-form-card shadow-sm benefits-table-card"
               sx={{
                 "& .MuiDataGrid-root": {
                   border: "none",
@@ -386,22 +374,9 @@ const UserHandsets = () => {
                 },
               }}
             >
-              {
-                shouldShowNewHandsetButton && (
-                  <div
-                style={{
-                  display: "flex",
-                  justifyContent: "flex-end",
-                  marginBottom: "10px",
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    gap: "70px",
-                  }}
-                >
+              <div className="benefits-table-header">
+                <h6 className="summary-title mb-0">Current Handsets</h6>
+                {shouldShowNewHandsetButton && (
                   <Button
                     className=""
                     style={{
@@ -432,10 +407,8 @@ const UserHandsets = () => {
                       </>
                     )}
                   </Button>
-                </div>
+                )}
               </div>
-                )
-              }
               {isLoading ? (
                 <Box 
                   height="400px" 
@@ -452,15 +425,17 @@ const UserHandsets = () => {
                   </Box>
                 </Box>
               ) : (
-                <DataGrid
-                  rows={rows}
-                  columns={columns}
-                  pageSize={5}
-                  rowsPerPageOptions={[5, 10, 20]}
-                  checkboxSelection
-                  disableSelectionOnClick
-                  // onRowClick={handleRowClick}
-                />
+                <div className="benefits-grid-wrap current-handsets-grid">
+                  <DataGrid
+                    rows={rows}
+                    columns={columns}
+                    pageSize={10}
+                    rowsPerPageOptions={[10, 20, 30]}
+                    checkboxSelection
+                    disableSelectionOnClick
+                    // onRowClick={handleRowClick}
+                  />
+                </div>
               )}
             </Box>
           </div>

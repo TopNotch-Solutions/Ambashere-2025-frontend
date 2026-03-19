@@ -16,6 +16,9 @@ import axiosInstance from "../../../utils/axiosInstance";
 import AddPackage from "../../../components/admin/AddPackage";
 import { useSelector, useDispatch } from "react-redux";
 import Swal from "sweetalert2";
+import "../../../assets/style/global/handsetBenefitSimulator.css";
+import "../../../assets/style/global/benefits.css";
+import "../../../assets/style/global/adminPackages.css";
 
 const AdminPackages = () => {
   const navigate = useNavigate();
@@ -233,26 +236,26 @@ const AdminPackages = () => {
   }, [data]);
 
   return (
-    <Box m="2px" className="">
-      <div
-        style={{
-          height: 500,
-          width: "98%",
-          marginLeft: "auto",
-          marginRight: "auto",
-        }}
-      >
-        {/* <h3>Employees</h3> */}
-        <div style={{ display: "flex", justifyContent: "space-between" }}>
+    <Box m="2px" className="handset-simulator-page admin-packages-page">
+      <div className="handset-hero mb-4">
+        <div>
+          <h2 className="handset-title">Packages</h2>
+          <p className="handset-subtitle mb-0">
+            Configure package plans, pricing periods, and activation status.
+          </p>
+        </div>
+      </div>
+      <div className="admin-packages-wrap">
+        <div className="d-flex justify-content-between admin-packages-toolbar">
           <Box
+            className="admin-packages-search"
             display="flex"
-            backgroundColor={colors.primary[400]}
-            borderRadius="3px"
-            width="200px"
+            borderRadius="8px"
+            width="260px"
           >
             <InputBase
               sx={{ ml: 2, flex: 1 }}
-              placeholder="Search"
+              placeholder="Search package"
               onChange={handleSearchChange}
             />
             <IconButton type="button" sx={{ p: 1 }}>
@@ -260,27 +263,15 @@ const AdminPackages = () => {
             </IconButton>
           </Box>
           {currentUser.RoleID === 1 ? (
-            <div className="d-flex col-md-4 justify-content-between">
+            <div className="d-flex col-md-4 justify-content-between admin-packages-actions">
               <Button
-                style={{
-                  gap: "10px",
-                  height: "100%",
-                  backgroundColor: "#0096D6",
-                  color: "#fff",
-                  padding: "8px",
-                  paddingLeft: "20px",
-                  paddingRight: "20px",
-                  borderRadius: "5px",
-                  cursor: "pointer",
-                  borderColor: "#1A69AC",
-                  border: "1px solid",
-                }}
+                className="benefits-cta-btn"
                 onClick={handleAddNewPackage}
               >
                 Add Package
                 <AddCircleIcon size={16} />
               </Button>
-              <ExportButton data={rows} fileName="Packages" />
+              <ExportButton data={rows} fileName="Packages" className="benefits-cta-btn" />
             </div>
           ) : (
             <p></p>
@@ -290,9 +281,7 @@ const AdminPackages = () => {
         <Box
           m="20px 0 0 0"
           height="55vh"
-          //   width = "80%"
-          //   margin = "auto"
-          //   marginTop={"10px"}
+          className="handset-form-card shadow-sm benefits-table-card"
           sx={{
             "& .MuiDataGrid-root": {
               border: "none",
@@ -322,14 +311,16 @@ const AdminPackages = () => {
             },
           }}
         >
-          <DataGrid
-            rows={filteredRows}
-            columns={columns}
-            pageSize={5}
-            rowsPerPageOptions={[5, 10, 20]}
-            checkboxSelection
-            disableSelectionOnClick
-          />
+          <div className="benefits-grid-wrap">
+            <DataGrid
+              rows={filteredRows}
+              columns={columns}
+              pageSize={5}
+              rowsPerPageOptions={[5, 10, 20]}
+              checkboxSelection
+              disableSelectionOnClick
+            />
+          </div>
         </Box>
         {modalOpen && (
           <div className="modal">

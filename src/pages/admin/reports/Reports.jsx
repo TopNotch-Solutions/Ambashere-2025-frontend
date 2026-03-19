@@ -1,15 +1,15 @@
 import { Box, useMediaQuery } from "@mui/material";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { DataGrid } from "@mui/x-data-grid";
 import { tokens } from "../../../theme";
 import { useTheme } from "@emotion/react";
-import ExportButton from "../../../components/admin/ExportButton";
-import { useNavigate } from "react-router-dom";
 import ViewReports from "../../../components/admin/reports/ViewReports";
 import ViewButton from "../../../components/admin/reports/ViewButton";
+import "../../../assets/style/global/handsetBenefitSimulator.css";
+import "../../../assets/style/global/benefits.css";
+import "../../../assets/style/global/adminReports.css";
 
 const AdminReports = () => {
-  const navigate = useNavigate();
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
   const isSmallScreen = useMediaQuery(theme.breakpoints.down("xl"));
@@ -88,17 +88,14 @@ const AdminReports = () => {
     } else {
       // Render normal DataGrid
       return (
-        <Box m="20px" width={"auto"}>
-          <div
-            style={{
-              display: "flex",
-            }}
-          >
+        <Box className="admin-reports-wrap">
+          <div style={{ display: "flex" }}>
             <Box
               m="20px 0 0 0"
               height=""
               textAlign={"center"}
               justifyContent={"center"}
+              className="handset-form-card shadow-sm benefits-table-card"
               sx={{
                 width: "100%",
                 "& .MuiDataGrid-root": {
@@ -130,18 +127,18 @@ const AdminReports = () => {
                 },
               }}
             >
-              <DataGrid
-                rows={rows}
-                columns={columns}
-                pageSize={5}
-                disableSelectionOnClick
-                // checkboxSelection
-                onRowClick={(params, event) => {
-                  // console.log("Row clicked params:", params);
-                  handleRowClick(params.row);
-                }}
-                hideFooter
-              />
+              <div className="benefits-grid-wrap">
+                <DataGrid
+                  rows={rows}
+                  columns={columns}
+                  pageSize={5}
+                  disableSelectionOnClick
+                  onRowClick={(params, event) => {
+                    handleRowClick(params.row);
+                  }}
+                  hideFooter
+                />
+              </div>
             </Box>
           </div>
         </Box>
@@ -150,8 +147,18 @@ const AdminReports = () => {
   };
 
   return (
-    <Box m="20px" sx={{ width: "auto" }}>
-      {renderContent()}
+    <Box m="20px" sx={{ width: "auto" }} className="handset-simulator-page admin-reports-page">
+      <div className="handset-hero mb-4">
+        <div>
+          <h2 className="handset-title">Reports</h2>
+          <p className="handset-subtitle mb-0">
+            Access predefined operational, financial, and compliance reports.
+          </p>
+        </div>
+      </div>
+      <div className="reports-unified-tables">
+        {renderContent()}
+      </div>
     </Box>
   );
 };

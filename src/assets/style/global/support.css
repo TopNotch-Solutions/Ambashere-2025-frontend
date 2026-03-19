@@ -1,0 +1,50 @@
+.support-page .support-temp-note {
+  color: #5f738b;
+  max-width: 900px;
+  font-size: 0.9rem;
+}
+
+.support-submit-btn {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 1rem;
+  border: 1px solid #0f69ac;
+  border-radius: 8px;
+  background: linear-gradient(to right, #1a69ac, #00aae9);
+  color: #fff;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: filter 0.2s ease;
+}
+
+.support-submit-btn:hover {
+  filter: brightness(0.95);
+}
+
+.support-submit-btn:disabled {
+  opacity: 0.75;
+  cursor: not-allowed;
+}
+
+.support-summary-card .summary-row span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.support-icon {
+  color: #0f69ac;
+}
+
+.support-image-wrap {
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.support-image {
+  object-fit: cover;
+  border-radius: 10px;
+}

@@ -1,0 +1,19 @@
+.admin-calendar-page .handset-hero,
+.admin-calendar-page .admin-calendar-card {
+  width: 98%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.admin-calendar-page .admin-calendar-card {
+  padding: 1rem;
+}
+
+.admin-calendar-page .rbc-calendar {
+  background: #fff;
+  border-radius: 10px;
+}
+
+.admin-calendar-page .rbc-toolbar button {
+  border-radius: 8px;
+}

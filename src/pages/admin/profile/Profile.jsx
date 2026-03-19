@@ -1,23 +1,17 @@
 import React, { useState, useRef, useEffect } from "react";
-import { useTheme, useMediaQuery } from "@mui/material";
 import "../../../assets/style/admin/profileCard.css";
 import profile from "../../../assets/Img/blank-profile-picture-973460_960_720.webp";
-import CameraAltIcon from "@mui/icons-material/CameraAlt";
-import EditIcon from "@mui/icons-material/Edit";
-import CloseIcon from "@mui/icons-material/Close";
 import Form from "react-bootstrap/Form";
-import Stack from "@mui/material/Stack";
-import Button from "@mui/material/Button";
-import DeleteIcon from "@mui/icons-material/Delete";
 import InputGroup from "react-bootstrap/InputGroup";
 import { useSelector, useDispatch } from "react-redux";
 import { updateProfileImage } from "../../../store/reducers/authReducer";
 import axiosInstance from "../../../utils/axiosInstance";
 import Swal from "sweetalert2";
+import "../../../assets/style/global/handsetBenefitSimulator.css";
+import "../../../assets/style/global/userProfile.css";
+import "../../../assets/style/global/adminProfile.css";
 
 function AdminProfileCard() {
-  const theme = useTheme();
-  const isSmallScreen = useMediaQuery(theme.breakpoints.down("md"));
   const inputRef = useRef();
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploadStatus, setUploadStatus] = useState("select");
@@ -28,11 +22,6 @@ function AdminProfileCard() {
   const dispatch = useDispatch();
   let profileImage;
   const [isEditing, setIsEditing] = useState(false);
-  const buttonStyle = {
-    color: "red",
-    borderColor: "red",
-  };
-  // console.log(currentUser);
 
   const [formValues, setFormValues] = useState({
     FirstName: "",
@@ -211,9 +200,17 @@ function AdminProfileCard() {
   };
 
   return (
-    <div className="container-main m-3">
+    <div className="container-main m-3 handset-simulator-page profile-page admin-profile-page">
+      <div className="handset-hero mb-4">
+        <div>
+          <h2 className="handset-title">Admin Profile</h2>
+          <p className="handset-subtitle mb-0">
+            Review your account details and keep your profile information up to date.
+          </p>
+        </div>
+      </div>
       <div className="row d-flex flex-column flex-md-row justify-content-around m-auto">
-        <div className="col-12  col-lg-5 rounded-3 shadow p-4 d-flex flex-column justify-content-center align-items-center b-g me-3">
+        <div className="col-12  col-lg-5 handset-summary-card shadow-sm p-4 d-flex flex-column justify-content-center align-items-center b-g me-3">
           <div className="position-relative">
             {/* <div
               className="bg-white rounded-circle position-absolute camera-top d-flex align-items-center justify-content-center"
@@ -263,7 +260,7 @@ function AdminProfileCard() {
 
         {/* Profile Details */}
         <div
-          className="col-12 col-lg-6 rounded-3 shadow b-g mt-3 mt-lg-0 me-3 "
+          className="col-12 col-lg-6 handset-form-card shadow-sm b-g mt-3 mt-lg-0 me-3 profile-form-card"
           style={{ padding: 0 }}
         >
           <div

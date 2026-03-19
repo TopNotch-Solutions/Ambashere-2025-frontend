@@ -1,20 +1,19 @@
 import React, { useEffect, useState } from "react";
 import {
-  Box,
-  Button,
   TextField,
   Select,
   MenuItem,
   FormControl,
   InputLabel,
   CircularProgress,
-  Typography,
+  Alert,
 } from "@mui/material";
 import axiosInstance from "../../../utils/axiosInstance";
-import DownloadDevicePriceList from "../../../components/user/DownloadDevicePriceList";
+import "../../../assets/style/global/handsetBenefitSimulator.css";
 
 const AirtimeBenefitSimulator = () => {
   const [packages, setPackages] = useState([]);
+  const [devices, setDevices] = useState([]);
   const [numberOfContracts, setNumberOfContracts] = useState(1);
   const [contractData, setContractData] = useState([
     { selectedPackage: "", devicePrice: "", deviceName: "", packagePrice: "" },
@@ -23,24 +22,38 @@ const AirtimeBenefitSimulator = () => {
   const [airtimeAllocation, setAirtimeAllocation] = useState("");
   const [checkLimit, setCheckLimit] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [devicesError, setDevicesError] = useState("");
+  const [packagesError, setPackagesError] = useState("");
+
+  const formatCurrency = (value) => {
+    const numberValue = Number(value) || 0;
+    return `N$ ${numberValue.toLocaleString("en-NA", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+  };
 
   useEffect(() => {
-    const fetchPackages = async () => {
+    const fetchData = async () => {
       try {
         setIsLoading(true);
-        console.log("🔄 Fetching packages from /packages/packageList...");
-        const response = await axiosInstance.get(`/packages/packageList?t=${Date.now()}`);
-        console.log("📦 Packages response:", response.data);
-        console.log("📊 Total packages received:", response.data.length);
-        setPackages(response.data);
+        setPackagesError("");
+        setDevicesError("");
+        const [packagesResponse, devicesResponse] = await Promise.all([
+          axiosInstance.get(`/packages/packageList?t=${Date.now()}`),
+          axiosInstance.get("/pricelist/device-price-list"),
+        ]);
+        setPackages(packagesResponse.data || []);
+        setDevices(devicesResponse?.data?.data || []);
       } catch (error) {
-        console.error("❌ Error fetching packages:", error);
-        console.error("Error details:", error.response?.data);
+        console.error("Error fetching simulator data:", error);
+        setPackagesError("Unable to load package list.");
+        setDevicesError("Unable to load device price list.");
       } finally {
         setIsLoading(false);
       }
     };
-    fetchPackages();
+    fetchData();
   }, []);
 
   const handleNumberOfContractsChange = (event) => {
@@ -76,6 +89,19 @@ const AirtimeBenefitSimulator = () => {
           selectedPkg?.PackageName.startsWith("Netman Capped") ||
           selectedPkg?.PackageName.startsWith("Select");
         updatedContract.packagePrice = selectedPkg?.MonthlyPrice || ""; // Set the package price
+      }
+
+      if (field === "deviceName") {
+        const selectedDevice = devices.find((d) => d.device_name === value);
+        updatedContract.devicePrice = selectedDevice?.amount ?? 0;
+      }
+
+      if (field === "additionalDeviceName") {
+        const selectedAdditionalDevice = devices.find(
+          (d) => d.device_name === value
+        );
+        updatedContract.additionalDevicePrice =
+          selectedAdditionalDevice?.amount ?? 0;
       }
 
       updatedData[index] = updatedContract;
@@ -148,257 +174,258 @@ const AirtimeBenefitSimulator = () => {
   }, [airtimeAllocation, monthlyPayment]);
 
   return (
-    <div className="container-main m-3">
-      <div className="row d-flex flex-column flex-md-row justify-content-around m-auto">
+    <div className="container-main m-3 handset-simulator-page">
+      <div className="handset-hero mb-4">
         <div>
-          <div className="row mb-2">
-            <div className="col-lg-9">
-              <h2>Airtime Benefit Simulator.</h2>
-              <p>
-                Don't know how much you need to use from your airtime to get
-                that new phone you're looking for? Or you simply want to prepare
-                yourself mentally and financially for the amount you'll pay
-                monthly? Then look no further because this is where your
-                questions will be answered. Please find the simulator below:
-              </p>
-            </div>
-            <div className="col-sm-2 h-25 mt-4">
-              <DownloadDevicePriceList />
-            </div>
-          </div>
+          <h2 className="handset-title">Airtime Benefit Simulator</h2>
+          <p className="handset-subtitle mb-0">
+            Simulate monthly payment across one or more contracts and check
+            whether your total remains within allocation limits.
+          </p>
         </div>
+      </div>
 
-        {isLoading ? (
-          <Box 
-            display="flex" 
-            alignItems="center" 
-            justifyContent="center" 
-            minHeight="400px"
-            sx={{ backgroundColor: "#f5f5f5", borderRadius: 2, margin: 2 }}
-          >
-            <Box textAlign="center">
-              <CircularProgress size={40} sx={{ color: "#0096D6" }} />
-              <Typography variant="h6" sx={{ mt: 2, color: "#666" }}>
-                Loading packages...
-              </Typography>
-            </Box>
-          </Box>
-        ) : (
-
-        <div className="justify-content-center">
-          <form className="form shadow p-4">
-            <div className="row">
-              <div className="col-md-6">
-                <FormControl fullWidth margin="normal">
-                  <InputLabel>Number of Contracts To Simulate</InputLabel>
-                  <Select
-                    onChange={handleNumberOfContractsChange}
-                    value={numberOfContracts}
-                  >
-                    <MenuItem value="1">1</MenuItem>
-                    <MenuItem value="2">2</MenuItem>
-                    <MenuItem value="3">3</MenuItem>
-                  </Select>
-                </FormControl>
+      {isLoading ? (
+        <div className="handset-form-card d-flex align-items-center justify-content-center">
+          <CircularProgress size={40} sx={{ color: "#0096D6" }} />
+        </div>
+      ) : (
+        <div className="row g-4">
+          <div className="col-12 col-xl-8">
+            <form className="handset-form-card shadow-sm">
+              <div className="form-header">
+                <h5 className="mb-1">Configure your simulation</h5>
+                <p className="mb-0">
+                  Device prices are auto-populated from the latest device list.
+                </p>
               </div>
-              <div className="col-md-6">
-                <FormControl fullWidth margin="normal">
-                  <InputLabel>Airtime Allocation</InputLabel>
-                  <Select
-                    name="AirtimeAllocation"
-                    value={airtimeAllocation}
-                    onChange={(e) => setAirtimeAllocation(e.target.value)}
-                  >
-                    <MenuItem value="2200">2200</MenuItem>
-                    <MenuItem value="3300">3300</MenuItem>
-                    <MenuItem value="4400">4400</MenuItem>
-                    <MenuItem value="8000">8000</MenuItem>
-                  </Select>
-                </FormControl>
+
+              {(packagesError || devicesError) && (
+                <Alert severity="error" className="mb-3">
+                  {packagesError || devicesError}
+                </Alert>
+              )}
+
+              <div className="row">
+                <div className="col-md-6">
+                  <FormControl fullWidth margin="normal">
+                    <InputLabel>Number of Contracts To Simulate</InputLabel>
+                    <Select
+                      onChange={handleNumberOfContractsChange}
+                      value={numberOfContracts}
+                      label="Number of Contracts To Simulate"
+                    >
+                      <MenuItem value="1">1</MenuItem>
+                      <MenuItem value="2">2</MenuItem>
+                      <MenuItem value="3">3</MenuItem>
+                    </Select>
+                  </FormControl>
+                </div>
+                <div className="col-md-6">
+                  <FormControl fullWidth margin="normal">
+                    <InputLabel>Airtime Allocation</InputLabel>
+                    <Select
+                      name="AirtimeAllocation"
+                      value={airtimeAllocation}
+                      onChange={(e) => setAirtimeAllocation(e.target.value)}
+                      label="Airtime Allocation"
+                    >
+                      <MenuItem value="2200">N$ 2,200</MenuItem>
+                      <MenuItem value="3300">N$ 3,300</MenuItem>
+                      <MenuItem value="4400">N$ 4,400</MenuItem>
+                      <MenuItem value="8000">N$ 8,000</MenuItem>
+                    </Select>
+                  </FormControl>
+                </div>
               </div>
-            </div>
 
-            {contractData.map((contract, index) => (
-              <div key={index}>
-                <div className="row">
-                  <div className="col-md-6">
-                    <FormControl fullWidth margin="normal">
-                      <InputLabel>Select Package</InputLabel>
-                      <Select
-                        value={contract.selectedPackage || ""}
-                        onChange={(e) =>
-                          handleContractChange(
-                            index,
-                            "selectedPackage",
-                            e.target.value
-                          )
-                        }
-                      >
-                        {packages.map((pkg) => (
-                          <MenuItem key={pkg.PackageID} value={pkg.PackageID}>
-                            {pkg.PackageName}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  </div>
+              {contractData.map((contract, index) => (
+                <div key={index} className="contract-section">
+                  <div className="contract-heading">Contract {index + 1}</div>
 
-                  <div className="col-md-6">
-                    <TextField
-                      name="PackagePrice"
-                      label="Package Price"
-                      value={contract.packagePrice || ""}
-                      fullWidth
-                      margin="normal"
-                      disabled
-                    />
-                  </div>
-                </div>
-
-                {/* Device Row Always Displayed */}
-                <div className="row">
-                  <div className="col-md-6">
-                    <TextField
-                      name="DeviceName"
-                      label="Device Name"
-                      value={contract.deviceName || ""}
-                      onChange={(e) =>
-                        handleContractChange(
-                          index,
-                          "deviceName",
-                          e.target.value
-                        )
-                      }
-                      fullWidth
-                      margin="normal"
-                    />
-                  </div>
-
-                  <div className="col-md-6">
-                    <TextField
-                      name="DevicePrice"
-                      label="Device Price"
-                      type="number"
-                      value={contract.devicePrice || ""}
-                      onChange={(e) =>
-                        handleContractChange(
-                          index,
-                          "devicePrice",
-                          parseFloat(e.target.value) || 0
-                        )
-                      }
-                      fullWidth
-                      margin="normal"
-                    />
-                  </div>
-                </div>
-
-                {/* Net Option Row Based on Package Selection */}
-                {contract.showNetOption && (
                   <div className="row">
                     <div className="col-md-6">
                       <FormControl fullWidth margin="normal">
-                        <InputLabel>Net Package</InputLabel>
+                        <InputLabel>Select Package</InputLabel>
                         <Select
-                          value={contract.netOption || ""}
-                          onChange={(e) =>
-                            handleNetOptionChange(index, e.target.value)
-                          }
-                        >
-                          <MenuItem value="Yes">Yes</MenuItem>
-                          <MenuItem value="No">No</MenuItem>
-                        </Select>
-                      </FormControl>
-                    </div>
-                  </div>
-                )}
-
-                {/* Additional Row if Net Option is "Yes" */}
-                {contract.netAdditionalRow && (
-                  <>
-                    <div className="row">
-                      <div className="col-md-6">
-                        <TextField
-                          name="NetAdditionalPrice"
-                          label="Additional Net Price"
-                          value={50}
-                          fullWidth
-                          disabled
-                          margin="normal"
-                        />
-                      </div>
-                      {/* New Device Row */}
-                      <div className="col-md-6">
-                        <TextField
-                          name="AdditionalDeviceName"
-                          label="Additional Device Name"
-                          value=""
-                          fullWidth
-                          margin="normal"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="row">
-                      <div className="col-md-6">
-                        <TextField
-                          name="AdditionalDevicePrice"
-                          label="Additional Device Price"
-                          type="number"
-                          value={contract.additionalDevicePrice || ""}
+                          value={contract.selectedPackage || ""}
                           onChange={(e) =>
                             handleContractChange(
                               index,
-                              "additionalDevicePrice",
-                              parseFloat(e.target.value) || 0
+                              "selectedPackage",
+                              e.target.value
                             )
                           }
-                          fullWidth
-                          margin="normal"
-                        />
+                          label="Select Package"
+                        >
+                          {packages.map((pkg) => (
+                            <MenuItem key={pkg.PackageID} value={pkg.PackageID}>
+                              {pkg.PackageName}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </div>
+
+                    <div className="col-md-6">
+                      <TextField
+                        name="PackagePrice"
+                        label="Package Price"
+                        value={formatCurrency(contract.packagePrice)}
+                        fullWidth
+                        margin="normal"
+                        InputProps={{ readOnly: true }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="row">
+                    <div className="col-md-6">
+                      <FormControl fullWidth margin="normal">
+                        <InputLabel>Device Name</InputLabel>
+                        <Select
+                          name="DeviceName"
+                          value={contract.deviceName || ""}
+                          onChange={(e) =>
+                            handleContractChange(
+                              index,
+                              "deviceName",
+                              e.target.value
+                            )
+                          }
+                          label="Device Name"
+                          disabled={!!devicesError}
+                        >
+                          {devices.map((device) => (
+                            <MenuItem key={device.id} value={device.device_name}>
+                              {device.device_name}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </div>
+
+                    <div className="col-md-6">
+                      <TextField
+                        name="DevicePrice"
+                        label="Device Price"
+                        value={formatCurrency(contract.devicePrice)}
+                        fullWidth
+                        margin="normal"
+                        InputProps={{ readOnly: true }}
+                      />
+                    </div>
+                  </div>
+
+                  {contract.showNetOption && (
+                    <div className="row">
+                      <div className="col-md-6">
+                        <FormControl fullWidth margin="normal">
+                          <InputLabel>Net Package</InputLabel>
+                          <Select
+                            value={contract.netOption || ""}
+                            onChange={(e) =>
+                              handleNetOptionChange(index, e.target.value)
+                            }
+                            label="Net Package"
+                          >
+                            <MenuItem value="Yes">Yes</MenuItem>
+                            <MenuItem value="No">No</MenuItem>
+                          </Select>
+                        </FormControl>
                       </div>
                     </div>
-                  </>
-                )}
-              </div>
-            ))}
+                  )}
 
-            <div className="row">
-              <div className="col-md-6">
-                <TextField
-                  sx={{
-                    "& .MuiInputBase-input.Mui-disabled": {
-                      WebkitTextFillColor: "black",
-                    },
-                  }}
-                  name="MonthlyPayment"
-                  label="Monthly Payment"
-                  value={"N$ " + monthlyPayment.toFixed(2)}
-                  fullWidth
-                  margin="normal"
-                  disabled
-                />
+                  {contract.netAdditionalRow && (
+                    <>
+                      <div className="row">
+                        <div className="col-md-6">
+                          <TextField
+                            name="NetAdditionalPrice"
+                            label="Additional Net Price"
+                            value={formatCurrency(50)}
+                            fullWidth
+                            margin="normal"
+                            InputProps={{ readOnly: true }}
+                          />
+                        </div>
+                        <div className="col-md-6">
+                          <FormControl fullWidth margin="normal">
+                            <InputLabel>Additional Device Name</InputLabel>
+                            <Select
+                              name="AdditionalDeviceName"
+                              value={contract.additionalDeviceName || ""}
+                              onChange={(e) =>
+                                handleContractChange(
+                                  index,
+                                  "additionalDeviceName",
+                                  e.target.value
+                                )
+                              }
+                              label="Additional Device Name"
+                              disabled={!!devicesError}
+                            >
+                              {devices.map((device) => (
+                                <MenuItem
+                                  key={`extra-${device.id}`}
+                                  value={device.device_name}
+                                >
+                                  {device.device_name}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                        </div>
+                      </div>
+
+                      <div className="row">
+                        <div className="col-md-6">
+                          <TextField
+                            name="AdditionalDevicePrice"
+                            label="Additional Device Price"
+                            value={formatCurrency(contract.additionalDevicePrice)}
+                            fullWidth
+                            margin="normal"
+                            InputProps={{ readOnly: true }}
+                          />
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
+            </form>
+          </div>
+
+          <div className="col-12 col-xl-4">
+            <div className="handset-summary-card shadow-sm">
+              <h6 className="summary-title">Summary</h6>
+              <div className="summary-row">
+                <span>Contracts simulated</span>
+                <strong>{numberOfContracts}</strong>
               </div>
-              <div className="col-md-6">
-                <TextField
-                  sx={{
-                    "& .MuiInputBase-input.Mui-disabled": {
-                      WebkitTextFillColor: "red",
-                    },
-                  }}
-                  name="CheckLimit"
-                  label="Check Limit"
-                  value={checkLimit}
-                  fullWidth
-                  margin="normal"
-                  disabled
-                />
+              <div className="summary-row">
+                <span>Airtime allocation</span>
+                <strong>{formatCurrency(airtimeAllocation)}</strong>
+              </div>
+              <div className="summary-row">
+                <span>Monthly payment</span>
+                <strong>{formatCurrency(monthlyPayment)}</strong>
+              </div>
+              <hr className="summary-divider" />
+              <div
+                className={`summary-row total-row ${
+                  checkLimit === "Exceeding Limit" ? "total-row-danger" : ""
+                }`}
+              >
+                <span>Limit status</span>
+                <strong>{checkLimit || "-"}</strong>
               </div>
             </div>
-          </form>
+          </div>
         </div>
-        )}
-      </div>
+      )}
     </div>
   );
 };

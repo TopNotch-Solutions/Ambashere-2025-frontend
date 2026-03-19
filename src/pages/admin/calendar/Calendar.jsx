@@ -8,15 +8,13 @@ import {
   Typography,
   TextField,
   Button,
-  MenuItem,
-  Select,
-  FormControl,
-  InputLabel,
 } from "@mui/material";
 import "../../../App.css";
-import Header from "../../../components/admin/Header";
 import axiosInstance from "../../../utils/axiosInstance";
 import CustomEvent from "../../../components/global/CustomEvent";
+import "../../../assets/style/global/handsetBenefitSimulator.css";
+import "../../../assets/style/global/benefits.css";
+import "../../../assets/style/global/adminCalendar.css";
 
 const localizer = momentLocalizer(moment);
 
@@ -159,26 +157,36 @@ const AdminCalendar = () => {
   };
 
   return (
-    <div className="calendar-container">
-      <Header title="Calendar" />
-      <Calendar
-        localizer={localizer}
-        events={events}
-        startAccessor="start"
-        endAccessor="end"
-        style={{ height: 500, width: "100%" }}
-        selectable
-        onSelectSlot={handleSelectSlot}
-        onSelectEvent={handleSelectEvent}
-        views={["month", "week", "day", "agenda"]}
-        defaultView={Views.MONTH}
-        toolbar
-        popup
-        resizable
-        components={{
-    event: CustomEvent,
-  }}
-      />
+    <div className="calendar-container handset-simulator-page admin-calendar-page">
+      <div className="handset-hero mb-4">
+        <div>
+          <h2 className="handset-title">Calendar</h2>
+          <p className="handset-subtitle mb-0">
+            Schedule and manage company events, reminders, and key dates.
+          </p>
+        </div>
+      </div>
+
+      <div className="handset-form-card shadow-sm admin-calendar-card">
+        <Calendar
+          localizer={localizer}
+          events={events}
+          startAccessor="start"
+          endAccessor="end"
+          style={{ height: 620, width: "100%" }}
+          selectable
+          onSelectSlot={handleSelectSlot}
+          onSelectEvent={handleSelectEvent}
+          views={["month", "week", "day", "agenda"]}
+          defaultView={Views.MONTH}
+          toolbar
+          popup
+          resizable
+          components={{
+            event: CustomEvent,
+          }}
+        />
+      </div>
       <Modal open={modalOpen} onClose={handleModalClose}>
         <Box
           sx={{
@@ -193,6 +201,7 @@ const AdminCalendar = () => {
             display: "flex",
             flexDirection: "column",
             gap: 2,
+            borderRadius: "12px",
           }}
         >
           <Typography variant="h6" component="h2">
@@ -259,22 +268,20 @@ const AdminCalendar = () => {
           />
           <Box sx={{ display: "flex", justifyContent: "space-between", mt: 2 }}>
             <Button
-              variant="contained"
-              color="primary"
+              className="benefits-cta-btn"
               onClick={handleEventSave}
             >
               Save
             </Button>
             {isEdit && (
               <Button
-                variant="contained"
-                color="secondary"
+                className="benefits-cta-btn"
                 onClick={handleEventDelete}
               >
                 Delete
               </Button>
             )}
-            <Button variant="outlined" onClick={handleModalClose}>
+            <Button className="benefits-cta-btn" onClick={handleModalClose}>
               Cancel
             </Button>
           </Box>

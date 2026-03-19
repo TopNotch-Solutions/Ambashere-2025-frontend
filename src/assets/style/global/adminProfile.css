@@ -1,0 +1,9 @@
+.admin-profile-page .handset-hero {
+  width: 98%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.admin-profile-page .profile-form-card {
+  overflow: hidden;
+}

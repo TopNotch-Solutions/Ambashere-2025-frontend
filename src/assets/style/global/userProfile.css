@@ -1,0 +1,37 @@
+.profile-page .profile-form-card {
+  overflow: hidden;
+}
+
+.profile-secondary-btn {
+  min-height: 38px;
+  padding: 0.45rem 0.95rem;
+  border-radius: 8px;
+  border: 1px solid #1a69ac;
+  background: #fff;
+  color: #1a69ac;
+  font-weight: 600;
+}
+
+.profile-secondary-btn.danger {
+  border-color: #d32f2f;
+  color: #d32f2f;
+}
+
+.profile-primary-btn {
+  min-height: 42px;
+  border-radius: 8px !important;
+  border: 1px solid #0f69ac !important;
+  background: linear-gradient(to right, #1a69ac, #00aae9) !important;
+  color: #fff !important;
+}
+
+.profile-page .text-col {
+  margin: 0;
+  font-weight: 700;
+  color: #22354d;
+}
+
+.profile-page .upload-btn {
+  min-height: 42px;
+  border-radius: 8px;
+}

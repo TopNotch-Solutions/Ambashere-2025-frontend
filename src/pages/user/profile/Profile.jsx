@@ -1,14 +1,10 @@
 import React, { useState, useRef, useEffect } from "react";
-import { useTheme, useMediaQuery, CircularProgress, Typography, Box } from "@mui/material";
+import { CircularProgress } from "@mui/material";
 import "../../../assets/style/admin/profileCard.css";
 import profile from "../../../assets/Img/blank-profile-picture-973460_960_720.webp";
-import CameraAltIcon from "@mui/icons-material/CameraAlt";
-import EditIcon from "@mui/icons-material/Edit";
-import CloseIcon from "@mui/icons-material/Close";
+import "../../../assets/style/global/handsetBenefitSimulator.css";
+import "../../../assets/style/global/userProfile.css";
 import Form from "react-bootstrap/Form";
-import Stack from "@mui/material/Stack";
-import Button from "@mui/material/Button";
-import DeleteIcon from "@mui/icons-material/Delete";
 import InputGroup from "react-bootstrap/InputGroup";
 import { useSelector, useDispatch } from "react-redux";
 import { updateProfileImage } from "../../../store/reducers/authReducer";
@@ -16,8 +12,6 @@ import axiosInstance from "../../../utils/axiosInstance";
 import Swal from "sweetalert2";
 
 function UserProfileCard() {
-  const theme = useTheme();
-  const isSmallScreen = useMediaQuery(theme.breakpoints.down("md"));
   const inputRef = useRef();
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploadStatus, setUploadStatus] = useState("select");
@@ -30,11 +24,6 @@ function UserProfileCard() {
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const buttonStyle = {
-    color: "red",
-    borderColor: "red",
-  };
-  // console.log(currentUser);
 
   const [formValues, setFormValues] = useState({
     FirstName: "",
@@ -176,8 +165,24 @@ function UserProfileCard() {
     }
   };
 
-  const handleCameraClick = () => {
-    inputRef.current.click();
+  const handleCancelEdit = () => {
+    if (currentUser) {
+      setFormValues({
+        FirstName: currentUser.FirstName,
+        LastName: currentUser.LastName,
+        FullName: currentUser.FullName,
+        Email: currentUser.Email,
+        PhoneNumber: currentUser.PhoneNumber,
+        Gender: currentUser.Gender,
+        Position: currentUser.Position,
+        Department: currentUser.Department,
+        Division: currentUser.Division,
+        EmploymentCategory: currentUser.EmploymentCategory,
+        EmploymentStatus: currentUser.EmploymentStatus,
+        EmployeeCode: currentUser.EmployeeCode,
+      });
+    }
+    setIsEditing(false);
   };
 
   const handleChange = (e) => {
@@ -225,25 +230,19 @@ function UserProfileCard() {
   };
 
   return (
-    <div className="container-main m-3">
-      <div className="row d-flex flex-column flex-md-row justify-content-around m-auto">
-        <div className="col-12  col-lg-5 rounded-3 shadow p-4 d-flex flex-column justify-content-center align-items-center b-g me-3">
+    <div className="container-main m-3 handset-simulator-page profile-page">
+      <div className="handset-hero mb-4">
+        <div>
+          <h2 className="handset-title">My Profile</h2>
+          <p className="handset-subtitle mb-0">
+            Review and maintain your personal profile information and account photo.
+          </p>
+        </div>
+      </div>
+
+      <div className="row d-flex flex-column flex-md-row justify-content-around m-auto g-3">
+        <div className="col-12 col-lg-5 handset-summary-card shadow-sm p-4 d-flex flex-column justify-content-center align-items-center b-g me-3">
           <div className="position-relative">
-            {/* <div
-              className="bg-white rounded-circle position-absolute camera-top d-flex align-items-center justify-content-center"
-              style={{ width: "30px", height: "30px", cursor: "pointer" }}
-              onClick={selectedFile ? clearFileInput : handleCameraClick}
-            >
-              {selectedFile ? (
-                <CloseIcon
-                  style={{ width: "24px", height: "24px", color: "#1674BB" }}
-                />
-              ) : (
-                <CameraAltIcon
-                  style={{ width: "24px", height: "24px", color: "#1674BB" }}
-                />
-              )}
-            </div> */}
             <img
               src={selectedFile ? newProfilePic : profilePic || profile}
               className="circular-image img-responsive img-thumbnail"
@@ -263,29 +262,26 @@ function UserProfileCard() {
             </p>
           )}
           {selectedFile && (
-            <>
-              <button 
-                className="upload-btn mb-3" 
-                onClick={handleFileUpload}
-                disabled={isLoading}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "8px",
-                  opacity: isLoading ? 0.7 : 1,
-                  cursor: isLoading ? "not-allowed" : "pointer"
-                }}
-              >
-                {isLoading && <CircularProgress size={16} sx={{ color: "white" }} />}
-                {isLoading 
-                  ? "Uploading..." 
-                  : uploadStatus === "select" || uploadStatus === "uploading"
-                    ? "Upload Image"
-                    : "Done"
-                }
-              </button>
-            </>
+            <button
+              className="upload-btn mb-3"
+              onClick={handleFileUpload}
+              disabled={isLoading}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "8px",
+                opacity: isLoading ? 0.7 : 1,
+                cursor: isLoading ? "not-allowed" : "pointer",
+              }}
+            >
+              {isLoading && <CircularProgress size={16} sx={{ color: "white" }} />}
+              {isLoading
+                ? "Uploading..."
+                : uploadStatus === "select" || uploadStatus === "uploading"
+                ? "Upload Image"
+                : "Done"}
+            </button>
           )}
           <h3 className="mt-2 text-center">
             {formValues.FirstName}
@@ -295,38 +291,12 @@ function UserProfileCard() {
         </div>
 
         {/* Profile Details */}
-        <div
-          className="col-12 col-lg-6 rounded-3 shadow b-g mt-3 mt-lg-0 me-3 "
-          style={{ padding: 0 }}
-        >
+        <div className="col-12 col-lg-6 handset-form-card shadow-sm b-g mt-3 mt-lg-0 me-3 profile-form-card" style={{ padding: 0 }}>
           <div
-            className="bg-color d-flex align-items-center p-3"
+            className="bg-color d-flex align-items-center justify-content-between p-3"
             style={{ borderRadius: "0.35rem 0.35rem 0rem 0rem" }}
           >
             <h3 className="p-3 text-col">Edit Profile</h3>
-            {/* <Stack direction="row" spacing={2}>
-              {!isEditing ? (
-                <Button
-                  onClick={() => setIsEditing(true)}
-                  variant="outlined"
-                  size={isSmallScreen ? "small" : "medium"}
-                  color="info"
-                  endIcon={<EditIcon />}
-                >
-                  Edit
-                </Button>
-              ) : (
-                <Button
-                  onClick={() => setIsEditing(false)}
-                  variant="outlined"
-                  size={isSmallScreen ? "small" : "medium"}
-                  style={buttonStyle}
-                  endIcon={<DeleteIcon />}
-                >
-                  Undo
-                </Button>
-              )}
-            </Stack> */}
           </div>
           <form className="mt-3" onSubmit={handleUpdateInfo}>
             <div className="row d-flex justify-content-around">
@@ -547,7 +517,7 @@ function UserProfileCard() {
               {isEditing ? (
                 <button
                   type="button"
-                  className="button2"
+                  className="button2 profile-primary-btn"
                   onClick={handleUpdateInfo}
                   disabled={isSaving}
                   style={{

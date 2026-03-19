@@ -1,0 +1,21 @@
+.admin-contracts-page .admin-contracts-wrap {
+  width: 96%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.admin-contracts-page .handset-hero {
+  width: 96%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.admin-contracts-page .admin-contracts-toolbar {
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.admin-contracts-page .admin-contracts-search {
+  border: 1px solid #dbe7f3;
+  background: #ffffff;
+}

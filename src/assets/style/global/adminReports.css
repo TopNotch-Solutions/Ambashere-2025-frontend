@@ -1,0 +1,34 @@
+.admin-reports-page .admin-reports-wrap {
+  width: 98%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.admin-reports-page .handset-hero {
+  width: 98%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.admin-reports-page .reports-unified-tables .MuiDataGrid-root {
+  border: none !important;
+}
+
+.admin-reports-page .reports-unified-tables .MuiDataGrid-cell {
+  border-bottom: none !important;
+}
+
+.admin-reports-page .reports-unified-tables .MuiDataGrid-columnHeaders {
+  background-color: #1674bb !important;
+  color: #ffffff !important;
+  border-bottom: none !important;
+}
+
+.admin-reports-page .reports-unified-tables .MuiDataGrid-footerContainer {
+  border-top: none !important;
+}
+
+.admin-reports-page .reports-unified-tables .download-btn,
+.admin-reports-page .reports-unified-tables .benefits-cta-btn {
+  min-height: 40px;
+}

@@ -2,9 +2,6 @@ import React, { useState, useEffect } from "react";
 import "../../../assets/style/global/login.css";
 import logo from "../../../assets/Img/Group 2186.png";
 import mtclogo from "../../../assets/Img/image 1.png";
-import iphone from "../../../assets/Img/iphone-card-removebg-preview 1.png";
-import login180 from "../../../assets/Img/MTC Vouchers_2017_53.34x9 1.png";
-import login50 from "../../../assets/Img/MTC Vouchers_2017_53.34x9 3.png";
 import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { login } from "../../../store/reducers/authReducer.js";
@@ -12,13 +9,11 @@ import axiosInstance from "../../../utils/axiosInstance";
 
 const Login = () => {
   const [passwordShown, setPasswordShown] = useState(false);
-  const [email, setEmail] = useState("");
   const [count, setCount] = useState(0);
   const [isCooldown, setIsCooldown] = useState(false);
   const [cooldownRemaining, setCooldownRemaining] = useState(0);
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
-  const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [usernameError, setUsernameError] = useState("");
   const [loginError, setLoginError] = useState("");
@@ -62,14 +57,6 @@ const Login = () => {
 
   const validateForm = () => {
     let valid = true;
-    // if (!email) {
-    //   setEmailError("Email is required");
-    //   valid = false;
-    // } else if (!/\S+@\S+\.\S+/.test(email)) {
-    //   setEmailError("Email address is invalid");
-    //   valid = false;
-    // }
-
     if (!username) {
       setUsernameError("Username is required");
       valid = false;
@@ -159,51 +146,44 @@ const Login = () => {
   };
 
   return (
-    <div className="">
-      <div className=" d-flex vh-100 w-100 ">
-        <div className="d-none d-lg-block d-lg-flex col-lg-6 col-xl-7 justify-content-center align-items-center left-box">
-          <img
-            src={logo}
-            alt="Illustration"
-            className="img-fluid mtc-logo-login"
-          />
-        </div>
-        <div className="m-auto col-11 col-md-10 col-lg-6 col-xl-5 d-flex flex-column justify-content-center align-items-center">
-          <img
-            src={mtclogo}
-            alt="Illustration"
-            className="img-fluid"
-            style={{ width: 100, height: 100 }}
-          />
-          <div className="col-sm-3">
-            <h4 className="text-header mb-3">Ambasphere</h4>
-            {/* <h4 className="text-header mb-3">Ambasphere</h4> */}
+    <div className="login-page">
+      <div className="login-layout d-flex min-vh-100 w-100">
+        <aside className="d-none d-lg-flex col-lg-6 col-xl-7 left-box justify-content-center align-items-center">
+          <div className="hero-content">
+            <img src={logo} alt="Ambasphere visual" className="img-fluid mtc-logo-login" />
+            <h2 className="hero-title mt-4 mb-3">Welcome to Ambasphere</h2>
+            <p className="hero-subtitle mb-4">
+              Securely access employee handset and airtime services from one
+              digital platform.
+            </p>
+            <ul className="hero-points">
+              <li>Manage claims and requests in one place</li>
+              <li>Track approvals and submission progress</li>
+              <li>Stay connected to HR support services</li>
+            </ul>
           </div>
+        </aside>
 
-          <h6 className="fst-italic mb-3 text-center">
-            Ambassador Handset & Airtime Benefits System
-          </h6>
+        <main className="m-auto col-11 col-md-9 col-lg-6 col-xl-5 d-flex flex-column justify-content-center align-items-center login-right-panel">
+          <div className="col-12 login-form-shell">
+            <div className="p-4 p-lg-4 p-xxl-5 rounded-3 bg-white shadow login-card">
+              <div className="brand-block mb-4 text-center">
+                <img
+                  src={mtclogo}
+                  alt="MTC logo"
+                  className="img-fluid brand-logo"
+                />
+                <h4 className="text-header mb-2">Ambasphere</h4>
+                <p className="brand-tagline mb-0">
+                  Ambassador Handset & Airtime Benefits System
+                </p>
+              </div>
 
-          <div className="col-12 col-sm-9 col-md-8 col-lg-10 position-relative p-sm-3 mt-3 mt-sm-3">
-            <img
-              src={login50}
-              alt="Illustration"
-              className="r150 behide-image img-fluid position-absolute d-none d-sm-block"
-            />
-            <img
-              src={iphone}
-              alt="Illustration"
-              className="riphone behide-image img-fluid d-none d-sm-block"
-            />
-            <img
-              src={login180}
-              alt="Illustration"
-              className="r180 behide-image img-fluid position-absolute d-none d-sm-block"
-            />
-            <div className="p-4 position-relative p-lg-4 p-xxl-5 rounded-3 bg-white shadow">
               <form onSubmit={handleSubmit}>
-                <h3>Sign in to account</h3>
-                <p className="pb-md-3">Enter your email & password to login</p>
+                <h3 className="signin-title">Sign in to your account</h3>
+                <p className="signin-copy pb-md-3">
+                  Enter your username and password to continue.
+                </p>
 
                 <div className="form-group pb-3">
                   <label htmlFor="username" className="pb-2">
@@ -215,22 +195,16 @@ const Login = () => {
                     placeholder="DoeJ"
                     autoComplete="off"
                     name="username"
-                    value={username} // ✅ Ensure username persists
+                    value={username}
                     onChange={(e) => {
                       setUsernameError("");
                       setUsername(e.target.value);
                     }}
                   />
-                  {usernameError && (
-                    <p className="error mt-1">{usernameError}</p>
-                  )}
+                  {usernameError && <p className="error mt-1">{usernameError}</p>}
                 </div>
 
-                <div
-                  className={`form-group pb-3 position-relative ${
-                    usernameError ? "error-class" : ""
-                  }`}
-                >
+                <div className={`form-group pb-3 position-relative ${usernameError ? "error-class" : ""}`}>
                   <label htmlFor="password" className="pb-2">
                     Password
                   </label>
@@ -246,9 +220,7 @@ const Login = () => {
                       setPassword(e.target.value);
                     }}
                   />
-                  {passwordError && (
-                    <p className="error mt-1">{passwordError}</p>
-                  )}
+                  {passwordError && <p className="error mt-1">{passwordError}</p>}
 
                   <span
                     className={`${
@@ -263,7 +235,6 @@ const Login = () => {
                   </span>
                 </div>
 
-                {/* ✅ Remember Me Checkbox */}
                 <div className="form-group form-check mb-4">
                   <input
                     type="checkbox"
@@ -279,10 +250,7 @@ const Login = () => {
                       }
                     }}
                   />
-                  <label
-                    className="form-check-label"
-                    htmlFor="rememberPassword"
-                  >
+                  <label className="form-check-label" htmlFor="rememberPassword">
                     Remember Me
                   </label>
                 </div>
@@ -292,6 +260,7 @@ const Login = () => {
                     {loginError}
                   </div>
                 )}
+
                 <button
                   type="submit"
                   className="submission"
@@ -320,8 +289,9 @@ const Login = () => {
                 >
                   Sign in
                 </button>
+
                 {isCooldown && (
-                  <p style={{ color: "red", textAlign: "center" }}>
+                  <p className="cooldown-text">
                     Too many login attempts. Please wait 1 minute before trying
                     again.
                   </p>
@@ -329,7 +299,7 @@ const Login = () => {
               </form>
             </div>
           </div>
-        </div>
+        </main>
       </div>
     </div>
   );

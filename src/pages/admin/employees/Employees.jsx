@@ -13,6 +13,9 @@ import PersonAddAlt1Icon from "@mui/icons-material/PersonAddAlt1";
 import AddEmployee from "../../../components/admin/AddEmployee";
 import axiosInstance from "../../../utils/axiosInstance";
 import { useSelector, useDispatch } from "react-redux";
+import "../../../assets/style/global/handsetBenefitSimulator.css";
+import "../../../assets/style/global/benefits.css";
+import "../../../assets/style/global/adminEmployees.css";
 
 const Employees = () => {
   const navigate = useNavigate();
@@ -148,26 +151,27 @@ const Employees = () => {
   };
 
   return (
-    <Box m="2px" className="">
-      <div
-        style={{
-          height: 500,
-          width: "98%",
-          marginLeft: "auto",
-          marginRight: "auto",
-        }}
-      >
-        <div className="d-flex flex-row justify-content-between">
+    <Box m="2px" className="handset-simulator-page admin-employees-page">
+      <div className="handset-hero mb-4">
+        <div>
+          <h2 className="handset-title">Employees</h2>
+          <p className="handset-subtitle mb-0">
+            View, search, and manage all staff records from one place.
+          </p>
+        </div>
+      </div>
+
+      <div className="admin-employees-wrap">
+        <div className="d-flex flex-row justify-content-between admin-employees-toolbar">
           <Box
-            className="d-flex col-md-5"
+            className="d-flex col-md-5 admin-employees-search"
             display="flex"
-            backgroundColor={colors.primary[400]}
-            borderRadius="3px"
-            width="200px"
+            borderRadius="8px"
+            width="260px"
           >
             <InputBase
               sx={{ ml: 2, flex: 1 }}
-              placeholder="Search"
+              placeholder="Search by name or employee code"
               onChange={handleSearchChange}
             />
             <IconButton type="button" sx={{ p: 1 }}>
@@ -175,27 +179,15 @@ const Employees = () => {
             </IconButton>
           </Box>
           {currentUser.RoleID === 1 ? (
-            <div className="d-flex col-md-4 justify-content-between">
+            <div className="d-flex col-md-4 justify-content-between admin-employees-actions">
               <Button
-                style={{
-                  gap: "10px",
-                  height: "100%",
-                  backgroundColor: "#0096D6",
-                  color: "#fff",
-                  padding: "8px",
-                  paddingLeft: "20px",
-                  paddingRight: "20px",
-                  borderRadius: "5px",
-                  cursor: "pointer",
-                  borderColor: "#1A69AC",
-                  border: "1px solid",
-                }}
+                className="benefits-cta-btn"
                 onClick={handleAddNewEmployee}
               >
                 Add New Employee
                 <PersonAddAlt1Icon size={16} />
               </Button>
-              <ExportButton data={rows} fileName="Employees" />
+              <ExportButton data={rows} fileName="Employees" className="benefits-cta-btn" />
             </div>
           ) : (
             <p></p>
@@ -234,15 +226,17 @@ const Employees = () => {
             },
           }}
         >
-          <DataGrid
-            rows={filteredRows}
-            columns={columns}
-            pageSize={5}
-            rowsPerPageOptions={[5, 10, 20]}
-            checkboxSelection
-            disableSelectionOnClick
-            onRowClick={(params) => handleRowClick(params.row)}
-          />
+          <div className="benefits-grid-wrap">
+            <DataGrid
+              rows={filteredRows}
+              columns={columns}
+              pageSize={5}
+              rowsPerPageOptions={[5, 10, 20]}
+              checkboxSelection
+              disableSelectionOnClick
+              onRowClick={(params) => handleRowClick(params.row)}
+            />
+          </div>
         </Box>
 
         {modalOpen && (

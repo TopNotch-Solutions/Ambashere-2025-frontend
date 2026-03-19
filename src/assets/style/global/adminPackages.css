@@ -1,0 +1,33 @@
+.admin-packages-page .admin-packages-wrap {
+  width: 98%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.admin-packages-page .handset-hero {
+  width: 98%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.admin-packages-page .admin-packages-toolbar {
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.admin-packages-page .admin-packages-search {
+  border: 1px solid #dbe7f3;
+  background: #ffffff;
+}
+
+.admin-packages-page .admin-packages-actions {
+  gap: 0.75rem;
+  align-items: center;
+}
+
+@media (max-width: 768px) {
+  .admin-packages-page .admin-packages-actions {
+    width: 100%;
+    justify-content: flex-start !important;
+  }
+}

@@ -23,7 +23,7 @@ const LandingTopbar = () => {
       {/* TOGGLE FOR MOBILE */}
       <Navbar.Toggle aria-controls="navbar-nav" />
 
-      <Navbar.Collapse className="justify-content-end me-5" id="navbar-nav">
+      <Navbar.Collapse className="justify-content-end" id="navbar-nav">
         <Nav className="ml-auto">
           <Nav.Link href="/" className="text-black fw-bold">
             HOME

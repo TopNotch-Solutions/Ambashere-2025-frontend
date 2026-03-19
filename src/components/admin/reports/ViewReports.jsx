@@ -93,7 +93,7 @@ const ViewReports = ({ selectedRow, onClose }) => {
 
   return (
     <Box sx={{ width: "100%" }}>
-      <Button variant="outlined" color="primary" onClick={onClose}>
+      <Button className="benefits-cta-btn" onClick={onClose}>
         <KeyboardBackspaceIcon />
         Back
       </Button>

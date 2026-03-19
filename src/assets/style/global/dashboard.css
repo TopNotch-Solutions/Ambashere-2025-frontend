@@ -1,0 +1,59 @@
+.dashboard-page .dashboard-intro-card {
+  min-height: 230px;
+  overflow: hidden;
+}
+
+.dashboard-page .dashboard-intro-content {
+  min-height: 230px;
+}
+
+.dashboard-page .dashboard-intro-text {
+  padding: 1.4rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard-page .dashboard-intro-text p {
+  margin-bottom: 1rem;
+}
+
+.dashboard-page .dashboard-intro-text .dashboard-primary-btn {
+  margin-top: auto;
+  align-self: flex-start;
+}
+
+.dashboard-page .dashboard-intro-image-wrap {
+  height: 100%;
+  min-height: 230px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f4f8fc;
+}
+
+.dashboard-page .dashboard-intro-image {
+  width: 100%;
+  height: 370px;
+  object-fit: contain;
+  display: block;
+}
+
+.dashboard-page .dashboard-primary-btn {
+  font-size: 13px;
+  background: linear-gradient(to right, #1a69ac, #00aae9);
+  color: #fff;
+  padding: 8px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid #1a69ac;
+  text-transform: none;
+}
+
+.dashboard-page .dashboard-section-title {
+  color: #22354d;
+  font-weight: 700;
+}
+
+.dashboard-page .dashboard-benefits-panel {
+  background-color: #f4f6f7;
+}

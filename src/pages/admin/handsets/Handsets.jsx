@@ -22,6 +22,9 @@ import AddHandsetModal from "../../../components/admin/AddHandsetModal";
 import ProbationVerificationModal from "../../../components/admin/ProbationVerificationModal";
 import formatDate from "../../../components/global/dateFormatter";
 import Swal from "sweetalert2";
+import "../../../assets/style/global/handsetBenefitSimulator.css";
+import "../../../assets/style/global/benefits.css";
+import "../../../assets/style/global/adminHandsets.css";
 
 const AdminHandsets = () => {
   const navigate = useNavigate();
@@ -394,26 +397,27 @@ const AdminHandsets = () => {
     fetchData();
   };
   return (
-    <Box m="2px">
-      <div
-        style={{
-          height: 500,
-          width: "98%",
-          marginLeft: "auto",
-          marginRight: "auto",
-        }}
-      >
-        <div style={{ display: "flex", justifyContent: "space-between" }}>
+    <Box m="2px" className="handset-simulator-page admin-handsets-page">
+      <div className="handset-hero mb-4">
+        <div>
+          <h2 className="handset-title">Handsets</h2>
+          <p className="handset-subtitle mb-0">
+            Manage handset records, lifecycle actions, and verification workflows.
+          </p>
+        </div>
+      </div>
+
+      <div className="admin-handsets-wrap">
+        <div className="d-flex justify-content-between admin-handsets-toolbar">
           <Box
-            className="d-flex col-md-5"
+            className="d-flex col-md-5 admin-handsets-search"
             display="flex"
-            backgroundColor={colors.primary[400]}
-            borderRadius="3px"
+            borderRadius="8px"
             width="200px"
           >
             <InputBase
               sx={{ ml: 2, flex: 1 }}
-              placeholder="Search"
+              placeholder="Search handsets or employee code"
               onChange={handleSearchChange}
             />
             <IconButton type="button" sx={{ p: 1 }}>
@@ -421,46 +425,22 @@ const AdminHandsets = () => {
             </IconButton>
           </Box>
           {currentUser.RoleID === 1 ? (
-            <div className="d-flex col-md-6 justify-content-between">
+            <div className="d-flex col-md-6 justify-content-between admin-handsets-actions">
               <Button
-                style={{
-                  gap: "10px",
-                  height: "100%",
-                  backgroundColor: "#1674BB",
-                  color: "#fff",
-                  padding: "8px",
-                  paddingLeft: "20px",
-                  paddingRight: "20px",
-                  borderRadius: "5px",
-                  cursor: "pointer",
-                  borderColor: "#1A69AC",
-                  border: "1px solid",
-                }}
+                className="benefits-cta-btn"
                 onClick={handleOpenAddHandset}
               >
                 Add Handset Record
                 <DevicesIcon size={16} />
               </Button>
               <Button
-                style={{
-                  gap: "10px",
-                  height: "100%",
-                  backgroundColor: "#0096D6",
-                  color: "#fff",
-                  padding: "8px",
-                  paddingLeft: "20px",
-                  paddingRight: "20px",
-                  borderRadius: "5px",
-                  cursor: "pointer",
-                  borderColor: "#1A69AC",
-                  border: "1px solid",
-                }}
+                className="benefits-cta-btn"
                 onClick={handleOpenDeviceList}
               >
                 Upload Price List
                 <UploadFileIcon size={16} />
               </Button>
-              <ExportButton data={rows} fileName="Handsets" />
+              <ExportButton data={rows} fileName="Handsets" className="benefits-cta-btn" />
             </div>
           ) : (
             <p></p>
@@ -553,6 +533,7 @@ const AdminHandsets = () => {
         <Box
           m="20px 0 0 0"
           height="55vh"
+          className="handset-form-card shadow-sm benefits-table-card"
           sx={{
             "& .MuiDataGrid-root": {
               border: "none",
@@ -582,15 +563,17 @@ const AdminHandsets = () => {
             },
           }}
         >
-          <DataGrid
-            key={filteredRows.length} // Force re-render when data changes
-            rows={filteredRows}
-            columns={columns}
-            pageSize={5}
-            rowsPerPageOptions={[5, 10, 20]}
-            checkboxSelection
-            disableSelectionOnClick
-          />
+          <div className="benefits-grid-wrap">
+            <DataGrid
+              key={filteredRows.length} // Force re-render when data changes
+              rows={filteredRows}
+              columns={columns}
+              pageSize={5}
+              rowsPerPageOptions={[5, 10, 20]}
+              checkboxSelection
+              disableSelectionOnClick
+            />
+          </div>
         </Box>
 
         {modalOpenDeviceList && (

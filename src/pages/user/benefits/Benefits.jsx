@@ -2,18 +2,18 @@ import React, { useEffect, useState } from "react";
 import { Box, Button, useTheme } from "@mui/material";
 import { tokens } from "../../../theme";
 import { DataGrid, GridActionsCellItem } from "@mui/x-data-grid";
-import VerifiedIcon from "@mui/icons-material/Verified";
 import EventAvailableIcon from "@mui/icons-material/EventAvailable";
-import FiberNewIcon from "@mui/icons-material/FiberNew";
 import BenefitVoucher from "../../../components/global/BenefitVoucher";
 import PostAddIcon from "@mui/icons-material/PostAdd";
-import Tooltip from '@mui/material/Tooltip';
-import { useSelector, useDispatch } from "react-redux";
+import Tooltip from "@mui/material/Tooltip";
+import { useSelector } from "react-redux";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBoxOpen } from "@fortawesome/free-solid-svg-icons";
 import RemoveCircleIcon from "@mui/icons-material/RemoveCircle";
 import axiosInstance from "../../../utils/axiosInstance";
 import Swal from "sweetalert2";
+import "../../../assets/style/global/handsetBenefitSimulator.css";
+import "../../../assets/style/global/benefits.css";
 
 const UserBenefits = () => {
   const theme = useTheme();
@@ -23,7 +23,6 @@ const UserBenefits = () => {
   const [userData, setUserData] = useState(null);
   const currentUser = useSelector((state) => state.auth.user);
   const { role } = useSelector((state) => state.auth);
-  const dispatch = useDispatch();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -38,7 +37,7 @@ const UserBenefits = () => {
     };
 
     fetchData();
-  }, [dispatch]);
+  }, [currentUser?.EmployeeCode]);
 
   const handleContractDelection = async (id) => {
   Swal.fire({
@@ -160,18 +159,20 @@ const UserBenefits = () => {
   const handleClose = () => setModalOpen(false);
 
   return (
-    <div className="container-main m-3">
-      <div className="row d-flex flex-column flex-md-row justify-content-around m-auto">
+    <div className="container-main m-3 handset-simulator-page benefits-page">
+      <div className="handset-hero mb-4">
         <div>
-          <h2>My Benefits</h2>
-          <p>
-            View and manage your employee benefits, including airtime, handset
-            allowances, and discounts. Keep track of your entitlements and
-            explore available options.
+          <h2 className="handset-title">My Benefits</h2>
+          <p className="handset-subtitle mb-0">
+            View and manage your airtime and handset benefits, monitor active
+            contracts, and submit new contract applications.
           </p>
         </div>
+      </div>
+
+      <div className="row d-flex flex-column flex-md-row justify-content-around m-auto">
         {currentUser.EmploymentCategory === "Temporary" && (
-          <h3 className="text-center mt-5 text-danger">
+          <h3 className="text-center mt-5 text-danger benefits-empty-state">
             Your Staff Benefits Information will be shown here once you get one
           </h3>
         )}
@@ -180,55 +181,41 @@ const UserBenefits = () => {
         {currentUser.EmploymentCategory !== "Temporary" && (
           <>
             {data.length > 0 ? (
-              <Box>
-                <div
-                  className="col-12 col-lg-12 rounded-3 d-flex justify-content-around flex-column p-4 b-g mx-auto"
-                  style={{ backgroundColor: "#F5F5F5" }}
-                >
-                  <div className="position-relative">
-                    <div className="d-flex row">
-                      <div className="col-sm-6 border-end border-light-subtle p-2">
-                        <div className="row g-5">
-                          <div className="col-md-7">
-                            <h5>Active Packages</h5>
-                            <h3>
-                              {data?.filter((item) => item.PackageName && item.SubscriptionStatus !== 'Expired')
-                                ?.length || 0}
-                            </h3>
-                          </div>
-                          <div
-                            className="col-sm-2 align-self-start rounded-3 shadow d-flex justify-content-center p-2"
-                            style={{
-                              backgroundColor: "#0096D6",
-                              color: "white",
-                            }}
-                          >
-                            <FontAwesomeIcon
-                              icon={faBoxOpen}
-                              fontSize="large"
-                            />
-                          </div>
+              <Box className="col-12">
+                <div className="handset-summary-card shadow-sm benefits-stats-card">
+                  <div className="row g-3">
+                    <div className="col-sm-6">
+                      <div className="benefit-metric">
+                        <div>
+                          <h5>Active Packages</h5>
+                          <h3>
+                            {data?.filter(
+                              (item) =>
+                                item.PackageName &&
+                                item.SubscriptionStatus !== "Expired"
+                            )?.length || 0}
+                          </h3>
+                        </div>
+                        <div className="benefit-metric-icon">
+                          <FontAwesomeIcon icon={faBoxOpen} fontSize="large" />
                         </div>
                       </div>
+                    </div>
 
-                      <div className="col-sm-6 p-2">
-                        <div className="row g-5">
-                          <div className="col-md-7">
-                            <h5>Active Device</h5>
-                            <h3>
-                              {data?.filter((item) => item.DeviceName && item.SubscriptionStatus !== 'Expired')
-                                ?.length || 0}
-                            </h3>
-                          </div>
-                          <div
-                            className="col-sm-2 align-self-start rounded-3 shadow d-flex justify-content-center p-2"
-                            style={{
-                              backgroundColor: "#0096D6",
-                              color: "white",
-                            }}
-                          >
-                            <EventAvailableIcon fontSize="large" />
-                          </div>
+                    <div className="col-sm-6">
+                      <div className="benefit-metric">
+                        <div>
+                          <h5>Active Device</h5>
+                          <h3>
+                            {data?.filter(
+                              (item) =>
+                                item.DeviceName &&
+                                item.SubscriptionStatus !== "Expired"
+                            )?.length || 0}
+                          </h3>
+                        </div>
+                        <div className="benefit-metric-icon">
+                          <EventAvailableIcon fontSize="large" />
                         </div>
                       </div>
                     </div>
@@ -236,7 +223,7 @@ const UserBenefits = () => {
                 </div>
               </Box>
             ) : (
-              <h3 className="text-center mt-5 text-danger">
+              <h3 className="text-center mt-5 text-danger benefits-empty-state">
                 Your Staff Benefits Information will be shown here once you get
                 one
               </h3>
@@ -256,8 +243,9 @@ const UserBenefits = () => {
             <div className="col-12 ml-1 d-flex flex-column">
               <div className="m-1 m-sm-3">
                 <Box
-                  m="40px 0 0 0"
+                  m="0"
                   height="100%"
+                  className="handset-form-card shadow-sm benefits-table-card"
                   sx={{
                     "& .MuiDataGrid-root": {
                       border: "none",
@@ -287,51 +275,28 @@ const UserBenefits = () => {
                     },
                   }}
                 >
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "flex-end",
-                      marginBottom: "10px",
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        gap: "70px",
-                      }}
+                  <div className="benefits-table-header">
+                    <h6 className="summary-title mb-0">Current Contracts</h6>
+                    <Button
+                      className="benefits-cta-btn"
+                      onClick={handleOpen}
                     >
-                      <Button
-                        className=""
-                        style={{
-                          gap: "10px",
-                          height: " 100%",
-                          backgroundColor: "#0096D6",
-                          color: "#fff",
-                          padding: "8px",
-                          paddingLeft: "20px",
-                          paddingRight: "20px",
-                          borderRadius: "5px",
-                          cursor: "pointer",
-                          borderColor: "#1A69AC",
-                          border: "1px solid",
-                        }}
-                        onClick={handleOpen}
-                      >
-                        New Contract Application
-                        <PostAddIcon size={16} />
-                      </Button>
-                    </div>
+                      New Contract Application
+                      <PostAddIcon size={16} />
+                    </Button>
                   </div>
-                  <DataGrid
-                    rows={rows}
-                    columns={columns}
-                    pageSize={5}
-                    rowsPerPageOptions={[5, 10, 20]}
-                    checkboxSelection
-                    disableSelectionOnClick
-                    // onRowClick={handleRowClick}
-                  />
+                  <div className="benefits-grid-wrap">
+                    <DataGrid
+                      autoHeight
+                      rows={rows}
+                      columns={columns}
+                      pageSize={5}
+                      rowsPerPageOptions={[5, 10, 20]}
+                      checkboxSelection
+                      disableSelectionOnClick
+                      // onRowClick={handleRowClick}
+                    />
+                  </div>
                 </Box>
               </div>
             </div>

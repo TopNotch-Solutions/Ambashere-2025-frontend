@@ -35,7 +35,7 @@ const Landing = () => {
       {/* Top  Bar */}
       <LandingTopbar />
 
-      {/* Carousel */}.
+      {/* Carousel */}
       <div className="carousel-wrapper">
   <div className="carousel-image-container">
     <img className="d-block w-100 carousel-image desktop-image" src={Img} alt="Desktop banner" />
@@ -43,15 +43,15 @@ const Landing = () => {
 {/* Mobile image */}
 <img className="d-block w-100 carousel-image mobile-image" src={Img2} alt="Mobile banner" />
   </div>
-  <div className="carousel-text-container text-dark pt-3 w-100">
+  <div className="carousel-text-container text-dark pt-3">
     <h1 className="carousel-heading font-weight-bold mb-md-4">
       Your experience <br /> begins with you
     </h1>
     <p className="mb-md-4">
-      Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed <br />
-      do eiusmod tempor incididunt ut labore et dolore magna <br />
-      aliqua. Ut enim ad minim veniam, quis nostrud exercitation <br />
-      ullamco laboris nisi ut aliquip ex ea commodo consequat.
+      Access the employee self-service portal for leave requests, <br />
+      overtime submissions, and profile updates from one place. <br />
+      Stay connected to company resources and complete HR tasks <br />
+      quickly with a secure and simple digital workflow.
     </p>
     <Button
         sx={{
@@ -74,7 +74,7 @@ const Landing = () => {
       <div className="container d-flex flex-column mt-4 mt-md-5">
         {/* Top Half */}
         <div className="mb-4">
-          <h1 className="fw-bold mb-md-5 mb-2">Make it count.</h1>
+          <h1 className="fw-bold mb-md-5 mb-2">Make it count</h1>
           <div className="row g-4">
             {/* Leave Application Form */}
             <div className="col-md-4 col-sm-6 ">
@@ -264,9 +264,9 @@ const Landing = () => {
           </div>
         </div>
 
-        {/* Lorem Ipsum Heading */}
+        {/* Employee Services Heading */}
         <div className="mt-1 mt-md-4">
-          <h3 className="mb-3 mb-md-5">Lorem Ipsum Heading</h3>
+          <h3 className="mb-3 mb-md-5">Employee Services</h3>
           <div className="row g-4">
             <div className="col-md-4 col-sm-6">
               <div className="border rounded d-flex flex-column text-center align-items-center p-md-3">
@@ -277,8 +277,8 @@ const Landing = () => {
                 />
                 <h5 className="mt-1 mt-md-3 mb-1 mb-md-3">Wellbeing</h5>
                 <p>
-                  Lorem ipsum dolor sit amet,
-                  <br /> consectetur adipiscing elit.
+                  Access wellness resources, support tools,
+                  <br /> and initiatives designed for your wellbeing.
                 </p>
                 <button className="btn bg-danger text-white mb-2">
                   Find out more
@@ -294,7 +294,7 @@ const Landing = () => {
                   style={{ height: "40px", width: "40px", marginTop: "26px" }}
                 />
                 <h5 className="mt-1 mt-md-3 mb-1 mb-md-3">Culture & Engagement</h5>
-                <p>Lorem ipsum dolor sit amet, <br /> consectetur adipiscing elit.</p>
+                <p>Explore updates, events, <br /> and programs that strengthen team culture.</p>
                 <button className="btn bg-danger text-white mb-2">
                   Find out more
                 </button>
@@ -309,7 +309,7 @@ const Landing = () => {
                   style={{ height: "40px", width: "40px", marginTop: "26px" }}
                 />
                 <h5 className="mt-1 mt-md-3 mb-1 mb-md-3">Growth & Development</h5>
-                <p>Lorem ipsum dolor sit amet, <br /> consectetur adipiscing elit.</p>
+                <p>Build your career through learning paths, <br /> training, and development opportunities.</p>
                 <button className="btn bg-danger text-white mb-2">
                   Find out more
                 </button>
@@ -324,7 +324,7 @@ const Landing = () => {
                   style={{ height: "40px", width: "40px", marginTop: "26px" }}
                 />
                 <h5 className="mt-1 mt-md-3 mb-1 mb-md-3">Compensation & Benefits</h5>
-                <p>Lorem ipsum dolor sit amet, <br /> consectetur adipiscing elit.</p>
+                <p>Review salary, allowances, <br /> and benefit information in one secure place.</p>
                 <button className="btn bg-danger text-white mb-2">
                   Find out more
                 </button>
@@ -368,7 +368,7 @@ const Landing = () => {
       {/* Tail */}
       <footer>
         <div
-          className="row mx-auto text-white"
+          className="row m-0 text-white"
           style={{ backgroundColor: "#515151" }}
         >
           <div className="col mt-4 ms-2 ms-md-5">

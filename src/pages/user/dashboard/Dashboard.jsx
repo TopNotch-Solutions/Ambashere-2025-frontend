@@ -1,16 +1,19 @@
 import React, { useEffect, useState } from "react";
-import { Box, Button, Typography, useTheme, CircularProgress, Skeleton } from "@mui/material";
+import { Box, Button, Typography, useTheme, CircularProgress } from "@mui/material";
 import { tokens } from "../../../theme";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
-import pic from "../../../assets/Img/Isolation_Mode.png";
+import pic from "../../../assets/Img/landing/Ambasphere-Logo@2x.png";
 import { DataGrid } from "@mui/x-data-grid";
-import { useSelector, useDispatch } from "react-redux";
+import { useSelector } from "react-redux";
 import axiosInstance from "../../../utils/axiosInstance";
 import RoleSwitcher from "../../../components/admin/RoleSwitcher";
 import UserCalendar from "../calendar/Calendar";
 import MiniCalendar from "../../../components/global/calendar/MiniCalendar";
 import { useNavigate } from "react-router-dom";
 import formatDate from "../../../components/global/dateFormatter";
+import "../../../assets/style/global/handsetBenefitSimulator.css";
+import "../../../assets/style/global/benefits.css";
+import "../../../assets/style/global/dashboard.css";
 // import DashboardTableChange from "../../../components/user/DashboardTableChange";
 
 const UserDashboard = () => {
@@ -26,7 +29,6 @@ const UserDashboard = () => {
   const [isLoadingAirtime, setIsLoadingAirtime] = useState(false);
   const [isLoadingHandset, setIsLoadingHandset] = useState(false);
   const currentUser = useSelector((state) => state.auth.user);
-  const dispatch = useDispatch();
   const navigate = useNavigate();
   const selfHelp = () => {
     navigate("/user/SelfHelp");
@@ -137,13 +139,16 @@ const UserDashboard = () => {
   }));
 
   return (
-    <div className="container-main m-3">
-      <div className="row d-flex flex-column flex-md-row justify-content-around m-auto">
+    <div className="container-main m-3 handset-simulator-page dashboard-page">
+      <div className="handset-hero mb-4">
         <div>
-          <h2>Welcome Back, {currentUser.FullName}</h2>
-          <p>Here’s what’s happening with your account</p>
+          <h2 className="handset-title">Welcome Back, {currentUser.FullName}</h2>
+          <p className="handset-subtitle mb-0">
+            Here is a quick overview of your airtime and handset benefits.
+          </p>
         </div>
-
+      </div>
+      <div className="row d-flex flex-column flex-md-row justify-content-around m-auto">
         {currentUser.RoleID === 1 && <RoleSwitcher title="Admin" />}
         {currentUser.RoleID === 9 && <RoleSwitcher title="Finance" />}
         {currentUser.RoleID === 10 && <RoleSwitcher title="Warehouse" />}
@@ -151,61 +156,45 @@ const UserDashboard = () => {
         <div className="mb-2 mb-md-3"></div>
 
         {/* Learn More */}
-        <div className="col-11 col-xl-8 rounded-3 shadow d-flex flex-column p-4 align-items-center mb-3 mb-xl-0">
-          <div className="position-relative">
-            <div className="row">
-              <div className="col-md-8 col-12 position-relative">
-                <div>
-                  <h5>Optimize Your Benefits – Explore Ambasphere!</h5>
-                  <p className="mb-5">
-                    Manage your airtime, track your handset benefits, and stay
-                    updated with your staff discounts all in one place. Empower
-                    yourself with our intuitive and user-friendly platform
-                    designed just for you.
-                  </p>
-                </div>
-                <Button
-                  onClick={selfHelp}
-                  style={{
-                    fontSize: "13px",
-                    height: "auto",
-                    backgroundColor: "#1A69AC",
-                    color: "#fff",
-                    padding: "8px",
-                    paddingLeft: "30px",
-                    paddingRight: "30px",
-                    borderRadius: "5px",
-                    cursor: "pointer",
-                    borderColor: "#1A69AC",
-                    border: "1px solid",
-                    alignItems: "",
-                    position: "absolute",
-                    bottom: 0,
-                  }}
-                >
-                  Learn More
-                  <ArrowForwardIcon size={16} style={{ marginLeft: "10px" }} />
-                </Button>
-              </div>
-              <div className="col d-none d-xxl-block">
-                <img rounded-full w-8 h-8 src={pic} alt="user-profile" />
-              </div>
+        <div className="col-11 col-xl-8 handset-summary-card shadow-sm p-0 mb-3 mb-xl-0 dashboard-intro-card">
+          <div className="dashboard-intro-content row g-0">
+            <div className="col-lg-7 col-12 dashboard-intro-text">
+              <h5>Optimize Your Benefits – Explore Ambasphere!</h5>
+              <p>
+                Manage your airtime, track your handset benefits, and stay
+                updated with your staff discounts all in one place. Empower
+                yourself with our intuitive and user-friendly platform designed
+                just for you.
+                <br />
+                <br />
+                Get quick visibility into your allocations,
+                upcoming renewal dates, and active contracts so you can make
+                informed decisions and plan your next benefit request with
+                confidence.
+              </p>
+              <Button onClick={selfHelp} className="dashboard-primary-btn">
+                Learn More
+                <ArrowForwardIcon size={16} style={{ marginLeft: "10px" }} />
+              </Button>
+            </div>
+            <div className="col-lg-5 d-none d-lg-block dashboard-intro-image-wrap">
+              <img src={pic} alt="Benefits illustration" className="dashboard-intro-image" />
             </div>
           </div>
         </div>
 
         {/* Mini Calendar */}
-        <div className="col-11 col-xl-3 rounded-3 shadow b-g mt-3 mt-lg-0 me-3">
+        <div className="col-11 col-xl-3 handset-summary-card shadow-sm b-g mt-3 mt-lg-0 me-3">
           <div className="position-relative">
             <MiniCalendar />
           </div>
         </div>
 
         <div className="position-relative mt-1 p-4">
-          <Box style={{ backgroundColor: "#F4F6F7" }}>
+          <Box className="handset-form-card dashboard-benefits-panel">
             <div className="d-flex flex-row justify-content-between p-4 mt-2">
               <div>
-                <Typography variant="h3" color={colors.grey[100]}>
+                <Typography variant="h3" className="dashboard-section-title">
                   {showAirtime ? "Airtime Benefits" : "Handset Benefits"}
                 </Typography>
               </div>
@@ -214,17 +203,7 @@ const UserDashboard = () => {
                 {currentUser.EmploymentCategory !== "Temporary" && (
                   <Button
                     onClick={() => setShowAirtime(!showAirtime)}
-                    style={{
-                      fontSize: "13px",
-                      height: "auto",
-                      backgroundColor: "#1A69AC",
-                      color: "#fff",
-                      padding: "8px 30px",
-                      borderRadius: "5px",
-                      cursor: "pointer",
-                      borderColor: "#1A69AC",
-                      border: "1px solid",
-                    }}
+                    className="dashboard-primary-btn"
                   >
                     {!showAirtime ? "Show Airtime" : "Show Handset"}
                   </Button>
@@ -240,7 +219,7 @@ const UserDashboard = () => {
                       <div className="row justify-content-start">
                         <div
                           className="col-md-3 col-lg-5 rounded-3 mb-2 mb-md-0 p-4 align-items-center me-3"
-                          style={{ backgroundColor: "#0096D6", color: "white" }}
+                          style={{ backgroundColor: "#0096D6", color: "white", borderRadius: "10px" }}
                         >
                           <Typography>
                             {showAirtime
@@ -272,7 +251,7 @@ const UserDashboard = () => {
                         {showAirtime && (
                           <div
                             className="col-md-3 col-lg-5 rounded-3 mb-2 mb-md-0 shadow p-4 align-items-center me-3"
-                            style={{ backgroundColor: "#0096D6", color: "white" }}
+                            style={{ backgroundColor: "#0096D6", color: "white", borderRadius: "10px" }}
                           >
                             <Typography>SUL Balance</Typography>
                             {isLoadingAirtime ? (
@@ -298,7 +277,7 @@ const UserDashboard = () => {
                         {showAirtime && (
                           <div
                             className="col-md-3 col-lg-5 rounded-3 mb-2 mb-md-0 shadow p-4 align-items-center mt-lg-4 me-3"
-                            style={{ backgroundColor: "#0096D6", color: "white" }}
+                            style={{ backgroundColor: "#0096D6", color: "white", borderRadius: "10px" }}
                           >
                             <Typography>Available Wallet</Typography>
                             {isLoadingAirtime ? (
@@ -329,7 +308,7 @@ const UserDashboard = () => {
                         {!showAirtime && (
                           <div
                             className="col-md-3 col-lg-5 rounded-3 shadow p-4 align-items-center"
-                            style={{ backgroundColor: "#0096D6", color: "white" }}
+                            style={{ backgroundColor: "#0096D6", color: "white", borderRadius: "10px" }}
                           >
                             <Typography>New Handset Date</Typography>
                             <p className="mt-1 text-center">
@@ -353,7 +332,7 @@ const UserDashboard = () => {
                     <div className="m-1 m-sm-3">
                       {isLoadingAirtime || isLoadingHandset ? (
                         <Box 
-                          m="40px 0 0 0" 
+                          m="0"
                           height="400px" 
                           display="flex" 
                           alignItems="center" 
@@ -369,8 +348,9 @@ const UserDashboard = () => {
                         </Box>
                       ) : (
                         <Box
-                          m="40px 0 0 0"
+                          m="0"
                           height="100%"
+                          className="benefits-table-card"
                           sx={{
                             "& .MuiDataGrid-root": { border: "none" },
                             "& .MuiDataGrid-cell": { borderBottom: "none" },
@@ -396,14 +376,17 @@ const UserDashboard = () => {
                             },
                           }}
                         >
-                          <DataGrid
-                            rows={showAirtime ? airtimeRows : handsetRows}
-                            columns={showAirtime ? airtimeColumns : handsetColumns}
-                            pageSize={5}
-                            rowsPerPageOptions={[5, 10, 20]}
-                            checkboxSelection
-                            disableSelectionOnClick
-                          />
+                          <div className="benefits-grid-wrap">
+                            <DataGrid
+                              autoHeight
+                              rows={showAirtime ? airtimeRows : handsetRows}
+                              columns={showAirtime ? airtimeColumns : handsetColumns}
+                              pageSize={5}
+                              rowsPerPageOptions={[5, 10, 20]}
+                              checkboxSelection
+                              disableSelectionOnClick
+                            />
+                          </div>
                         </Box>
                       )}
                     </div>

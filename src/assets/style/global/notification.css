@@ -4,3 +4,26 @@
   align-items: center;
   padding: 10px 0;
 }
+
+.notification-modern-page .notification-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.notification-modern-page .notification-toolbar-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.notification-modern-page .notification-danger-btn {
+  background: linear-gradient(to right, #b71c1c, #d32f2f) !important;
+  border-color: #b71c1c !important;
+}
+
+.notification-modern-page .notification-list-wrap {
+  padding-bottom: 0.5rem;
+}
