@@ -12,6 +12,7 @@ import { faBoxOpen } from "@fortawesome/free-solid-svg-icons";
 import RemoveCircleIcon from "@mui/icons-material/RemoveCircle";
 import axiosInstance from "../../../utils/axiosInstance";
 import Swal from "sweetalert2";
+import formatDate from "../../../components/global/dateFormatter";
 import "../../../assets/style/global/handsetBenefitSimulator.css";
 import "../../../assets/style/global/benefits.css";
 
@@ -96,9 +97,10 @@ const UserBenefits = () => {
     { field: "PackageName", headerName: "PACKAGE NAME", width: 220 },
     { field: "DeviceName", headerName: "DEVICE NAME", width: 220 },
     { field: "ContractDuration", headerName: "PAYEMENT DURATION", width: 210 },
-    { field: "ContractStartDate", headerName: "ALLOCATION DATE", width: 180 },
     { field: "SubscriptionStatus", headerName: "STATUS", width: 180 },
     { field: "MonthlyPayment", headerName: "MONTHLY PAYMENT", width: 180 },
+    { field: "ContractStartDate", headerName: "CONTRACT START", width: 180 },
+    { field: "ContractEndDate", headerName: "CONTRACT END", width: 180 },
     {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
           field: "actions",
           type: "actions",
@@ -133,7 +135,8 @@ const UserBenefits = () => {
     PackageName: contract.PackageName,
     DeviceName: contract.DeviceName,
     ContractDuration: contract.ContractDuration,
-    ContractStartDate: contract.ContractStartDate,
+    ContractStartDate: formatDate(contract.ContractStartDate),
+    ContractEndDate: formatDate(contract.ContractEndDate),
     SubscriptionStatus: contract.SubscriptionStatus,
     MonthlyPayment: "N$ " + contract.MonthlyPayment,
     ApprovalStatus: contract.ApprovalStatus

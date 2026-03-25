@@ -65,18 +65,22 @@ const AirtimeBenefits = () => {
     { field: "id", headerName: "#", width: 50 },
     { field: "DeviceName", headerName: "DEVICE", width: 240 },
     { field: "PackageName", headerName: "PACKAGE", width: 210 },
+    { field: "MSISDN", headerName: "MSISDN", width: 170 },
     { field: "MonthlyPayment", headerName: "MONTHLY PAYMENT", width: 200 },
     { field: "ContractDuration", headerName: "CONTRACT DURATION", width: 200 },
     { field: "ContractStartDate", headerName: "ALLOCATION DATE", width: 180 },
+    { field: "ContractEndDate", headerName: "EXPIRY DATE", width: 180 },
   ];
 
   const rows = data.map((airtime, index) => ({
     id: index + 1,
     DeviceName: airtime.DeviceName,
     PackageName: airtime.PackageName,
+    MSISDN: airtime?.MSISDN || "",
     MonthlyPayment: "N$ " + airtime.MonthlyPayment,
     ContractDuration: airtime.ContractDuration,
     ContractStartDate: airtime.ContractStartDate,
+    ContractEndDate: airtime.ContractEndDate,
   }));
 
   const handleOpen = async () => {

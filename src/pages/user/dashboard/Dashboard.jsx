@@ -60,6 +60,7 @@ const UserDashboard = () => {
         const response = await axiosInstance.get(
           `/contracts/${currentUser.EmployeeCode}`
         );
+        console.log("Here are my airtime data: ", response.data);
         if (response.data.status === 1) {
           setNoContract(response.data);
         } else {
@@ -102,18 +103,24 @@ const UserDashboard = () => {
 
   const airtimeColumns = [
     { field: "id", headerName: "#", width: 90 },
+    { field: "MSISDN", headerName: "MSISDN", width: 170 },
     { field: "PackageName", headerName: "Package Name", width: 180 },
-    { field: "MonthlyPayment", headerName: "Package Price", width: 180 },
+    { field: "MonthlyPayment", headerName: "Monthly Payment", width: 180 },
     { field: "DeviceName", headerName: "Equipment Name", width: 180 },
     { field: "DevicePrice", headerName: "Equipment Price", width: 180 },
+    { field: "ContractStartDate", headerName: "Contract Start Date", width: 200 },
+    { field: "ContractEndDate", headerName: "Contract End Date", width: 200 },
   ];
 
   const airtimeRows = (airtimeData?.contracts || []).map((airtime, index) => ({
     id: index + 1,
+    MSISDN: airtime?.MSISDN || "",
     PackageName: airtime.PackageName,
     MonthlyPayment: "N$ " + airtime.MonthlyPayment,
     DeviceName: airtime.DeviceName,
     DevicePrice: "N$ " + airtime.DevicePrice,
+    ContractStartDate: formatDate(airtime?.ContractStartDate),
+    ContractEndDate: formatDate(airtime?.ContractEndDate),
   }));
 
   const handsetColumns = [
