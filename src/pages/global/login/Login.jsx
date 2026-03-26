@@ -17,6 +17,7 @@ const Login = () => {
   const [passwordError, setPasswordError] = useState("");
   const [usernameError, setUsernameError] = useState("");
   const [loginError, setLoginError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -71,12 +72,33 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting || isCooldown) return;
 
     setUsernameError("");
     setPasswordError("");
+    setLoginError("");
 
-    if (validateForm()) {
-      try {
+    if (!validateForm()) return;
+
+    let newCount;
+    if (username !== "" && password !== "") {
+      newCount = count + 1;
+      setCount(newCount);
+    }
+    if (newCount >= 6) {
+      const now = Date.now();
+      localStorage.setItem("cooldownStart", now.toString());
+      setIsCooldown(true);
+      setCooldownRemaining(60000);
+      setTimeout(() => {
+        setIsCooldown(false);
+        setCount(0);
+        localStorage.removeItem("cooldownStart");
+      }, 60000);
+    }
+
+    try {
+      setIsSubmitting(true);
         const response = await axiosInstance.post(
           "/auth/login",
           {
@@ -137,8 +159,9 @@ const Login = () => {
       } catch (error) {
         console.error("Login error:", error.response?.data || error.message);
         setLoginError("Password or Username is wrong");
+      } finally {
+        setIsSubmitting(false);
       }
-    }
   };
 
   return (
@@ -260,30 +283,16 @@ const Login = () => {
                 <button
                   type="submit"
                   className="submission"
-                  disabled={isCooldown}
-                  onClick={() => {
-                    let newCount;
-                    if (!isCooldown) {
-                      if (username !== "" && password !== "") {
-                        newCount = count + 1;
-                        setCount(newCount);
-                      }
-                      if (newCount >= 6) {
-                        const now = Date.now();
-                        localStorage.setItem("cooldownStart", now.toString());
-                        setIsCooldown(true);
-                        setCooldownRemaining(60000);
-                        setTimeout(() => {
-                          setIsCooldown(false);
-                          setCount(0);
-                          localStorage.removeItem("cooldownStart");
-                        }, 60000);
-                      }
-                      setLoginError("");
-                    }
-                  }}
+                  disabled={isCooldown || isSubmitting}
                 >
-                  Sign in
+                  {isSubmitting ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                      Signing in...
+                    </>
+                  ) : (
+                    "Sign in"
+                  )}
                 </button>
 
                 {isCooldown && (
