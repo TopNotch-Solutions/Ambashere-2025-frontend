@@ -33,7 +33,6 @@ function App() {
   useEffect(() => {
     const initializeAuth = () => {
       const token = localStorage.getItem("accessToken");
-      const refreshToken = localStorage.getItem("refreshToken");
       const user = JSON.parse(localStorage.getItem("user"));
       const role = JSON.parse(localStorage.getItem("role"));
 
@@ -44,7 +43,6 @@ function App() {
             user: user || {},
             role: role || null,
             token,
-            refreshToken,
           })
         );
       }

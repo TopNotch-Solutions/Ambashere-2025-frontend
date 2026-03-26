@@ -1,13 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Box, CircularProgress, useTheme } from "@mui/material";
+import { Box, useTheme } from "@mui/material";
 import { tokens } from "../../../theme";
 import axiosInstance from "../../../utils/axiosInstance";
 import { DataGrid } from "@mui/x-data-grid";
 import { FaMoneyBillTrendUp } from "react-icons/fa6";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import PhoneIphoneIcon from "@mui/icons-material/PhoneIphone";
-import { useSelector, useDispatch } from "react-redux";
 import formatDate from "../../../components/global/dateFormatter";
 
 const HandsetBenefits = () => {
@@ -15,8 +14,7 @@ const HandsetBenefits = () => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
   const [data, setData] = useState([]);
-  const currentUser = useSelector((state) => state.auth.user);
-  const dispatch = useDispatch();
+  const [benefitAmount, setBenefitAmount] = useState(0);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -30,8 +28,21 @@ const HandsetBenefits = () => {
       }
     };
 
+    const fetchBenefitAllocation = async () => {
+      try {
+        const response = await axiosInstance.get(
+          `/staffmember/staff/handset-allocation/${employeeCode}`
+        );
+        const allocation = response?.data?.myAllocation?.HandsetAllocation || 0;
+        setBenefitAmount(allocation);
+      } catch (error) {
+        setBenefitAmount(0);
+      }
+    };
+
     fetchData();
-  }, [dispatch]);
+    fetchBenefitAllocation();
+  }, [employeeCode]);
 
   const columns = [
     { field: "id", headerName: "#", width: 60 },
@@ -145,7 +156,7 @@ const HandsetBenefits = () => {
                     </div>
                     <div className="col mt-2 text-start">
                       {" "}
-                      <p>N$ {data[0]?.HandsetPrice}</p>
+                      <p>N$ {benefitAmount || 0}</p>
                       <p>Handset Benefit</p>
                       <p>{formatDate(data[0]?.CollectionDate)}</p>
                       <p>{data[0]?.HandsetName}</p>

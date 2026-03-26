@@ -91,10 +91,9 @@ const Login = () => {
         const token =
           response.headers["authorization"] ||
           response.headers["Authorization"];
-        const refreshToken = response.headers["x-refresh-token"];
         const employee = response.data.employee;
 
-        if (!token || !employee || !refreshToken) {
+        if (!token || !employee) {
           throw new Error("Token or employee data is missing");
         }
 
@@ -104,10 +103,8 @@ const Login = () => {
         // Use localStorage or sessionStorage based on rememberMe
         if (rememberMe) {
           localStorage.setItem("accessToken", token);
-          localStorage.setItem("refreshToken", refreshToken);
         } else {
           sessionStorage.setItem("accessToken", token);
-          sessionStorage.setItem("refreshToken", refreshToken);
         }
         console.log("My employee: ", employee);
         dispatch(
@@ -116,7 +113,6 @@ const Login = () => {
             user: employee,
             role: employee.RoleID,
             token: token,
-            refreshToken: refreshToken,
             rememberMe: rememberMe,
           })
         );
