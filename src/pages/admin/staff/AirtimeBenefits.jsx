@@ -117,7 +117,7 @@ const AirtimeBenefits = () => {
                   <div className="col-sm-4 rounded-4 border-end border-light-subtle p-2">
                     <div className="row g-5">
                       <div className="col-md-7">
-                        <p>Qualiying Allowance</p>
+                        <p>Qualifying Allowance</p>
                         <p>N$ {userDataQ?.staffWithAirtimeAllocation[0]?.AirtimeAllocation}</p>
                       </div>
                       <div
