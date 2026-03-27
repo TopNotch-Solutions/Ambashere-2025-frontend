@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
+  Autocomplete,
   TextField,
   FormControl,
   MenuItem,
@@ -18,6 +19,13 @@ const HandsetBenfitSimulator = () => {
   const [devices, setDevices] = useState([]);
   const [isLoadingDevices, setIsLoadingDevices] = useState(false);
   const [devicesError, setDevicesError] = useState("");
+  const sortedDevices = useMemo(
+    () =>
+      [...devices].sort((a, b) =>
+        (a?.device_name || "").localeCompare(b?.device_name || "")
+      ),
+    [devices]
+  );
   const selectedDevice = devices.find((d) => d.device_name === deviceName);
 
   const formatCurrency = (value) => {
@@ -50,8 +58,7 @@ const HandsetBenfitSimulator = () => {
   }, []);
 
   // Handle device name change
-  const handleDeviceNameChange = (event) => {
-    const selectedName = event.target.value;
+  const handleDeviceNameChange = (selectedName) => {
     setDeviceName(selectedName);
 
     const match = devices.find(
@@ -126,22 +133,30 @@ const HandsetBenfitSimulator = () => {
               </div>
 
               <div className="col-md-6">
-                <FormControl fullWidth margin="normal">
-                  <InputLabel>Device Name</InputLabel>
-                  <Select
-                    name="DeviceName"
-                    value={deviceName}
-                    label="Device Name"
-                    onChange={handleDeviceNameChange}
-                    disabled={isLoadingDevices || !!devicesError}
-                  >
-                    {devices.map((device) => (
-                      <MenuItem key={device.id} value={device.device_name}>
-                        {device.device_name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                <Autocomplete
+                  options={sortedDevices}
+                  getOptionLabel={(option) => option?.device_name || ""}
+                  value={
+                    sortedDevices.find(
+                      (device) => device.device_name === deviceName
+                    ) || null
+                  }
+                  onChange={(_, selectedOption) =>
+                    handleDeviceNameChange(selectedOption?.device_name || "")
+                  }
+                  isOptionEqualToValue={(option, value) =>
+                    option.device_name === value.device_name
+                  }
+                  disabled={isLoadingDevices || !!devicesError}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Device Name"
+                      margin="normal"
+                      fullWidth
+                    />
+                  )}
+                />
               </div>
             </div>
 

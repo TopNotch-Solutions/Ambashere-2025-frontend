@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
+  Autocomplete,
   TextField,
   Select,
   MenuItem,
@@ -24,6 +25,22 @@ const AirtimeBenefitSimulator = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [devicesError, setDevicesError] = useState("");
   const [packagesError, setPackagesError] = useState("");
+
+  const sortedPackages = useMemo(
+    () =>
+      [...packages].sort((a, b) =>
+        (a?.PackageName || "").localeCompare(b?.PackageName || "")
+      ),
+    [packages]
+  );
+
+  const sortedDevices = useMemo(
+    () =>
+      [...devices].sort((a, b) =>
+        (a?.device_name || "").localeCompare(b?.device_name || "")
+      ),
+    [devices]
+  );
 
   const formatCurrency = (value) => {
     const numberValue = Number(value) || 0;
@@ -245,26 +262,33 @@ const AirtimeBenefitSimulator = () => {
 
                   <div className="row">
                     <div className="col-md-6">
-                      <FormControl fullWidth margin="normal">
-                        <InputLabel>Select Package</InputLabel>
-                        <Select
-                          value={contract.selectedPackage || ""}
-                          onChange={(e) =>
-                            handleContractChange(
-                              index,
-                              "selectedPackage",
-                              e.target.value
-                            )
-                          }
-                          label="Select Package"
-                        >
-                          {packages.map((pkg) => (
-                            <MenuItem key={pkg.PackageID} value={pkg.PackageID}>
-                              {pkg.PackageName}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
+                      <Autocomplete
+                        options={sortedPackages}
+                        getOptionLabel={(option) => option?.PackageName || ""}
+                        value={
+                          sortedPackages.find(
+                            (pkg) => pkg.PackageID === contract.selectedPackage
+                          ) || null
+                        }
+                        onChange={(_, selectedOption) =>
+                          handleContractChange(
+                            index,
+                            "selectedPackage",
+                            selectedOption?.PackageID || ""
+                          )
+                        }
+                        isOptionEqualToValue={(option, value) =>
+                          option.PackageID === value.PackageID
+                        }
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            label="Select Package"
+                            margin="normal"
+                            fullWidth
+                          />
+                        )}
+                      />
                     </div>
 
                     <div className="col-md-6">
@@ -281,28 +305,34 @@ const AirtimeBenefitSimulator = () => {
 
                   <div className="row">
                     <div className="col-md-6">
-                      <FormControl fullWidth margin="normal">
-                        <InputLabel>Device Name</InputLabel>
-                        <Select
-                          name="DeviceName"
-                          value={contract.deviceName || ""}
-                          onChange={(e) =>
-                            handleContractChange(
-                              index,
-                              "deviceName",
-                              e.target.value
-                            )
-                          }
-                          label="Device Name"
-                          disabled={!!devicesError}
-                        >
-                          {devices.map((device) => (
-                            <MenuItem key={device.id} value={device.device_name}>
-                              {device.device_name}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
+                      <Autocomplete
+                        options={sortedDevices}
+                        getOptionLabel={(option) => option?.device_name || ""}
+                        value={
+                          sortedDevices.find(
+                            (device) => device.device_name === contract.deviceName
+                          ) || null
+                        }
+                        onChange={(_, selectedOption) =>
+                          handleContractChange(
+                            index,
+                            "deviceName",
+                            selectedOption?.device_name || ""
+                          )
+                        }
+                        isOptionEqualToValue={(option, value) =>
+                          option.device_name === value.device_name
+                        }
+                        disabled={!!devicesError}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            label="Device Name"
+                            margin="normal"
+                            fullWidth
+                          />
+                        )}
+                      />
                     </div>
 
                     <div className="col-md-6">
@@ -351,31 +381,36 @@ const AirtimeBenefitSimulator = () => {
                           />
                         </div>
                         <div className="col-md-6">
-                          <FormControl fullWidth margin="normal">
-                            <InputLabel>Additional Device Name</InputLabel>
-                            <Select
-                              name="AdditionalDeviceName"
-                              value={contract.additionalDeviceName || ""}
-                              onChange={(e) =>
-                                handleContractChange(
-                                  index,
-                                  "additionalDeviceName",
-                                  e.target.value
-                                )
-                              }
-                              label="Additional Device Name"
-                              disabled={!!devicesError}
-                            >
-                              {devices.map((device) => (
-                                <MenuItem
-                                  key={`extra-${device.id}`}
-                                  value={device.device_name}
-                                >
-                                  {device.device_name}
-                                </MenuItem>
-                              ))}
-                            </Select>
-                          </FormControl>
+                          <Autocomplete
+                            options={sortedDevices}
+                            getOptionLabel={(option) => option?.device_name || ""}
+                            value={
+                              sortedDevices.find(
+                                (device) =>
+                                  device.device_name ===
+                                  contract.additionalDeviceName
+                              ) || null
+                            }
+                            onChange={(_, selectedOption) =>
+                              handleContractChange(
+                                index,
+                                "additionalDeviceName",
+                                selectedOption?.device_name || ""
+                              )
+                            }
+                            isOptionEqualToValue={(option, value) =>
+                              option.device_name === value.device_name
+                            }
+                            disabled={!!devicesError}
+                            renderInput={(params) => (
+                              <TextField
+                                {...params}
+                                label="Additional Device Name"
+                                margin="normal"
+                                fullWidth
+                              />
+                            )}
+                          />
                         </div>
                       </div>
 
