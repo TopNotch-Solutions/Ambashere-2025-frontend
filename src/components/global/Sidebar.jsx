@@ -17,7 +17,6 @@ import {
   HeadsetMic as HeadsetMicIcon,
   Assignment as AssignmentIcon,
   DevicesOther as DevicesOtherIcon,
-  ArrowDropDown as ArrowDropDownIcon,
 } from "@mui/icons-material";
 import "../../assets/style/global/sidebar.css";
 import { NavLink, useLocation } from "react-router-dom";
@@ -29,7 +28,6 @@ const Sidebar = ({ openSidebarToggle, OpenSidebar }) => {
   const currentUser = useSelector((state) => state.auth.user);
   const { role } = useSelector((state) => state.auth);
   const [isLargeScreen, setIsLargeScreen] = useState(window.innerWidth >= 992);
-  const [isSubMenuOpen, setIsSubMenuOpen] = useState(false);
   const [navList, setNavList] = useState("1");
   const location = useLocation();
 
@@ -65,8 +63,6 @@ const Sidebar = ({ openSidebarToggle, OpenSidebar }) => {
       "/user/LostForm": "18",
       "/user/Info": "4", // Temporary Staff Info
       "/user/Calendar": "5", // Temporary user calendar
-      "/user/SelfHelp/AirtimeBenefitSimulator": "13",
-      "/user/SelfHelp/HandsetBenefitSimulator": "17",
       "/user/SelfHelp/Career": "7",
       "/user/SelfHelp/Compensation": "8",
       "/user/SelfHelp/Disrupters": "11",
@@ -107,10 +103,6 @@ const Sidebar = ({ openSidebarToggle, OpenSidebar }) => {
       dispatch(toggleSidebar());
     }
   }, [isLargeScreen, OpenSidebar, dispatch]);
-
-  const handleSubMenuToggle = useCallback(() => {
-    setIsSubMenuOpen((prev) => !prev);
-  }, []);
 
   const renderAdminLinks = () => (
     <>
@@ -275,49 +267,7 @@ const Sidebar = ({ openSidebarToggle, OpenSidebar }) => {
           <HelpOutlineIcon /> Self-Help Hub
         </span>
       </NavLink>
-      <ArrowDropDownIcon onClick={handleSubMenuToggle} />
     </li>
-    <ul className={`sub-menu ${isSubMenuOpen ? "active" : ""}`}>
-      {[
-        {
-          to: "user/SelfHelp/AirtimeBenefitSimulator",
-          label: "Airtime Benefit Simulator",
-          key: "13",
-          restrictedTo: "Permanent",
-        },
-        {
-          to: "user/SelfHelp/HandsetBenefitSimulator",
-          label: "Staff Handset Simulator",
-          key: "17",
-          restrictedTo: "Permanent",
-        },
-        // Add more items if needed
-      ]
-        .filter((sublink) => {
-          return (
-            !sublink.restrictedTo ||
-            currentUser.EmploymentCategory !== "Temporary"
-          );
-        })
-        .map((sublink) => (
-          <NavLink
-            key={sublink.key}
-            to={sublink.to}
-            onClick={() => {
-              handleNavLinkClick();
-              setNavList(sublink.key);
-            }}
-          >
-            <li
-              className={classNames("sidebar-list-item", {
-                backNav: navList === sublink.key,
-              })}
-            >
-              {sublink.label}
-            </li>
-          </NavLink>
-        ))}
-    </ul>
   </>
 );
 

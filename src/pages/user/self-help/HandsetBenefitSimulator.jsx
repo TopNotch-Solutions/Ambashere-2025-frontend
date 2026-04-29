@@ -2,16 +2,13 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   Autocomplete,
   TextField,
-  FormControl,
-  MenuItem,
-  Select,
-  InputLabel,
   Alert,
 } from "@mui/material";
 import axiosInstance from "../../../utils/axiosInstance.jsx";
+import { useSelector } from "react-redux";
 import "../../../assets/style/global/handsetBenefitSimulator.css";
 
-const HandsetBenfitSimulator = () => {
+const HandsetBenfitSimulator = ({ embedded = false }) => {
   const [deviceName, setDeviceName] = useState("");
   const [devicePrice, setDevicePrice] = useState("");
   const [topupPayment, setTopupPayment] = useState(0); // Initial topupPayment
@@ -19,6 +16,8 @@ const HandsetBenfitSimulator = () => {
   const [devices, setDevices] = useState([]);
   const [isLoadingDevices, setIsLoadingDevices] = useState(false);
   const [devicesError, setDevicesError] = useState("");
+  const currentUser = useSelector((state) => state.auth.user);
+  const employeeCode = currentUser?.EmployeeCode;
   const sortedDevices = useMemo(
     () =>
       [...devices].sort((a, b) =>
@@ -71,10 +70,24 @@ const HandsetBenfitSimulator = () => {
     }
   };
 
-  // Handle airtime allocation change
-  const handleHandsetAllocationChange = (event) => {
-    setHandsetAllocation(event.target.value);
-  };
+  useEffect(() => {
+    const fetchHandsetAllocation = async () => {
+      if (!employeeCode) return;
+
+      try {
+        const response = await axiosInstance.get(
+          `/staffmember/staff/handset-allocation/${employeeCode}`
+        );
+        const allocation = response?.data?.myAllocation?.HandsetAllocation || 0;
+        setHandsetAllocation(allocation);
+      } catch (error) {
+        console.error("Failed to load handset allocation", error);
+        setHandsetAllocation(0);
+      }
+    };
+
+    fetchHandsetAllocation();
+  }, [employeeCode]);
 
   // Calculate and set topUpPayment on any input change
   useEffect(() => {
@@ -87,18 +100,20 @@ const HandsetBenfitSimulator = () => {
   }, [devicePrice, handsetAllocation]);
 
   return (
-    <div className="container-main m-3 handset-simulator-page">
-      <div className="handset-hero mb-4">
-        <div>
-          <h2 className="handset-title">Handset Benefit Simulator</h2>
-          <p className="handset-subtitle mb-0">
-            Select your handset allocation and preferred device to instantly see
-            your estimated once-off access payment.
-          </p>
+    <div className={embedded ? "row g-4" : "container-main m-3 handset-simulator-page"}>
+      {!embedded && (
+        <div className="handset-hero mb-4">
+          <div>
+            <h2 className="handset-title">Handset Benefit Simulator</h2>
+            <p className="handset-subtitle mb-0">
+              Select your handset allocation and preferred device to instantly see
+              your estimated once-off access payment.
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
-      <div className="row g-4">
+      <div className="row g-4 w-100 m-0">
         <div className="col-12 col-xl-8">
           <form className="handset-form-card shadow-sm">
             <div className="form-header">
@@ -116,20 +131,14 @@ const HandsetBenfitSimulator = () => {
 
             <div className="row">
               <div className="col-md-6">
-                <FormControl fullWidth margin="normal">
-                  <InputLabel>Handset Allocation</InputLabel>
-                  <Select
-                    name="HandsetAllocation"
-                    value={handsetAllocation}
-                    onChange={handleHandsetAllocationChange}
-                    label="Handset Allocation"
-                  >
-                    <MenuItem value="8000">N$ 8,000</MenuItem>
-                    <MenuItem value="9000">N$ 9,000</MenuItem>
-                    <MenuItem value="10000">N$ 10,000</MenuItem>
-                    <MenuItem value="12000">N$ 12,000</MenuItem>
-                  </Select>
-                </FormControl>
+                <TextField
+                  name="HandsetAllocation"
+                  label="Handset Allocation"
+                  value={formatCurrency(handsetAllocation)}
+                  fullWidth
+                  margin="normal"
+                  InputProps={{ readOnly: true }}
+                />
               </div>
 
               <div className="col-md-6">

@@ -33,6 +33,7 @@ const HandsetBenefits = () => {
         const response = await axiosInstance.get(
           `/staffmember/staff/handset-allocation/${employeeCode}`
         );
+        console.log("staffmember allocation", response?.data)
         const allocation = response?.data?.myAllocation?.HandsetAllocation || 0;
         setBenefitAmount(allocation);
       } catch (error) {

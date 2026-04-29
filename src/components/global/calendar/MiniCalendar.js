@@ -21,32 +21,37 @@ export default function MiniCalendar(props) {
     const currentYear = new Date().getFullYear();
 
     // Define public holidays that recur every year
-    const holidays = [
-      // January
-      { month: 0, day: 1, title: "New Year's Day", description: "Public Holiday" },
+   const holidays = [
+  // January
+  { month: 0, day: 1, title: "New Year's Day", description: "Public Holiday" },
 
-      // March
-      { month: 2, day: 21, title: "Independece Day", description: "Public Holiday" },
-      { month: 2, day: 29, title: "Good Friday", description: "Public Holiday" },
-      { month: 2, day: 31, title: "Easter Sunday", description: "Public Holiday" },
+  // March
+  { month: 2, day: 21, title: "Independence Day", description: "Public Holiday" },
 
-      // April
-      { month: 3, day: 1, title: "Easter Monday", description: "Public Holiday" },
+  // April (Moveable Feasts - Dates below are standard for 2026)
+  { month: 3, day: 3, title: "Good Friday", description: "Public Holiday" },
+  { month: 3, day: 6, title: "Easter Monday", description: "Public Holiday" },
 
-      // May
-      { month: 4, day: 1, title: "Workers' Day", description: "Public Holiday" },
-      { month: 4, day: 4, title: "Cassinga Day", description: "Public Holiday" },
-      { month: 4, day: 9, title: "Christmas Day", description: "Public Holiday" },
-      { month: 4, day: 25, title: "New Year's Day", description: "Public Holiday" },
+  // May
+  { month: 4, day: 1, title: "Workers' Day", description: "Public Holiday" },
+  { month: 4, day: 4, title: "Cassinga Day", description: "Public Holiday" },
+  { month: 4, day: 14, title: "Ascension Day", description: "Public Holiday" },
+  { month: 4, day: 25, title: "Africa Day", description: "Public Holiday" },
 
-      // August
-      { month: 8, day: 25, title: "Heroes' Day", description: "Public Holiday" },
+  // June
+  { month: 5, day: 16, title: "Youth Day", description: "Public Holiday" },
 
-      // December
-      { month: 11, day: 10, title: "Day of the Namibian Women and International Human Rights Day", description: "Public Holiday" },
-      { month: 11, day: 25, title: "Christmas Day", description: "Public Holiday" },
-      { month: 11, day: 26, title: "Family Day", description: "Public Holiday" },
-    ];
+  // August
+  { month: 7, day: 26, title: "Heroes' Day", description: "Public Holiday" },
+
+  // September
+  { month: 8, day: 30, title: "Day of the Namibian Child", description: "Public Holiday" },
+
+  // December
+  { month: 11, day: 10, title: "International Human Rights Day and Namibian Women's Day", description: "Public Holiday" },
+  { month: 11, day: 25, title: "Christmas Day", description: "Public Holiday" },
+  { month: 11, day: 26, title: "Family Day", description: "Public Holiday" }
+];
 
     // Generate events for the next 10 years
     for (let year = currentYear; year < currentYear + 10; year++) {

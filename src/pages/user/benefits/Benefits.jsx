@@ -13,6 +13,7 @@ import RemoveCircleIcon from "@mui/icons-material/RemoveCircle";
 import axiosInstance from "../../../utils/axiosInstance";
 import Swal from "sweetalert2";
 import formatDate from "../../../components/global/dateFormatter";
+import AirtimeBenefitSimulator from "../self-help/AirtimeBenefitSimulator";
 import "../../../assets/style/global/handsetBenefitSimulator.css";
 import "../../../assets/style/global/benefits.css";
 
@@ -22,8 +23,16 @@ const UserBenefits = () => {
   const [data, setData] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [userData, setUserData] = useState(null);
+  const [showSimulator, setShowSimulator] = useState(false);
   const currentUser = useSelector((state) => state.auth.user);
   const { role } = useSelector((state) => state.auth);
+  const isActiveStatus = (status) =>
+    String(status || "").trim().toLowerCase() === "active";
+  const hasDeviceName = (item) => {
+    const value = item?.DeviceName ?? item?.device ?? "";
+    const normalized = String(value).trim().toLowerCase();
+    return normalized !== "" && normalized !== "null" && normalized !== "undefined";
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -93,7 +102,6 @@ const UserBenefits = () => {
 };
 
   const columns = [
-    { field: "id", headerName: "#", width: 60 },
     { field: "PackageName", headerName: "PACKAGE NAME", width: 220 },
     { field: "DeviceName", headerName: "DEVICE NAME", width: 220 },
     { field: "ContractDuration", headerName: "PAYEMENT DURATION", width: 210 },
@@ -101,44 +109,54 @@ const UserBenefits = () => {
     { field: "MonthlyPayment", headerName: "MONTHLY PAYMENT", width: 180 },
     { field: "ContractStartDate", headerName: "CONTRACT START", width: 180 },
     { field: "ContractEndDate", headerName: "CONTRACT END", width: 180 },
-    {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
-          field: "actions",
-          type: "actions",
-          headerName: "Actions",
-          width: 100,
-          cellClassName: "actions",
-          getActions: ({ row }) => { // Destructure 'row' from the params object
-      const actions = [];
+  //   {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
+  //         field: "actions",
+  //         type: "actions",
+  //         headerName: "Actions",
+  //         width: 100,
+  //         cellClassName: "actions",
+  //         getActions: ({ row }) => { // Destructure 'row' from the params object
+  //     const actions = [];
 
-      // Only add the delete action if approvalStatus is 'Pending'
-      if (row.ApprovalStatus === "Pending") {
-        console.log("Approval status: ",row.ApprovalStatus)
-        actions.push(
-          <Tooltip title={`Delete contract`} arrow> {/* Add Tooltip here */}
-            <GridActionsCellItem
-              icon={<RemoveCircleIcon />}
-              label="delete"
-              className="textPrimary"
-              onClick={() => { handleContractDelection(row.id)}}
-              color="inherit"
-            />
-          </Tooltip>
-        );
-      }
-      return actions; // Return the array of actions (which might be empty)
-    },
-  },
+  //     // Only add the delete action if approvalStatus is 'Pending'
+  //     if (row.ApprovalStatus === "Pending") {
+  //       console.log("Approval status: ",row.ApprovalStatus)
+  //       actions.push(
+  //         <Tooltip title={`Delete contract`} arrow> {/* Add Tooltip here */}
+  //           <GridActionsCellItem
+  //             icon={<RemoveCircleIcon />}
+  //             label="delete"
+  //             className="textPrimary"
+  //             onClick={() => { handleContractDelection(row.id)}}
+  //             color="inherit"
+  //           />
+  //         </Tooltip>
+  //       );
+  //     }
+  //     return actions; // Return the array of actions (which might be empty)
+  //   },
+  // },
 ];
 
   const rows = data?.map((contract, index) => ({
-    id: contract.ContractNumber,
-    PackageName: contract.PackageName,
-    DeviceName: contract.DeviceName,
-    ContractDuration: contract.ContractDuration,
-    ContractStartDate: formatDate(contract.ContractStartDate),
-    ContractEndDate: formatDate(contract.ContractEndDate),
-    SubscriptionStatus: contract.SubscriptionStatus,
-    MonthlyPayment: "N$ " + contract.MonthlyPayment,
+    id: `benefit-${contract?.id ?? contract?.ContractNumber ?? index + 1}`,
+    PackageName: contract?.PackageName || contract?.package || "-",
+    DeviceName: contract?.DeviceName || contract?.device || "-",
+    ContractDuration:
+      contract?.ContractDuration != null || contract?.contract_duration != null
+        ? String(
+            Math.trunc(
+              Number(contract?.ContractDuration ?? contract?.contract_duration)
+            )
+          )
+        : "-",
+    ContractStartDate: formatDate(contract?.ContractStartDate ?? contract?.contract_start_date),
+    ContractEndDate: formatDate(contract?.ContractEndDate ?? contract?.contract_end_date),
+    SubscriptionStatus: contract?.SubscriptionStatus || contract?.subscription_status || "-",
+    MonthlyPayment: `N$ ${Number(contract?.MonthlyPayment ?? contract?.monthly_payment ?? 0).toLocaleString("en-NA", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`,
     ApprovalStatus: contract.ApprovalStatus
   }));
 
@@ -163,7 +181,7 @@ const UserBenefits = () => {
 
   return (
     <div className="container-main m-3 handset-simulator-page benefits-page">
-      <div className="handset-hero mb-4">
+      <div className="handset-hero mb-4 d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3">
         <div>
           <h2 className="handset-title">My Benefits</h2>
           <p className="handset-subtitle mb-0">
@@ -171,141 +189,157 @@ const UserBenefits = () => {
             contracts, and submit new contract applications.
           </p>
         </div>
+        <Button
+          className="benefits-cta-btn"
+          onClick={() => setShowSimulator((prev) => !prev)}
+        >
+          {showSimulator ? "Back to My Benefits" : "Simulate Airtime Benefit"}
+        </Button>
       </div>
 
-      <div className="row d-flex flex-column flex-md-row justify-content-around m-auto">
-        {currentUser.EmploymentCategory === "Temporary" && (
-          <h3 className="text-center mt-5 text-danger benefits-empty-state">
-            Your Staff Benefits Information will be shown here once you get one
-          </h3>
-        )}
+      {showSimulator ? (
+        <AirtimeBenefitSimulator embedded />
+      ) : (
+        <div className="row d-flex flex-column flex-md-row justify-content-around m-auto">
+          {currentUser.EmploymentCategory === "Temporary" && (
+            <h3 className="text-center mt-5 text-danger benefits-empty-state">
+              Your Staff Benefits Information will be shown here once you get one
+            </h3>
+          )}
 
-        {/* Airtime Stats */}
-        {currentUser.EmploymentCategory !== "Temporary" && (
-          <>
-            {data.length > 0 ? (
-              <Box className="col-12">
-                <div className="handset-summary-card shadow-sm benefits-stats-card">
-                  <div className="row g-3">
-                    <div className="col-sm-6">
-                      <div className="benefit-metric">
-                        <div>
-                          <h5>Active Packages</h5>
-                          <h3>
-                            {data?.filter(
-                              (item) =>
-                                item.PackageName &&
-                                item.SubscriptionStatus !== "Expired"
-                            )?.length || 0}
-                          </h3>
+          {/* Airtime Stats */}
+          {currentUser.EmploymentCategory !== "Temporary" && (
+            <>
+              {data.length > 0 ? (
+                <Box className="col-12">
+                  <div className="handset-summary-card shadow-sm benefits-stats-card">
+                    <div className="row g-3">
+                      <div className="col-sm-6">
+                        <div className="benefit-metric">
+                          <div>
+                            <h5>Active Packages</h5>
+                            <h3>
+                              {data?.filter(
+                                (item) =>
+                                  item.PackageName &&
+                                isActiveStatus(
+                                  item.SubscriptionStatus ??
+                                    item.subscription_status
+                                )
+                              )?.length || 0}
+                            </h3>
+                          </div>
+                          <div className="benefit-metric-icon">
+                            <FontAwesomeIcon icon={faBoxOpen} fontSize="large" />
+                          </div>
                         </div>
-                        <div className="benefit-metric-icon">
-                          <FontAwesomeIcon icon={faBoxOpen} fontSize="large" />
+                      </div>
+
+                      <div className="col-sm-6">
+                        <div className="benefit-metric">
+                          <div>
+                            <h5>Active Device</h5>
+                            <h3>
+                              {data?.filter(
+                                (item) =>
+                                hasDeviceName(item) &&
+                                isActiveStatus(
+                                  item.SubscriptionStatus ??
+                                    item.subscription_status
+                                )
+                              )?.length || 0}
+                            </h3>
+                          </div>
+                          <div className="benefit-metric-icon">
+                            <EventAvailableIcon fontSize="large" />
+                          </div>
                         </div>
                       </div>
                     </div>
-
-                    <div className="col-sm-6">
-                      <div className="benefit-metric">
-                        <div>
-                          <h5>Active Device</h5>
-                          <h3>
-                            {data?.filter(
-                              (item) =>
-                                item.DeviceName &&
-                                item.SubscriptionStatus !== "Expired"
-                            )?.length || 0}
-                          </h3>
-                        </div>
-                        <div className="benefit-metric-icon">
-                          <EventAvailableIcon fontSize="large" />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </Box>
-            ) : (
-              <h3 className="text-center mt-5 text-danger benefits-empty-state">
-                Your Staff Benefits Information will be shown here once you get
-                one
-              </h3>
-            )}
-
-            <div style={{ height: "100%" }}>
-              <BenefitVoucher
-                style={{ height: "100%" }}
-                open={modalOpen}
-                handleClose={handleClose}
-                userData={userData}
-                role={role}
-              />
-            </div>
-
-            {/* Plan Table */}
-            <div className="col-12 ml-1 d-flex flex-column">
-              <div className="m-1 m-sm-3">
-                <Box
-                  m="0"
-                  height="100%"
-                  className="handset-form-card shadow-sm benefits-table-card"
-                  sx={{
-                    "& .MuiDataGrid-root": {
-                      border: "none",
-                    },
-                    "& .MuiDataGrid-cell": {
-                      borderBottom: "none",
-                    },
-                    "& .name-column--cell": {
-                      color: colors.greenAccent[300],
-                    },
-                    "& .MuiDataGrid-columnHeaders": {
-                      backgroundColor: colors.grey[900],
-                      borderBottom: "none",
-                    },
-                    "& .MuiDataGrid-virtualScroller": {
-                      backgroundColor: colors.primary[400],
-                    },
-                    "& .MuiDataGrid-footerContainer": {
-                      borderTop: "none",
-                      backgroundColor: colors.grey[900],
-                    },
-                    "& .MuiCheckbox-root": {
-                      color: `${colors.greenAccent[200]} !important`,
-                    },
-                    "& .MuiDataGrid-toolbarContainer .MuiButton-text": {
-                      color: `${colors.grey[100]} !important`,
-                    },
-                  }}
-                >
-                  <div className="benefits-table-header">
-                    <h6 className="summary-title mb-0">Current Contracts</h6>
-                    <Button
-                      className="benefits-cta-btn"
-                      onClick={handleOpen}
-                    >
-                      New Contract Application
-                      <PostAddIcon size={16} />
-                    </Button>
-                  </div>
-                  <div className="benefits-grid-wrap">
-                    <DataGrid
-                      autoHeight
-                      rows={rows}
-                      columns={columns}
-                      pageSize={5}
-                      rowsPerPageOptions={[5, 10, 20]}
-                      checkboxSelection
-                      disableSelectionOnClick
-                      // onRowClick={handleRowClick}
-                    />
                   </div>
                 </Box>
+              ) : (
+                <h3 className="text-center mt-5 text-danger benefits-empty-state">
+                  Your Staff Benefits Information will be shown here once you get
+                  one
+                </h3>
+              )}
+
+              <div style={{ height: "100%" }}>
+                <BenefitVoucher
+                  style={{ height: "100%" }}
+                  open={modalOpen}
+                  handleClose={handleClose}
+                  userData={userData}
+                  role={role}
+                />
               </div>
-            </div>
-          </>
-        )}
-      </div>
+
+              {/* Plan Table */}
+              <div className="col-12 ml-1 d-flex flex-column">
+                <div className="m-1 m-sm-3">
+                  <Box
+                    m="0"
+                    height="100%"
+                    className="handset-form-card shadow-sm benefits-table-card"
+                    sx={{
+                      "& .MuiDataGrid-root": {
+                        border: "none",
+                      },
+                      "& .MuiDataGrid-cell": {
+                        borderBottom: "none",
+                      },
+                      "& .name-column--cell": {
+                        color: colors.greenAccent[300],
+                      },
+                      "& .MuiDataGrid-columnHeaders": {
+                        backgroundColor: colors.grey[900],
+                        borderBottom: "none",
+                      },
+                      "& .MuiDataGrid-virtualScroller": {
+                        backgroundColor: colors.primary[400],
+                      },
+                      "& .MuiDataGrid-footerContainer": {
+                        borderTop: "none",
+                        backgroundColor: colors.grey[900],
+                      },
+                      "& .MuiCheckbox-root": {
+                        color: `${colors.greenAccent[200]} !important`,
+                      },
+                      "& .MuiDataGrid-toolbarContainer .MuiButton-text": {
+                        color: `${colors.grey[100]} !important`,
+                      },
+                    }}
+                  >
+                    <div className="benefits-table-header">
+                      <h6 className="summary-title mb-0">Current Contracts</h6>
+                      {/* <Button
+                        className="benefits-cta-btn"
+                        onClick={handleOpen}
+                      >
+                        New Contract Application
+                        <PostAddIcon size={16} />
+                      </Button> */}
+                    </div>
+                    <div className="benefits-grid-wrap">
+                      <DataGrid
+                        autoHeight
+                        rows={rows}
+                        columns={columns}
+                        pageSize={5}
+                        rowsPerPageOptions={[5, 10, 20]}
+                        checkboxSelection
+                        disableSelectionOnClick
+                        // onRowClick={handleRowClick}
+                      />
+                    </div>
+                  </Box>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 };

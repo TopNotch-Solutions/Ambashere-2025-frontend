@@ -10,9 +10,10 @@ import {
   Alert,
 } from "@mui/material";
 import axiosInstance from "../../../utils/axiosInstance";
+import { useSelector } from "react-redux";
 import "../../../assets/style/global/handsetBenefitSimulator.css";
 
-const AirtimeBenefitSimulator = () => {
+const AirtimeBenefitSimulator = ({ embedded = false }) => {
   const [packages, setPackages] = useState([]);
   const [devices, setDevices] = useState([]);
   const [numberOfContracts, setNumberOfContracts] = useState(1);
@@ -25,6 +26,8 @@ const AirtimeBenefitSimulator = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [devicesError, setDevicesError] = useState("");
   const [packagesError, setPackagesError] = useState("");
+  const currentUser = useSelector((state) => state.auth.user);
+  const employeeCode = currentUser?.EmployeeCode;
 
   const sortedPackages = useMemo(
     () =>
@@ -72,6 +75,25 @@ const AirtimeBenefitSimulator = () => {
     };
     fetchData();
   }, []);
+
+  useEffect(() => {
+    const fetchAirtimeAllocation = async () => {
+      if (!employeeCode) return;
+
+      try {
+        const response = await axiosInstance.get(
+          `/staffmember/staff/handset-allocation/${employeeCode}`
+        );
+        const allocation = response?.data?.myAllocation?.AirtimeAllocation || 0;
+        setAirtimeAllocation(allocation);
+      } catch (error) {
+        console.error("Failed to load airtime allocation", error);
+        setAirtimeAllocation(0);
+      }
+    };
+
+    fetchAirtimeAllocation();
+  }, [employeeCode]);
 
   const handleNumberOfContractsChange = (event) => {
     const numContracts = parseInt(event.target.value);
@@ -191,23 +213,25 @@ const AirtimeBenefitSimulator = () => {
   }, [airtimeAllocation, monthlyPayment]);
 
   return (
-    <div className="container-main m-3 handset-simulator-page">
-      <div className="handset-hero mb-4">
-        <div>
-          <h2 className="handset-title">Airtime Benefit Simulator</h2>
-          <p className="handset-subtitle mb-0">
-            Simulate monthly payment across one or more contracts and check
-            whether your total remains within allocation limits.
-          </p>
+    <div className={embedded ? "row g-4" : "container-main m-3 handset-simulator-page"}>
+      {!embedded && (
+        <div className="handset-hero mb-4">
+          <div>
+            <h2 className="handset-title">Airtime Benefit Simulator</h2>
+            <p className="handset-subtitle mb-0">
+              Simulate monthly payment across one or more contracts and check
+              whether your total remains within allocation limits.
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       {isLoading ? (
         <div className="handset-form-card d-flex align-items-center justify-content-center">
           <CircularProgress size={40} sx={{ color: "#0096D6" }} />
         </div>
       ) : (
-        <div className="row g-4">
+        <div className="row g-4 w-100 m-0">
           <div className="col-12 col-xl-8">
             <form className="handset-form-card shadow-sm">
               <div className="form-header">
@@ -239,20 +263,14 @@ const AirtimeBenefitSimulator = () => {
                   </FormControl>
                 </div>
                 <div className="col-md-6">
-                  <FormControl fullWidth margin="normal">
-                    <InputLabel>Airtime Allocation</InputLabel>
-                    <Select
-                      name="AirtimeAllocation"
-                      value={airtimeAllocation}
-                      onChange={(e) => setAirtimeAllocation(e.target.value)}
-                      label="Airtime Allocation"
-                    >
-                      <MenuItem value="2200">N$ 2,200</MenuItem>
-                      <MenuItem value="3300">N$ 3,300</MenuItem>
-                      <MenuItem value="4400">N$ 4,400</MenuItem>
-                      <MenuItem value="8000">N$ 8,000</MenuItem>
-                    </Select>
-                  </FormControl>
+                  <TextField
+                    name="AirtimeAllocation"
+                    label="Airtime Allocation"
+                    value={formatCurrency(airtimeAllocation)}
+                    fullWidth
+                    margin="normal"
+                    InputProps={{ readOnly: true }}
+                  />
                 </div>
               </div>
 

@@ -36,8 +36,6 @@ import SelfHelp from "../pages/user/self-help/SelfHelp.jsx";
 // import WorkEnvironment from "../pages/user/self-help/WorkEnvironment.jsx";
 // import Career from "../pages/user/self-help/Career.jsx";
 // import Disrupters from "../pages/user/self-help/Disrupters.jsx";
-import AirtimeBenefitSimulator from "../pages/user/self-help/AirtimeBenefitSimulator.jsx";
-import HandsetBenefitSimulator from "../pages/user/self-help/HandsetBenefitSimulator.jsx";
 import Support from "../pages/user/support/Support.jsx";
 import LostForm from "../pages/user/lostform/LostForm.jsx";
 import TempStaffInfo from "../pages/user/info/TempStaffInfo.jsx";
@@ -151,8 +149,6 @@ const routes = [
   // { path: "/user/SelfHelp/FAQS", element: <FAQs />, roles: [3] },
   // { path: "/user/SelfHelp/Wellness", element: <Wellness />, roles: [3] },
   // { path: "/user/SelfHelp/Career", element: <Career />, roles: [3] },
-  { path: "/user/SelfHelp/AirtimeBenefitSimulator", element: <AirtimeBenefitSimulator />, roles: [3] },
-  { path: "/user/SelfHelp/HandsetBenefitSimulator", element: <HandsetBenefitSimulator />, roles: [3] },
   // Finance
   { path: "/finance/approvals", element: <PendingApprovals />, roles: [3, 9] },
   { path: "/finance/payment-approval", element: <PaymentApproval />, roles: [3, 9] },

@@ -44,7 +44,7 @@ const UserDashboard = () => {
         const response = await axiosInstance.get(
           `/contracts/Temp/${currentUser.EmployeeCode}`
         );
-        console.log(response.data);
+        console.log("My contract dataatta",response.data);
         setTempData(response.data);
       } catch (error) {
         console.error(error);
@@ -102,7 +102,6 @@ const UserDashboard = () => {
   }, [currentUser?.EmployeeCode]);
 
   const airtimeColumns = [
-    { field: "id", headerName: "#", width: 90 },
     { field: "MSISDN", headerName: "MSISDN", width: 170 },
     { field: "PackageName", headerName: "Package Name", width: 180 },
     { field: "MonthlyPayment", headerName: "Monthly Payment", width: 180 },
@@ -112,19 +111,32 @@ const UserDashboard = () => {
     { field: "ContractEndDate", headerName: "Contract End Date", width: 200 },
   ];
 
-  const airtimeRows = (airtimeData?.contracts || []).map((airtime, index) => ({
-    id: index + 1,
-    MSISDN: airtime?.MSISDN || "",
-    PackageName: airtime.PackageName,
-    MonthlyPayment: "N$ " + airtime.MonthlyPayment,
-    DeviceName: airtime.DeviceName,
-    DevicePrice: "N$ " + airtime.DevicePrice,
-    ContractStartDate: formatDate(airtime?.ContractStartDate),
-    ContractEndDate: formatDate(airtime?.ContractEndDate),
+  const airtimeContracts = Array.isArray(airtimeData?.contracts)
+    ? airtimeData.contracts
+    : Array.isArray(airtimeData)
+      ? airtimeData
+      : [];
+
+  const formatMoney = (value) =>
+    `N$ ${Number(value || 0).toLocaleString("en-NA", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+
+  const airtimeRows = airtimeContracts.map((airtime, index) => ({
+    id: `airtime-${airtime?.id ?? airtime?.ContractNumber ?? index + 1}`,
+    MSISDN: airtime?.msisdn || airtime?.MSISDN || airtime?.staff_msisdn || "",
+    PackageName: airtime?.package || airtime?.PackageName || "-",
+    MonthlyPayment: formatMoney(airtime?.MonthlyPayment ?? airtime?.monthly_payment),
+    DeviceName: airtime?.device || airtime?.DeviceName || "-",
+    DevicePrice: formatMoney(
+      airtime?.DevicePrice ?? airtime?.device_initial_cost ?? airtime?.device_payout_balance
+    ),
+    ContractStartDate: formatDate(airtime?.contract_start_date ?? airtime?.ContractStartDate),
+    ContractEndDate: formatDate(airtime?.contract_end_date ?? airtime?.ContractEndDate),
   }));
 
   const handsetColumns = [
-    { field: "id", headerName: "#", width: 60 },
     { field: "FixedAssetCode", headerName: "Fixed Asset Code", width: 180 },
     { field: "HandsetName", headerName: "Handset Name", width: 170 },
     { field: "HandsetPrice", headerName: "Price", width: 170 },
@@ -281,7 +293,7 @@ const UserDashboard = () => {
                             )}
                           </div>
                         )}
-                        {showAirtime && (
+                        {/* {showAirtime && (
                           <div
                             className="col-md-3 col-lg-5 rounded-3 mb-2 mb-md-0 shadow p-4 align-items-center mt-lg-4 me-3"
                             style={{ backgroundColor: "#0096D6", color: "white", borderRadius: "10px" }}
@@ -310,7 +322,7 @@ const UserDashboard = () => {
                               </p>
                             )}
                           </div>
-                        )}
+                        )} */}
 
                         {!showAirtime && (
                           <div

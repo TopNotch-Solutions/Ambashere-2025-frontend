@@ -17,11 +17,11 @@ import { useSelector, useDispatch } from "react-redux";
 import Tooltip from "@mui/material/Tooltip";
 import RemoveCircleIcon from "@mui/icons-material/RemoveCircle";
 import axiosInstance from "../../../utils/axiosInstance";
-import BenefitVoucher from "../../../components/global/BenefitVoucher";
 import HandsetVoucher from "../../../components/global/HandsetVoucher";
 import ShareIMEIModal from "../../../components/user/ShareIMEIModal";
 import formatDate from "../../../components/global/dateFormatter";
 import Swal from "sweetalert2";
+import HandsetBenfitSimulator from "../self-help/HandsetBenefitSimulator";
 import "../../../assets/style/global/handsetBenefitSimulator.css";
 import "../../../assets/style/global/benefits.css";
 
@@ -36,6 +36,7 @@ const UserHandsets = () => {
   const [selectedHandsetForIMEI, setSelectedHandsetForIMEI] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showSimulator, setShowSimulator] = useState(false);
   const { role } = useSelector((state) => state.auth);
   const currentUser = useSelector((state) => state.auth.user);
   const dispatch = useDispatch();
@@ -186,80 +187,80 @@ const UserHandsets = () => {
   };
 
   const columns = [
-    { field: "id", headerName: "#", width: 60 },
+    // { field: "id", headerName: "#", width: 60 },
     { field: "EmployeeCode", headerName: "Employee Code", width: 130 },
     { field: "FixedAssetCode", headerName: "Fixed Asset Code", width: 150 },
     { field: "HandsetName", headerName: "Handset Name", width: 180 },
     { field: "DevicePrice", headerName: "Handset Price", width: 140 },
-    { field: "ExccessPrice", headerName: "Exccess Price", width: 140 },
-    { field: "RequestDate", headerName: "Requested Date", width: 180 },
+    // { field: "ExccessPrice", headerName: "Exccess Price", width: 140 },
+    // { field: "RequestDate", headerName: "Requested Date", width: 180 },
     { field: "AllocationDate", headerName: "Collected Date", width: 180 },
     { field: "NewAllocationDate", headerName: "New Renewal Date", width: 180 },
     { field: "Status", headerName: "Status", width: 100 },
-    { field: "RenewalVerified", headerName: "Renewal Verified", width: 140 },
-    { field: "IMEINumber", headerName: "IMEI Number", width: 150 },
-    {
-      field: "actions",
-      type: "actions",
-      headerName: "Actions",
-      width: 150,
-      cellClassName: "actions",
-      getActions: ({ row }) => {
-        // Destructure 'row' from the params object
-        const actions = [];
+    // { field: "RenewalVerified", headerName: "Renewal Verified", width: 140 },
+    // { field: "IMEINumber", headerName: "IMEI Number", width: 150 },
+    // {
+    //   field: "actions",
+    //   type: "actions",
+    //   headerName: "Actions",
+    //   width: 150,
+    //   cellClassName: "actions",
+    //   getActions: ({ row }) => {
+    //     // Destructure 'row' from the params object
+    //     const actions = [];
 
-        // Add delete action if status is 'Pending'
-        if (row.Status === "Pending") {
-          console.log("Approval status: ", row.Status);
-          actions.push(
-            <Tooltip title={`Delete handset`} arrow>
-              <GridActionsCellItem
-                icon={<RemoveCircleIcon />}
-                label="delete"
-                className="textPrimary"
-                onClick={() => {
-                  handleHandsetDelection(row.id);
-                }}
-                color="inherit"
-              />
-            </Tooltip>,
-          );
-        }
+    //     // Add delete action if status is 'Pending'
+    //     if (row.Status === "Pending") {
+    //       console.log("Approval status: ", row.Status);
+    //       actions.push(
+    //         <Tooltip title={`Delete handset`} arrow>
+    //           <GridActionsCellItem
+    //             icon={<RemoveCircleIcon />}
+    //             label="delete"
+    //             className="textPrimary"
+    //             onClick={() => {
+    //               handleHandsetDelection(row.id);
+    //             }}
+    //             color="inherit"
+    //           />
+    //         </Tooltip>,
+    //       );
+    //     }
 
-        // Add share IMEI action if renewal is verified
-        console.log("Row data for actions:", {
-          id: row.id,
-          RenewalVerified: row.RenewalVerified,
-          Status: row.Status,
-          IMEINumber: row.IMEINumber,
-          shouldShowIMEI:
-            (row.RenewalVerified === true || row.RenewalVerified === "Yes") &&
-            (row.Status === "Renewal Verified" ||
-              row.Status === "Probation Verified"),
-        });
+    //     // Add share IMEI action if renewal is verified
+    //     console.log("Row data for actions:", {
+    //       id: row.id,
+    //       RenewalVerified: row.RenewalVerified,
+    //       Status: row.Status,
+    //       IMEINumber: row.IMEINumber,
+    //       shouldShowIMEI:
+    //         (row.RenewalVerified === true || row.RenewalVerified === "Yes") &&
+    //         (row.Status === "Renewal Verified" ||
+    //           row.Status === "Probation Verified"),
+    //     });
 
-        if (
-          (row.RenewalVerified === true || row.RenewalVerified === "Yes") &&
-          (row.Status === "Renewal Verified" ||
-            row.Status === "Probation Verified")
-        ) {
-          actions.push(
-            <Tooltip title={`Share IMEI with admin`} arrow>
-              <GridActionsCellItem
-                icon={<ShareIcon />}
-                label="Share IMEI"
-                className="textPrimary"
-                onClick={() => {
-                  handleOpenIMEIModal(row);
-                }}
-                color="primary"
-              />
-            </Tooltip>,
-          );
-        }
-        return actions; // Return the array of actions (which might be empty)
-      },
-    },
+    //     if (
+    //       (row.RenewalVerified === true || row.RenewalVerified === "Yes") &&
+    //       (row.Status === "Renewal Verified" ||
+    //         row.Status === "Probation Verified")
+    //     ) {
+    //       actions.push(
+    //         <Tooltip title={`Share IMEI with admin`} arrow>
+    //           <GridActionsCellItem
+    //             icon={<ShareIcon />}
+    //             label="Share IMEI"
+    //             className="textPrimary"
+    //             onClick={() => {
+    //               handleOpenIMEIModal(row);
+    //             }}
+    //             color="primary"
+    //           />
+    //         </Tooltip>,
+    //       );
+    //     }
+    //     return actions; // Return the array of actions (which might be empty)
+    //   },
+    // },
   ];
 
   const rows = dataAllocation?.map((handset, index) => {
@@ -296,7 +297,7 @@ const UserHandsets = () => {
 
   return (
     <div className="container-main m-3 handset-simulator-page benefits-page">
-      <div className="handset-hero mb-4">
+      <div className="handset-hero mb-4 d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3">
         <div>
           <h2 className="handset-title">My Handsets</h2>
           <p className="handset-subtitle mb-0">
@@ -304,183 +305,193 @@ const UserHandsets = () => {
             renewal timeline.
           </p>
         </div>
+        <Button
+          className="benefits-cta-btn"
+          onClick={() => setShowSimulator((prev) => !prev)}
+        >
+          {showSimulator ? "Back to My Handsets" : "Simulate Handset"}
+        </Button>
       </div>
-      <div className="row d-flex flex-column flex-md-row justify-content-around m-auto">
-        {/* Learn More */}
-        {dataAllocation.length > 0 ? (
-          <Box className="col-12 col-lg-11">
-            <div className="handset-summary-card shadow-sm benefits-stats-card">
-              <div className="row g-3">
-                <div className="col-sm-4">
-                  <div className="benefit-metric">
-                    <div>
-                      <h5>Active Handset</h5>
-                      <h3>{dataAllocation[0].HandsetName}</h3>
-                    </div>
-                    <div className="benefit-metric-icon">
-                      <PhoneIphoneIcon fontSize="large" />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="col-sm-4">
-                  <div className="benefit-metric">
-                    <div>
-                      <h5>Handset Price</h5>
-                      <h3>N$ {dataAllocation[0].HandsetPrice}</h3>
-                    </div>
-                    <div className="benefit-metric-icon">
-                      <FaMoneyBillTrendUp fontSize="large" />
+      {showSimulator ? (
+        <HandsetBenfitSimulator embedded />
+      ) : (
+        <div className="row d-flex flex-column flex-md-row justify-content-around m-auto">
+          {/* Learn More */}
+          {dataAllocation.length > 0 ? (
+            <Box className="col-12 col-lg-11">
+              <div className="handset-summary-card shadow-sm benefits-stats-card">
+                <div className="row g-3">
+                  <div className="col-sm-4">
+                    <div className="benefit-metric">
+                      <div>
+                        <h5>Active Handset</h5>
+                        <h3>{dataAllocation[0].HandsetName}</h3>
+                      </div>
+                      <div className="benefit-metric-icon">
+                        <PhoneIphoneIcon fontSize="large" />
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="col-sm-4">
-                  <div className="benefit-metric">
-                    <div>
-                      <h5>New Handset Due</h5>
-                      <h3>
-                        {formatDate(dataAllocation[0]?.RenewalDate) ||
-                          "Pending"}
-                      </h3>
+                  <div className="col-sm-4">
+                    <div className="benefit-metric">
+                      <div>
+                        <h5>Handset Price</h5>
+                        <h3>N$ {dataAllocation[0].HandsetPrice}</h3>
+                      </div>
+                      <div className="benefit-metric-icon">
+                        <FaMoneyBillTrendUp fontSize="large" />
+                      </div>
                     </div>
-                    <div className="benefit-metric-icon">
-                      <CalendarMonthIcon fontSize="large" />
+                  </div>
+
+                  <div className="col-sm-4">
+                    <div className="benefit-metric">
+                      <div>
+                        <h5>New Handset Due</h5>
+                        <h3>
+                          {formatDate(dataAllocation[0]?.RenewalDate) ||
+                            "Pending"}
+                        </h3>
+                      </div>
+                      <div className="benefit-metric-icon">
+                        <CalendarMonthIcon fontSize="large" />
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </Box>
-        ) : (
-          <h3 className="text-center mt-5 text-danger">
-            Your Handset Information will be shown here once you get one
-          </h3>
-        )}
-        <div style={{ height: "100%" }}>
-          <HandsetVoucher
-            style={{ height: "100%" }}
-            open={modalOpen}
-            handleClose={handleClose}
-            userData={userData}
-            role={role}
-          />
-          <ShareIMEIModal
-            open={imeiModalOpen}
-            handleClose={handleCloseIMEIModal}
-            handsetData={selectedHandsetForIMEI}
-            onShareIMEI={handleShareIMEI}
-          />
-        </div>
-        {/* Plan Table */}
-        <div className="col-12 col-lg-11 ml-1 d-flex flex-column">
-          <div className="m-1 m-sm-3">
-            <Box
-              m="0"
-              height="100%"
-              className="handset-form-card shadow-sm benefits-table-card"
-              sx={{
-                "& .MuiDataGrid-root": {
-                  border: "none",
-                },
-                "& .MuiDataGrid-cell": {
-                  borderBottom: "none",
-                },
-                "& .name-column--cell": {
-                  color: colors.greenAccent[300],
-                },
-                "& .MuiDataGrid-columnHeaders": {
-                  backgroundColor: colors.grey[900],
-                  borderBottom: "none",
-                },
-                "& .MuiDataGrid-virtualScroller": {
-                  backgroundColor: colors.primary[400],
-                },
-                "& .MuiDataGrid-footerContainer": {
-                  borderTop: "none",
-                  backgroundColor: colors.grey[900],
-                },
-                "& .MuiCheckbox-root": {
-                  color: `${colors.greenAccent[200]} !important`,
-                },
-                "& .MuiDataGrid-toolbarContainer .MuiButton-text": {
-                  color: `${colors.grey[100]} !important`,
-                },
-              }}
-            >
-              <div className="benefits-table-header">
-                <h6 className="summary-title mb-0">Current Handsets</h6>
-                {shouldShowNewHandsetButton && (
-                  <Button
-                    className=""
-                    style={{
-                      gap: "10px",
-                      height: " 100%",
-                      backgroundColor: isLoading ? "#ccc" : "#0096D6",
-                      color: "#fff",
-                      padding: "8px",
-                      paddingLeft: "20px",
-                      paddingRight: "20px",
-                      borderRadius: "5px",
-                      cursor: isLoading ? "not-allowed" : "pointer",
-                      borderColor: "#1A69AC",
-                      border: "1px solid",
-                    }}
-                    onClick={handleOpen}
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <>
-                        <CircularProgress size={16} sx={{ color: "white" }} />
-                        Loading...
-                      </>
-                    ) : (
-                      <>
-                        New Handset
-                        <PostAddIcon size={16} />
-                      </>
-                    )}
-                  </Button>
-                )}
-              </div>
-              {isLoading ? (
-                <Box
-                  height="400px"
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
-                  sx={{ backgroundColor: colors.primary[400] }}
-                >
-                  <Box textAlign="center">
-                    <CircularProgress
-                      size={40}
-                      sx={{ color: colors.blueAccent[500] }}
-                    />
-                    <Typography
-                      variant="h6"
-                      sx={{ mt: 2, color: colors.grey[100] }}
-                    >
-                      Loading handsets...
-                    </Typography>
-                  </Box>
-                </Box>
-              ) : (
-                <div className="benefits-grid-wrap current-handsets-grid">
-                  <DataGrid
-                    rows={rows}
-                    columns={columns}
-                    pageSize={10}
-                    rowsPerPageOptions={[10, 20, 30]}
-                    checkboxSelection
-                    disableSelectionOnClick
-                    // onRowClick={handleRowClick}
-                  />
-                </div>
-              )}
             </Box>
+          ) : (
+            <h3 className="text-center mt-5 text-danger">
+              Your Handset Information will be shown here once you get one
+            </h3>
+          )}
+          <div style={{ height: "100%" }}>
+            <HandsetVoucher
+              style={{ height: "100%" }}
+              open={modalOpen}
+              handleClose={handleClose}
+              userData={userData}
+              role={role}
+            />
+            <ShareIMEIModal
+              open={imeiModalOpen}
+              handleClose={handleCloseIMEIModal}
+              handsetData={selectedHandsetForIMEI}
+              onShareIMEI={handleShareIMEI}
+            />
+          </div>
+          {/* Plan Table */}
+          <div className="col-12 col-lg-11 ml-1 d-flex flex-column">
+            <div className="m-1 m-sm-3">
+              <Box
+                m="0"
+                height="100%"
+                className="handset-form-card shadow-sm benefits-table-card"
+                sx={{
+                  "& .MuiDataGrid-root": {
+                    border: "none",
+                  },
+                  "& .MuiDataGrid-cell": {
+                    borderBottom: "none",
+                  },
+                  "& .name-column--cell": {
+                    color: colors.greenAccent[300],
+                  },
+                  "& .MuiDataGrid-columnHeaders": {
+                    backgroundColor: colors.grey[900],
+                    borderBottom: "none",
+                  },
+                  "& .MuiDataGrid-virtualScroller": {
+                    backgroundColor: colors.primary[400],
+                  },
+                  "& .MuiDataGrid-footerContainer": {
+                    borderTop: "none",
+                    backgroundColor: colors.grey[900],
+                  },
+                  "& .MuiCheckbox-root": {
+                    color: `${colors.greenAccent[200]} !important`,
+                  },
+                  "& .MuiDataGrid-toolbarContainer .MuiButton-text": {
+                    color: `${colors.grey[100]} !important`,
+                  },
+                }}
+              >
+                <div className="benefits-table-header">
+                  <h6 className="summary-title mb-0">Current Handsets</h6>
+                  {/* {shouldShowNewHandsetButton && (
+                    <Button
+                      className=""
+                      style={{
+                        gap: "10px",
+                        height: " 100%",
+                        backgroundColor: isLoading ? "#ccc" : "#0096D6",
+                        color: "#fff",
+                        padding: "8px",
+                        paddingLeft: "20px",
+                        paddingRight: "20px",
+                        borderRadius: "5px",
+                        cursor: isLoading ? "not-allowed" : "pointer",
+                        borderColor: "#1A69AC",
+                        border: "1px solid",
+                      }}
+                      onClick={handleOpen}
+                      disabled={isLoading}
+                    >
+                      {isLoading ? (
+                        <>
+                          <CircularProgress size={16} sx={{ color: "white" }} />
+                          Loading...
+                        </>
+                      ) : (
+                        <>
+                          New Handset
+                          <PostAddIcon size={16} />
+                        </>
+                      )}
+                    </Button>
+                  )} */}
+                </div>
+                {isLoading ? (
+                  <Box
+                    height="400px"
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="center"
+                    sx={{ backgroundColor: colors.primary[400] }}
+                  >
+                    <Box textAlign="center">
+                      <CircularProgress
+                        size={40}
+                        sx={{ color: colors.blueAccent[500] }}
+                      />
+                      <Typography
+                        variant="h6"
+                        sx={{ mt: 2, color: colors.grey[100] }}
+                      >
+                        Loading handsets...
+                      </Typography>
+                    </Box>
+                  </Box>
+                ) : (
+                  <div className="benefits-grid-wrap current-handsets-grid">
+                    <DataGrid
+                      rows={rows}
+                      columns={columns}
+                      pageSize={10}
+                      rowsPerPageOptions={[10, 20, 30]}
+                      checkboxSelection
+                      disableSelectionOnClick
+                      // onRowClick={handleRowClick}
+                    />
+                  </div>
+                )}
+              </Box>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
