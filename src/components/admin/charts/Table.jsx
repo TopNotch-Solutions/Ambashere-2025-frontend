@@ -34,8 +34,13 @@ const Table = () => {
     const fetchData = async () => {
       try {
         const response = await axiosInstance.get(`/handsets/staffHandsets`);
-        console.log(response.data)
-        setData(response.data);
+        console.log(response.data);
+        const normalizedData = Array.isArray(response.data)
+          ? response.data
+          : response.data && typeof response.data === "object"
+            ? Object.values(response.data)
+            : [];
+        setData(normalizedData);
       } catch (error) {
         // console.log(error);
         throw error;
@@ -57,11 +62,13 @@ const Table = () => {
   const mapDataToRows = (data) => {
     return data?.map((handset, index) => ({
       id: index + 1,
-      EmployeeCode: handset.EmployeeCode,
-      HandsetName: handset?.HandsetName,
-      CollectionDate: formatDate(handset?.CollectionDate),
-      RenewalDate: formatDate(handset?.RenewalDate),
-      Status: handset.status || handset.Status,
+      EmployeeCode: handset.EmployeeCode || handset.employee_code || "",
+      HandsetName: handset?.HandsetName || handset?.part_no || "",
+      CollectionDate: formatDate(
+        handset?.CollectionDate || handset?.collection_date || handset?.collected_date
+      ),
+      RenewalDate: formatDate(handset?.RenewalDate || handset?.renewal_date),
+      Status: handset.status || handset.Status || handset?.allocation_status || "",
     }));
   };
 
@@ -79,9 +86,21 @@ const Table = () => {
         ? data
         : data.filter(
             (handsets) =>
-              handsets.FullName.toLowerCase().includes(searchText) ||
-              handsets.HandsetName.toLowerCase().includes(searchText) ||
-              handsets.RenewalDate.toLowerCase().includes(searchText)
+              (
+                handsets.FullName ||
+                handsets.employee_name ||
+                ""
+              ).toLowerCase().includes(searchText) ||
+              (
+                handsets.HandsetName ||
+                handsets.part_no ||
+                ""
+              ).toLowerCase().includes(searchText) ||
+              String(
+                handsets.RenewalDate ||
+                handsets.renewal_date ||
+                ""
+              ).toLowerCase().includes(searchText)
           );
 
     setFilteredRows(mapDataToRows(filteredData));

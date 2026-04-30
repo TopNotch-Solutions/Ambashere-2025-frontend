@@ -32,6 +32,7 @@ const AdminHandsets = () => {
   const colors = tokens(theme.palette.mode);
   const [userData, setUserData] = useState(null);
   const [data, setData] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState({});
   const [selectedHandset, setSelectedHandset] = useState({});
   const [combinedData, setCombinedData] = useState({});
@@ -46,6 +47,11 @@ const AdminHandsets = () => {
   const dispatch = useDispatch();
   const { role } = useSelector((state) => state.auth);
   const currentUser = useSelector((state) => state.auth.user);
+  const normalizeHandsetsResponse = (payload) => {
+    if (Array.isArray(payload)) return payload;
+    if (payload && typeof payload === "object") return Object.values(payload);
+    return [];
+  };
   const handleOpenDeviceList = () => setModalOpenDeviceList(true);
   const handleCloseDeviceList = () => setModalOpenDeviceList(false);
   const handleOpenAddHandset = () => setAddHandsetModalOpen(true);
@@ -73,12 +79,15 @@ const AdminHandsets = () => {
 
   useEffect(() => {
     const fetchData = async () => {
+      setIsLoading(true);
       try {
         const response = await axiosInstance.get(`/handsets/staffHandsets`);
-        setData(response.data);
+        setData(normalizeHandsetsResponse(response.data));
       } catch (error) {
         // console.log(error);
         throw error;
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -87,117 +96,124 @@ const AdminHandsets = () => {
 
   const columns = [
     // Add actual DB ID for better referencing
-    { field: "id", headerName: "#", width: 60 }, // This is still your row index
+    // { field: "id", headerName: "#", width: 60 }, // This is still your row index
     { field: "EmployeeCode", headerName: "Employee Code", width: 130 },
     { field: "FixedAssetCode", headerName: "Fixed Asset Code", width: 150 },
     { field: "HandsetName", headerName: "Handset Name", width: 180 },
     { field: "DevicePrice", headerName: "Handset Price", width: 140 },
-    { field: "ExccessPrice", headerName: "Excess Price", width: 140 },
+    // { field: "ExccessPrice", headerName: "Excess Price", width: 140 },
     { field: "MRNumber", headerName: "MR Number", width: 120 }, // New column for MRNumber
-    { 
-      field: "RequestType", 
-      headerName: "Request Type", 
-      width: 120,
-      renderCell: (params) => (
-        <Chip
-          label={params.value}
-          color={params.value === 'New' ? 'primary' : 'secondary'}
-          variant="filled"
-          size="small"
-          sx={{
-            fontWeight: 'bold',
-            fontSize: '0.75rem'
-          }}
-        />
-      )
-    },
-    { field: "RequestDate", headerName: "Requested Date", width: 180 },
+    // { 
+    //   field: "RequestType", 
+    //   headerName: "Request Type", 
+    //   width: 120,
+    //   renderCell: (params) => (
+    //     <Chip
+    //       label={params.value}
+    //       color={params.value === 'New' ? 'primary' : 'secondary'}
+    //       variant="filled"
+    //       size="small"
+    //       sx={{
+    //         fontWeight: 'bold',
+    //         fontSize: '0.75rem'
+    //       }}
+    //     />
+    //   )
+    // },
+    // { field: "RequestDate", headerName: "Requested Date", width: 180 },
     { field: "CollectionDate", headerName: "Collected Date", width: 180 }, // Renamed from AllocationDate for clarity
     { field: "RenewalDate", headerName: "Renewal Date", width: 180 }, // Renamed from NewAllocationDate for clarity
     { field: "Status", headerName: "Status", width: 100 },
-    {
-      field: "actions",
-      type: "actions",
-      headerName: "Actions",
-      width: 150,
-      cellClassName: "actions",
-      getActions: ({ row }) => {
-        const actions = [];
+    // {
+    //   field: "actions",
+    //   type: "actions",
+    //   headerName: "Actions",
+    //   width: 150,
+    //   cellClassName: "actions",
+    //   getActions: ({ row }) => {
+    //     const actions = [];
 
-        // Add probation verification action for New requests that are submitted
-        console.log('Checking row for probation button:', { 
-          RequestType: row.RequestType, 
-          Status: row.Status, 
-          shouldShow: row.RequestType === 'New' && row.Status === 'Submitted' 
-        });
+    //     // Add probation verification action for New requests that are submitted
+    //     console.log('Checking row for probation button:', { 
+    //       RequestType: row.RequestType, 
+    //       Status: row.Status, 
+    //       shouldShow: row.RequestType === 'New' && row.Status === 'Submitted' 
+    //     });
         
-        if (row.RequestType === 'New' && row.Status === 'Submitted') {
-          // Show only probation verification button for New submitted requests
-          console.log('Adding probation verification button for row:', row);
-          actions.push(
-            <GridActionsCellItem
-              icon={<VerifiedUserIcon />}
-              label="Verify Probation"
-              className="textPrimary"
-              onClick={() => handleOpenProbationModal(row)}
-              color="primary"
-              sx={{
-                '&:hover': {
-                  backgroundColor: 'primary.light',
-                }
-              }}
-            />
-          );
-        } else if (row.FixedAssetCode && row.Status === 'Asset Code Assigned') {
-          // Show MR creation button for handsets with Fixed Asset Code assigned
-          console.log('Adding MR creation button for row:', row);
-          actions.push(
-            <GridActionsCellItem
-              icon={<AssignmentIcon />}
-              label="Create MR"
-              className="textPrimary"
-              onClick={() => handleOpenMRNumberModal(row)}
-              color="secondary"
-              sx={{
-                '&:hover': {
-                  backgroundColor: 'secondary.light',
-                }
-              }}
-            />
-          );
-        } else {
-          // Show edit button for all other cases
-          actions.push(
-            <GridActionsCellItem
-              icon={<EditIcon />}
-              label="Edit"
-              className="textPrimary"
-              onClick={() => handleEditClick(row)}
-              color="inherit"
-            />
-          );
-        }
+    //     if (row.RequestType === 'New' && row.Status === 'Submitted') {
+    //       // Show only probation verification button for New submitted requests
+    //       console.log('Adding probation verification button for row:', row);
+    //       actions.push(
+    //         <GridActionsCellItem
+    //           icon={<VerifiedUserIcon />}
+    //           label="Verify Probation"
+    //           className="textPrimary"
+    //           onClick={() => handleOpenProbationModal(row)}
+    //           color="primary"
+    //           sx={{
+    //             '&:hover': {
+    //               backgroundColor: 'primary.light',
+    //             }
+    //           }}
+    //         />
+    //       );
+    //     } else if (row.FixedAssetCode && row.Status === 'Asset Code Assigned') {
+    //       // Show MR creation button for handsets with Fixed Asset Code assigned
+    //       console.log('Adding MR creation button for row:', row);
+    //       actions.push(
+    //         <GridActionsCellItem
+    //           icon={<AssignmentIcon />}
+    //           label="Create MR"
+    //           className="textPrimary"
+    //           onClick={() => handleOpenMRNumberModal(row)}
+    //           color="secondary"
+    //           sx={{
+    //             '&:hover': {
+    //               backgroundColor: 'secondary.light',
+    //             }
+    //           }}
+    //         />
+    //       );
+    //     } else {
+    //       // Show edit button for all other cases
+    //       actions.push(
+    //         <GridActionsCellItem
+    //           icon={<EditIcon />}
+    //           label="Edit"
+    //           className="textPrimary"
+    //           onClick={() => handleEditClick(row)}
+    //           color="inherit"
+    //         />
+    //       );
+    //     }
 
-        return actions;
-      },
-    },
+    //     return actions;
+    //   },
+    // },
   ];
 
   const mapDataToRows = (data) => {
     return data.map((handset, index) => {
       const mappedRow = {
-        id: handset.id, // This remains your sequential row number
-        EmployeeCode: handset.EmployeeCode,
-        HandsetName: handset.HandsetName,
-        DevicePrice: handset.HandsetPrice,
-        ExccessPrice: handset.AccessFeePaid,
-        FixedAssetCode: handset.FixedAssetCode,
-        MRNumber: handset.MRNumber, // *** ADDED MRNumber HERE ***
-        RequestType: handset.RequestType || 'New', // Add RequestType field
-        RequestDate: formatDate(handset.RequestDate),
-        CollectionDate: formatDate(handset.CollectionDate), // *** Changed from AllocationDate and used CollectionDate directly ***
-        RenewalDate: formatDate(handset.RenewalDate), // *** Changed from NewAllocationDate and used RenewalDate directly ***
-        Status: handset.Status || handset.status,
+        id: handset.id || index + 1, // fallback when id is not present
+        EmployeeCode: handset.EmployeeCode || handset.employee_code || "",
+        HandsetName: handset.HandsetName || handset.part_no || "",
+        DevicePrice:
+          handset.HandsetPrice ||
+          handset.handset_price ||
+          handset.device_price ||
+          handset.cost ||
+          "",
+        ExccessPrice: handset.AccessFeePaid || handset.access_fee_paid || handset.excess_price || "",
+        FixedAssetCode: handset.FixedAssetCode || handset.fixed_asset_code || "",
+        MRNumber: handset.MRNumber || handset.mr_number || "",
+        RequestType: handset.RequestType || handset.request_type || "New",
+        RequestDate: formatDate(handset.RequestDate || handset.request_date),
+        CollectionDate: formatDate(
+          handset.CollectionDate || handset.collection_date || handset.collected_date
+        ),
+        RenewalDate: formatDate(handset.RenewalDate || handset.renewal_date),
+        Status: handset.Status || handset.status || handset.allocation_status || "",
       };
       
       // Debug logging for New requests
@@ -228,11 +244,11 @@ const AdminHandsets = () => {
         ? data
         : data.filter(
             (handset) =>
-              handset.FullName?.toLowerCase().includes(searchText) ||
-              handset.HandsetName?.toLowerCase().includes(searchText) ||
-              handset.RenewalDate?.toLowerCase().includes(searchText) ||
-              handset.RequestType?.toLowerCase().includes(searchText) ||
-              handset.EmployeeCode?.toLowerCase().includes(searchText)
+              (handset.FullName || handset.employee_name || "").toLowerCase().includes(searchText) ||
+              (handset.HandsetName || handset.part_no || "").toLowerCase().includes(searchText) ||
+              String(handset.RenewalDate || handset.renewal_date || "").toLowerCase().includes(searchText) ||
+              (handset.RequestType || handset.request_type || "").toLowerCase().includes(searchText) ||
+              (handset.EmployeeCode || handset.employee_code || "").toLowerCase().includes(searchText)
           );
 
     setFilteredRows(mapDataToRows(filteredData));
@@ -294,12 +310,15 @@ const AdminHandsets = () => {
         
         // Refresh the data
         const fetchData = async () => {
+          setIsLoading(true);
           try {
             const response = await axiosInstance.get(`/handsets/staffHandsets`);
-            setData(response.data);
+            setData(normalizeHandsetsResponse(response.data));
           } catch (error) {
             console.log(error);
             throw error;
+          } finally {
+            setIsLoading(false);
           }
         };
         fetchData();
@@ -339,12 +358,15 @@ const AdminHandsets = () => {
         
         // Refresh the data
         const fetchData = async () => {
+          setIsLoading(true);
           try {
             const response = await axiosInstance.get(`/handsets/staffHandsets`);
-            setData(response.data);
+            setData(normalizeHandsetsResponse(response.data));
           } catch (error) {
             console.log(error);
             throw error;
+          } finally {
+            setIsLoading(false);
           }
         };
         fetchData();
@@ -386,12 +408,15 @@ const AdminHandsets = () => {
   const handleAddHandsetSuccess = () => {
     // Refresh the data when a new handset is added
     const fetchData = async () => {
+      setIsLoading(true);
       try {
         const response = await axiosInstance.get(`/handsets/staffHandsets`);
-        setData(response.data);
+        setData(normalizeHandsetsResponse(response.data));
       } catch (error) {
         console.log(error);
         throw error;
+      } finally {
+        setIsLoading(false);
       }
     };
     fetchData();
@@ -425,8 +450,8 @@ const AdminHandsets = () => {
             </IconButton>
           </Box>
           {currentUser.RoleID === 1 ? (
-            <div className="d-flex col-md-6 justify-content-between admin-handsets-actions">
-              <Button
+            <div className="d-flex justify-content-around admin-handsets-actions">
+              {/* <Button
                 className="benefits-cta-btn"
                 onClick={handleOpenAddHandset}
               >
@@ -439,7 +464,7 @@ const AdminHandsets = () => {
               >
                 Upload Price List
                 <UploadFileIcon size={16} />
-              </Button>
+              </Button> */}
               <ExportButton data={rows} fileName="Handsets" className="benefits-cta-btn" />
             </div>
           ) : (
@@ -568,10 +593,28 @@ const AdminHandsets = () => {
               key={filteredRows.length} // Force re-render when data changes
               rows={filteredRows}
               columns={columns}
+              loading={isLoading}
+              slotProps={{
+                loadingOverlay: {
+                  variant: "circular-progress",
+                  noRowsVariant: "circular-progress",
+                },
+              }}
               pageSize={5}
               rowsPerPageOptions={[5, 10, 20]}
               checkboxSelection
               disableSelectionOnClick
+              sx={{
+                "& .MuiDataGrid-overlayWrapper": {
+                  minHeight: "160px",
+                },
+                "& .MuiDataGrid-overlayWrapperInner": {
+                  minHeight: "160px",
+                },
+                "& .MuiCircularProgress-root": {
+                  color: "#1a69ac",
+                },
+              }}
             />
           </div>
         </Box>
