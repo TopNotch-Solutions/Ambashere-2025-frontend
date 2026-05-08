@@ -32,6 +32,7 @@ const AirtimeBenefits = () => {
     const fetchData = async () => {
       try {
         const response = await axiosInstance.get(`/contracts/${employeeCode}`);
+        console.log("gggggg contract data: ",response.data)
         setData(response.data.contracts || []);
       } catch (error) {
         // console.log(error);
@@ -49,7 +50,6 @@ const AirtimeBenefits = () => {
       );
       // console.log("Response data:", response.data); // Log the response to inspect its structure
       if (Array.isArray(response?.data?.staffWithAirtimeAllocation)) {
-        console.log("gggggg: ",response.data)
         setUserDataQ(response.data); // Assuming you want the first element in the array
       } else {
         console.error("Unexpected response format:", response.data);
@@ -62,11 +62,12 @@ const AirtimeBenefits = () => {
   },[])
 
   const columns = [
-    { field: "id", headerName: "#", width: 50 },
+    // { field: "id", headerName: "#", width: 50 },
     { field: "DeviceName", headerName: "DEVICE", width: 240 },
     { field: "PackageName", headerName: "PACKAGE", width: 210 },
     { field: "MSISDN", headerName: "MSISDN", width: 170 },
     { field: "MonthlyPayment", headerName: "MONTHLY PAYMENT", width: 200 },
+    { field: "PayoutBalance", headerName: "PAYOUT AMOUNT", width: 200 },
     { field: "ContractDuration", headerName: "CONTRACT DURATION", width: 200 },
     { field: "ContractStartDate", headerName: "ALLOCATION DATE", width: 180 },
     { field: "ContractEndDate", headerName: "EXPIRY DATE", width: 180 },
@@ -74,13 +75,14 @@ const AirtimeBenefits = () => {
 
   const rows = data.map((airtime, index) => ({
     id: index + 1,
-    DeviceName: airtime.DeviceName,
-    PackageName: airtime.PackageName,
-    MSISDN: airtime?.MSISDN || "",
-    MonthlyPayment: "N$ " + airtime.MonthlyPayment,
-    ContractDuration: airtime.ContractDuration,
-    ContractStartDate: airtime.ContractStartDate,
-    ContractEndDate: airtime.ContractEndDate,
+    DeviceName: airtime.device,
+    PackageName: airtime.package,
+    MSISDN: airtime?.msisdn || "",
+    MonthlyPayment: "N$ " + airtime.device_monthly_price,
+    PayoutBalance: "N$ " + airtime.device_payout_balance,
+    ContractDuration: airtime.contract_duration,
+    ContractStartDate: new Date(airtime.contract_start_date).toLocaleDateString(),
+ContractEndDate: new Date(airtime.contract_end_date).toLocaleDateString(),
   }));
 
   const handleOpen = async () => {

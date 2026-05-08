@@ -46,13 +46,13 @@ const HandsetBenefits = () => {
   }, [employeeCode]);
 
   const columns = [
-    { field: "id", headerName: "#", width: 60 },
+    // { field: "id", headerName: "#", width: 60 },
     { field: "EmployeeCode", headerName: "Employee Code", width: 130 },
     { field: "FixedAssetCode", headerName: "Fixed Asset Code", width: 150 },
     { field: "HandsetName", headerName: "Handset Name", width: 180 },
     { field: "DevicePrice", headerName: "Handset Price", width: 140 },
-    { field: "ExccessPrice", headerName: "Exccess Price", width: 140 },
-    { field: "RequestDate", headerName: "Requested Date", width: 180 },
+    // { field: "ExccessPrice", headerName: "Exccess Price", width: 140 },
+    // { field: "RequestDate", headerName: "Requested Date", width: 180 },
     { field: "AllocationDate", headerName: "Collected Date", width: 180 },
     { field: "NewAllocationDate", headerName: "New Renewal Date", width: 180 },
     { field: "Status", headerName: "Status", width: 100 ,},
@@ -70,7 +70,7 @@ const HandsetBenefits = () => {
        RequestDate: formatDate(handset.RequestDate),
        AllocationDate: formatDate(handset.CollectionDate),
        NewAllocationDate: formatDate(handset.RenewalDate),
-       Status: handset.status,
+       Status: handset.Status,
   }));
 
   return (

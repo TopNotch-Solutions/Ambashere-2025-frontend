@@ -40,6 +40,7 @@ const UserBenefits = () => {
         const response = await axiosInstance.get(
           `/contracts/${currentUser.EmployeeCode}`
         );
+        console.log("gggggg contract data: ",response.data)
         setData(response.data.contracts || []);
       } catch (error) {
         // console.log(error);
@@ -104,11 +105,14 @@ const UserBenefits = () => {
   const columns = [
     { field: "PackageName", headerName: "PACKAGE NAME", width: 220 },
     { field: "DeviceName", headerName: "DEVICE NAME", width: 220 },
+    { field: "MSISDN", headerName: "MSISDN", width: 180 },
+    { field: "DevicePrice", headerName: "DEVICE PRICE", width: 180 },
     { field: "ContractDuration", headerName: "PAYEMENT DURATION", width: 210 },
-    { field: "SubscriptionStatus", headerName: "STATUS", width: 180 },
     { field: "MonthlyPayment", headerName: "MONTHLY PAYMENT", width: 180 },
+    { field: "PayoutBalance", headerName: "PAYOUT AMOUNT", width: 180 },
     { field: "ContractStartDate", headerName: "CONTRACT START", width: 180 },
     { field: "ContractEndDate", headerName: "CONTRACT END", width: 180 },
+    { field: "SubscriptionStatus", headerName: "STATUS", width: 180 },
   //   {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
   //         field: "actions",
   //         type: "actions",
@@ -142,6 +146,11 @@ const UserBenefits = () => {
     id: `benefit-${contract?.id ?? contract?.ContractNumber ?? index + 1}`,
     PackageName: contract?.PackageName || contract?.package || "-",
     DeviceName: contract?.DeviceName || contract?.device || "-",
+    MSISDN: contract?.MSISDN || contract?.msisdn || "-",
+    DevicePrice: `N$ ${Number(contract?.DevicePrice ?? contract?.device_initial_cost ?? 0).toLocaleString("en-NA", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`,
     ContractDuration:
       contract?.ContractDuration != null || contract?.contract_duration != null
         ? String(
@@ -152,11 +161,16 @@ const UserBenefits = () => {
         : "-",
     ContractStartDate: formatDate(contract?.ContractStartDate ?? contract?.contract_start_date),
     ContractEndDate: formatDate(contract?.ContractEndDate ?? contract?.contract_end_date),
-    SubscriptionStatus: contract?.SubscriptionStatus || contract?.subscription_status || "-",
+    
     MonthlyPayment: `N$ ${Number(contract?.MonthlyPayment ?? contract?.monthly_payment ?? 0).toLocaleString("en-NA", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     })}`,
+    PayoutBalance: `N$ ${Number(contract?.device_payout_balance ?? contract?.device_payout_balance ?? 0).toLocaleString("en-NA", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`,
+    SubscriptionStatus: contract?.SubscriptionStatus || contract?.subscription_status || "-",
     ApprovalStatus: contract.ApprovalStatus
   }));
 
