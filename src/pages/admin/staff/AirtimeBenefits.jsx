@@ -22,6 +22,8 @@ const AirtimeBenefits = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [userData, setUserData] = useState([]);
   const [userDataQ, setUserDataQ] = useState(null);
+  const [available, setAvailable] = useState(0);
+  const [newAllowance, setNewAllowance] = useState(0);
   const [handsetData, setHandsetData] = useState([]);
   const { role } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
@@ -34,6 +36,8 @@ const AirtimeBenefits = () => {
         const response = await axiosInstance.get(`/contracts/${employeeCode}`);
         console.log("gggggg contract data: ",response.data)
         setData(response.data.contracts || []);
+        setAvailable(response.data.available);
+        setNewAllowance(response.data.available + response.data.sul);
       } catch (error) {
         // console.log(error);
       }
@@ -66,11 +70,14 @@ const AirtimeBenefits = () => {
     { field: "DeviceName", headerName: "DEVICE", width: 240 },
     { field: "PackageName", headerName: "PACKAGE", width: 210 },
     { field: "MSISDN", headerName: "MSISDN", width: 170 },
-    { field: "MonthlyPayment", headerName: "MONTHLY PAYMENT", width: 200 },
+    { field: "MonthlyPayment", headerName: "DEVICE MONTHLY PAYMENT", width: 200 },
+    { field: "PackageMonthlyPayment", headerName: "PACKAGE MONTHLY PAYMENT", width: 200 },
+    { field: "TotalMonthlyPayment", headerName: "TOTAL MONTHLY PAYMENT", width: 200 },
     { field: "PayoutBalance", headerName: "PAYOUT AMOUNT", width: 200 },
     { field: "ContractDuration", headerName: "CONTRACT DURATION", width: 200 },
     { field: "ContractStartDate", headerName: "ALLOCATION DATE", width: 180 },
     { field: "ContractEndDate", headerName: "EXPIRY DATE", width: 180 },
+    { field: "Status", headerName: "STATUS", width: 200 },
   ];
 
   const rows = data.map((airtime, index) => ({
@@ -79,10 +86,13 @@ const AirtimeBenefits = () => {
     PackageName: airtime.package,
     MSISDN: airtime?.msisdn || "",
     MonthlyPayment: "N$ " + airtime.device_monthly_price,
+    PackageMonthlyPayment: "N$ " + airtime.serviceplan_monthly_price,
+    TotalMonthlyPayment: "N$ " + (Number(airtime.device_monthly_price) + Number(airtime.serviceplan_monthly_price)).toFixed(2),
     PayoutBalance: "N$ " + airtime.device_payout_balance,
     ContractDuration: airtime.contract_duration,
     ContractStartDate: new Date(airtime.contract_start_date).toLocaleDateString(),
 ContractEndDate: new Date(airtime.contract_end_date).toLocaleDateString(),
+Status: airtime.subscription_status,
   }));
 
   const handleOpen = async () => {
@@ -137,7 +147,7 @@ ContractEndDate: new Date(airtime.contract_end_date).toLocaleDateString(),
                         <p>Available Allowance</p>
                         <p>
                           N${" "}
-                          {userDataQ?.available}
+                          {available.toFixed(2)}
                         </p>
                       </div>
                       <div
@@ -155,25 +165,7 @@ ContractEndDate: new Date(airtime.contract_end_date).toLocaleDateString(),
                         <p>New Allowance</p>
                         <p>
                           N${" "}
-                          {
-  (() => {
-    // Safely get the values, defaulting to 0 if undefined or null
-    const airtimeAllocation = userDataQ?.staffWithAirtimeAllocation?.[0]?.AirtimeAllocation || 0;
-    const available = userDataQ?.available || 0;
-
-    // Calculate the initial result
-    let result = (0.30 * airtimeAllocation) + available;
-
-    // Apply the condition: if result is less than 0, use 30% of airtimeAllocation
-    if (result < 0) {
-      result = (0.30 * airtimeAllocation);
-    }
-
-    // Format to 2 decimal places.
-    // Handle NaN case: if 'result' is NaN, return '0.00'
-    return Number.isNaN(result) ? '0.00' : result.toFixed(2);
-  })()
-}
+                          {newAllowance.toFixed(2)}
                         </p>
                       </div>
                       <div

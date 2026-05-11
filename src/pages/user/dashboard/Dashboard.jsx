@@ -105,10 +105,13 @@ const UserDashboard = () => {
     { field: "MSISDN", headerName: "MSISDN", width: 170 },
     { field: "PackageName", headerName: "Package Name", width: 180 },
     { field: "MonthlyPayment", headerName: "Monthly Payment", width: 180 },
+    { field: "PackageMonthlyPayment", headerName: "Package Monthly Payment", width: 180 },
     { field: "DeviceName", headerName: "Equipment Name", width: 180 },
     { field: "DevicePrice", headerName: "Equipment Price", width: 180 },
+    { field: "TotalMonthlyPayment", headerName: "Total Monthly Payment", width: 180 },
     { field: "ContractStartDate", headerName: "Contract Start Date", width: 200 },
     { field: "ContractEndDate", headerName: "Contract End Date", width: 200 },
+    { field: "Status", headerName: "Status", width: 180 },
   ];
 
   const airtimeContracts = Array.isArray(airtimeData?.contracts)
@@ -128,12 +131,15 @@ const UserDashboard = () => {
     MSISDN: airtime?.msisdn || airtime?.MSISDN || airtime?.staff_msisdn || "",
     PackageName: airtime?.package || airtime?.PackageName || "-",
     MonthlyPayment: formatMoney(airtime?.MonthlyPayment ?? airtime?.monthly_payment),
+    PackageMonthlyPayment: formatMoney(airtime?.PackageMonthlyPayment ?? airtime?.serviceplan_monthly_price),
     DeviceName: airtime?.device || airtime?.DeviceName || "-",
     DevicePrice: formatMoney(
       airtime?.DevicePrice ?? airtime?.device_initial_cost ?? airtime?.device_payout_balance
     ),
     ContractStartDate: formatDate(airtime?.contract_start_date ?? airtime?.ContractStartDate),
     ContractEndDate: formatDate(airtime?.contract_end_date ?? airtime?.ContractEndDate),
+    Status: airtime?.subscription_status,
+    TotalMonthlyPayment: formatMoney(airtime?.TotalMonthlyPayment ?? airtime?.device_monthly_price + airtime?.serviceplan_monthly_price),
   }));
 
   const handsetColumns = [
@@ -293,7 +299,7 @@ const UserDashboard = () => {
                             )}
                           </div>
                         )}
-                        {/* {showAirtime && (
+                      {showAirtime && (
                           <div
                             className="col-md-3 col-lg-5 rounded-3 mb-2 mb-md-0 shadow p-4 align-items-center mt-lg-4 me-3"
                             style={{ backgroundColor: "#0096D6", color: "white", borderRadius: "10px" }}
@@ -322,7 +328,7 @@ const UserDashboard = () => {
                               </p>
                             )}
                           </div>
-                        )} */}
+                        )}
 
                         {!showAirtime && (
                           <div
