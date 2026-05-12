@@ -30,6 +30,7 @@ const UserDashboard = () => {
   const [isLoadingHandset, setIsLoadingHandset] = useState(false);
   const [benefitAmount, setBenefitAmount] = useState(0);
   const currentUser = useSelector((state) => state.auth.user);
+  console.log("Current user loggedIn: ",currentUser)
   const navigate = useNavigate();
   const selfHelp = () => {
     navigate("/user/SelfHelp");
@@ -163,6 +164,8 @@ const UserDashboard = () => {
     // { field: "StaffPrice", headerName: "Handset Price", width: 130 },
     { field: "AllocationDate", headerName: "Date Issued", width: 180 },
     { field: "NewAllocationDate", headerName: "New Handset Date", width: 180 },
+    { field: "Status", headerName: "Status", width: 180 },
+
   ];
   console.log("this is the api: ", handsetData?.handsets);
   const handsetRows = (handsetData?.handsets || []).map((handset, index) => ({
@@ -174,6 +177,7 @@ const UserDashboard = () => {
     HandsetName: handset?.HandsetName,
     AllocationDate: formatDate(handset?.CollectionDate),
     NewAllocationDate: formatDate(handset?.RenewalDate),
+    Status: handset?.Status
     // DevicePrice: "N$ " + handset.DevicePrice,
   }));
 
