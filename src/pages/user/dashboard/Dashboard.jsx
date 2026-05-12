@@ -28,6 +28,7 @@ const UserDashboard = () => {
   const [isLoadingTemp, setIsLoadingTemp] = useState(false);
   const [isLoadingAirtime, setIsLoadingAirtime] = useState(false);
   const [isLoadingHandset, setIsLoadingHandset] = useState(false);
+  const [benefitAmount, setBenefitAmount] = useState(0);
   const currentUser = useSelector((state) => state.auth.user);
   const navigate = useNavigate();
   const selfHelp = () => {
@@ -92,7 +93,20 @@ const UserDashboard = () => {
         setIsLoadingHandset(false);
       }
     };
+    const fetchBenefitAllocation = async () => {
+      try {
+        const response = await axiosInstance.get(
+          `/staffmember/staff/handset-allocation/${currentUser.EmployeeCode}`
+        );
+        console.log("staffmember allocation", response?.data)
+        const allocation = response?.data?.myAllocation?.HandsetAllocation || 0;
+        setBenefitAmount(allocation);
+      } catch (error) {
+        setBenefitAmount(0);
+      }
+    };
 
+    fetchBenefitAllocation();
     if (currentUser.EmploymentCategory === "Temporary") {
       fetchTemData();
     } else {
@@ -267,8 +281,7 @@ const UserDashboard = () => {
                                       airtimeData?.airtimeAllocation
                                   ).toFixed(2)
                                 : Number(
-                                    handsetData?.handsetAllocation ??
-                                      noHandset?.handsetAllocation
+                                    benefitAmount
                                   ).toFixed(2)) ?? 0}
                             </p>
                           )}
