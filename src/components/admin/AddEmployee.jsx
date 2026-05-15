@@ -14,10 +14,64 @@ import Swal from "sweetalert2";
 import CloseIcon from "@mui/icons-material/Close";
 import axiosInstance from "../../utils/axiosInstance";
 
-const AddEmployee = ({ open, handleClose, mode = "", employeeData = {} }) => {
+const INITIAL_FORM_VALUES = {
+  EmployeeCode: "",
+  FirstName: "",
+  LastName: "",
+  FullName: "",
+  UserName: "",
+  Email: "",
+  PhoneNumber: "",
+  Gender: "",
+  ServicePlan: "",
+  Position: "",
+  Department: "",
+  Division: "",
+  EmploymentCategory: "",
+  EmploymentStatus: "Active",
+  RoleID: "",
+  AllocationID: "",
+};
+
+const FORM_FIELD_KEYS = Object.keys(INITIAL_FORM_VALUES);
+
+const mapEmployeeToForm = (employee = {}) => {
+  const mapped = { ...INITIAL_FORM_VALUES };
+
+  FORM_FIELD_KEYS.forEach((key) => {
+    const value = employee[key];
+    if (value != null && value !== "") {
+      mapped[key] = value;
+    }
+  });
+
+  if (employee.RoleID != null && employee.RoleID !== "") {
+    mapped.RoleID = String(employee.RoleID);
+  }
+  if (employee.AllocationID != null && employee.AllocationID !== "") {
+    mapped.AllocationID = String(employee.AllocationID);
+  }
+
+  if (!mapped.FirstName && mapped.FullName) {
+    const nameParts = mapped.FullName.trim().split(/\s+/);
+    mapped.FirstName = nameParts[0] || "";
+    mapped.LastName = nameParts.slice(1).join(" ") || "";
+  }
+
+  return mapped;
+};
+
+const AddEmployee = ({
+  open,
+  handleClose,
+  mode = "",
+  employeeData = {},
+  onSuccess,
+}) => {
   const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [originalEmployeeCode, setOriginalEmployeeCode] = useState("");
   var phoneNumberRegex = /^(81\d{7}|081\d{7}|26481\d{7}|\+26481\d{7})$/;
-  var employeeCodeRegex = /^E-?[A-Z]{4}\d{2}$/;
 
   const employmentCategories = [
     { value: "Permanent", label: "Permanent" },
@@ -36,35 +90,47 @@ const AddEmployee = ({ open, handleClose, mode = "", employeeData = {} }) => {
     Retired: [{ value: "6", label: "Retiree" }],
   };
 
-  const [formValues, setFormValues] = useState({
-    EmployeeCode: "",
-    FirstName: "",
-    LastName: "",
-    FullName: "",
-    UserName: "",
-    Email: "",
-    PhoneNumber: "",
-    Gender: "",
-    ServicePlan: "",
-    Position: "",
-    Department: "",
-    Division: "",
-    EmploymentCategory: "",
-    EmploymentStatus: "Active",
-    RoleID: "",
-    AllocationID: "",
-  });
+  const [formValues, setFormValues] = useState(INITIAL_FORM_VALUES);
 
   useEffect(() => {
-    if (mode === "edit" && employeeData) {
-      setFormValues(employeeData);
-    } else if (mode === "inactive" && employeeData) {
-      setFormValues({
-        ...employeeData,
-        EmploymentStatus: "Inactive",
-      });
-    }
-  }, [mode, employeeData]);
+    if (!open) return;
+
+    const loadEmployeeForm = async () => {
+      setErrors({});
+
+      if (mode === "add") {
+        setFormValues(INITIAL_FORM_VALUES);
+        setOriginalEmployeeCode("");
+        setLoading(false);
+        return;
+      }
+
+      const employeeCode = employeeData?.EmployeeCode;
+      if (!employeeCode) return;
+
+      setLoading(true);
+      setOriginalEmployeeCode(employeeCode);
+
+      try {
+        const response = await axiosInstance.get(`/staffmember/${employeeCode}`);
+        const mapped = mapEmployeeToForm(response.data);
+        if (mode === "inactive") {
+          mapped.EmploymentStatus = "Inactive";
+        }
+        setFormValues(mapped);
+      } catch {
+        const mapped = mapEmployeeToForm(employeeData);
+        if (mode === "inactive") {
+          mapped.EmploymentStatus = "Inactive";
+        }
+        setFormValues(mapped);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadEmployeeForm();
+  }, [open, mode, employeeData?.EmployeeCode]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -87,29 +153,19 @@ const AddEmployee = ({ open, handleClose, mode = "", employeeData = {} }) => {
         newValues = { ...newValues, [name]: formattedPhoneNumber };
       }
 
-      // Autofill email based on first and last name
-      if (name === "FirstName" || name === "LastName") {
+      // Autofill email and username when adding a new employee
+      if (mode === "add" && (name === "FirstName" || name === "LastName")) {
         const firstName = name === "FirstName" ? value : prevValues.FirstName;
         const lastName = name === "LastName" ? value : prevValues.LastName;
 
         if (firstName && lastName) {
-          const email = `${firstName[0].toLowerCase()}${lastName
+          newValues.Email = `${firstName[0].toLowerCase()}${lastName
             .trim()
             .toLowerCase()}@mtc.com.na`;
-          newValues.Email = email;
-        }
-      }
-
-      // UserName
-      if (name === "FirstName" || name === "LastName") {
-        const firstName = name === "FirstName" ? value : prevValues.FirstName;
-        const lastName = name === "LastName" ? value : prevValues.LastName;
-
-        if (firstName && lastName) {
-          const username = `${lastName
+          newValues.UserName = `${lastName
             .trim()
             .toLowerCase()}${firstName.trim().toLowerCase()}`;
-          newValues.UserName = username;
+          newValues.FullName = `${firstName} ${lastName}`;
         }
       }
 
@@ -141,73 +197,72 @@ const AddEmployee = ({ open, handleClose, mode = "", employeeData = {} }) => {
     }
   };
 
+  const buildPayload = (values) => {
+    const payload = {};
+    FORM_FIELD_KEYS.forEach((key) => {
+      payload[key] = values[key];
+    });
+    return payload;
+  };
+
   const handleSave = async (e) => {
     e.preventDefault();
-    const payload = { ...formValues };
-    delete payload.ProfileImage;
 
     let validationErrors = {};
+    const payload = buildPayload(formValues);
 
-    // Check required fields
-    for (const [key, value] of Object.entries(formValues)) {
-      if (!value && key !== "EmploymentStatus" && key !== "ProfileImage") {
-        validationErrors[key] = "This field is required";
+    if (mode === "inactive") {
+      if (!payload.EmployeeCode) {
+        validationErrors.EmployeeCode = "This field is required";
+      }
+    } else {
+      FORM_FIELD_KEYS.forEach((key) => {
+        if (key !== "EmploymentStatus" && !payload[key]) {
+          validationErrors[key] = "This field is required";
+        }
+      });
+
+      const formattedPhoneNumber = validatePhoneNumber(payload.PhoneNumber);
+      if (!phoneNumberRegex.test(formattedPhoneNumber)) {
+        validationErrors.PhoneNumber = "Please enter a valid phone number.";
+      } else {
+        payload.PhoneNumber = formattedPhoneNumber;
       }
     }
-    const lastName = formValues.LastName;
-    const formattedPhoneNumber = validatePhoneNumber(formValues.PhoneNumber);
-    const employeeCode = formValues.EmployeeCode;
-
-    // Validate specific fields
-    // Validate phone number
-    if (!phoneNumberRegex.test(formattedPhoneNumber)) {
-      validationErrors.PhoneNumber = "Please enter a valid phone number.";
-    } else {
-      formValues.PhoneNumber = formattedPhoneNumber; // Ensure phone number is correctly formatted before saving
-    }
-
-    // Validate employeeCode
-    if (!employeeCodeRegex.test(employeeCode)) {
-      validationErrors.EmployeeCode = "Please enter a valid employee code.";
-    } else {
-      const codeLetters = employeeCode.startsWith("E-")
-        ? employeeCode.slice(2, 6)
-        : employeeCode.slice(1, 5);
-      if (codeLetters !== lastName.slice(0, 4).toUpperCase()) {
-        validationErrors.EmployeeCode =
-          "Employee code does not match the first four letters of the last name.";
-      }
-    }
-
-    // console.log(validationErrors); // Log validation errors
 
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;
     }
 
+    setErrors({});
+
     try {
       let response;
       if (mode === "add") {
         response = await axiosInstance.post(
           "/staffmember/createStaff",
-          formValues
+          payload
         );
       } else if (mode === "edit") {
+        const updateCode = originalEmployeeCode || payload.EmployeeCode;
         response = await axiosInstance.put(
-          `/staffmember/updateStaff/${formValues.EmployeeCode}`,
-          formValues
+          `/staffmember/updateStaff/${updateCode}`,
+          payload
         );
       } else if (mode === "inactive") {
         response = await axiosInstance.put(
-          `/staffmember/removeStaff/${formValues.EmployeeCode}`,
+          `/staffmember/removeStaff/${payload.EmployeeCode}`,
           { EmploymentStatus: "Inactive" }
         );
       }
 
-      // console.log(response); // Log the API response
-      if (response.status >= 200 && response.status < 300) {
-        handleClose();
+      if (response?.status >= 200 && response?.status < 300) {
+        if (onSuccess) {
+          onSuccess();
+        } else {
+          handleClose();
+        }
         Swal.fire({
           icon: "success",
           title: "Success",
@@ -220,7 +275,6 @@ const AddEmployee = ({ open, handleClose, mode = "", employeeData = {} }) => {
           } successfully!`,
         });
       } else {
-        handleClose();
         Swal.fire({
           icon: "error",
           title: "Failed",
@@ -234,18 +288,22 @@ const AddEmployee = ({ open, handleClose, mode = "", employeeData = {} }) => {
         });
       }
     } catch (error) {
-      // console.log(error); // Log any caught errors
-      handleClose();
+      const apiMessage =
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        error?.message;
       Swal.fire({
         icon: "error",
         title: "Error",
-        text: `Error ${
-          mode === "add"
-            ? "adding"
-            : mode === "edit"
-            ? "updating"
-            : "setting to inactive"
-        } employee. Please try again.`,
+        text:
+          apiMessage ||
+          `Error ${
+            mode === "add"
+              ? "adding"
+              : mode === "edit"
+              ? "updating"
+              : "setting to inactive"
+          } employee. Please try again.`,
       });
     }
   };
@@ -268,6 +326,9 @@ const AddEmployee = ({ open, handleClose, mode = "", employeeData = {} }) => {
         }}
       >
         <form onSubmit={handleSave}>
+          {loading && (
+            <p className="text-center">Loading employee details...</p>
+          )}
           <div className="row">
             <div className="col">
               <h2 className="text-center">
@@ -300,7 +361,7 @@ const AddEmployee = ({ open, handleClose, mode = "", employeeData = {} }) => {
                 margin="normal"
                 error={!!errors.EmployeeCode}
                 helperText={errors.EmployeeCode}
-                disabled={mode === "edit" || mode === "inactive"}
+                disabled={mode === "inactive"}
               />
             </div>
 
@@ -314,7 +375,7 @@ const AddEmployee = ({ open, handleClose, mode = "", employeeData = {} }) => {
                 margin="normal"
                 error={!!errors.FirstName}
                 helperText={errors.FirstName}
-                disabled={mode === "edit" || mode === "inactive"}
+                disabled={mode === "inactive"}
               />
             </div>
           </div>
@@ -341,15 +402,16 @@ const AddEmployee = ({ open, handleClose, mode = "", employeeData = {} }) => {
                 name="FullName"
                 label="Full Name"
                 value={
-                  (formValues.FullName =
-                    formValues.FirstName + " " + formValues.LastName)
+                  mode === "add"
+                    ? `${formValues.FirstName} ${formValues.LastName}`.trim()
+                    : formValues.FullName
                 }
                 onChange={handleChange}
                 fullWidth
                 margin="normal"
                 error={!!errors.FullName}
                 helperText={errors.FullName}
-                disabled={true}
+                disabled={mode !== "edit"}
                 sx={{
                   color: "black",
                 }}
@@ -364,15 +426,16 @@ const AddEmployee = ({ open, handleClose, mode = "", employeeData = {} }) => {
                 name="UserName"
                 label="User Name"
                 value={
-                  (formValues.UserName =
-                    formValues.LastName + formValues.FirstName.charAt(0))
+                  mode === "add"
+                    ? `${formValues.LastName}${formValues.FirstName.charAt(0) || ""}`
+                    : formValues.UserName
                 }
                 onChange={handleChange}
                 fullWidth
                 margin="normal"
-                error={!!errors.FullName}
-                helperText={errors.FullName}
-                disabled={true}
+                error={!!errors.UserName}
+                helperText={errors.UserName}
+                disabled={mode !== "edit"}
                 sx={{
                   color: "black",
                 }}
@@ -389,7 +452,7 @@ const AddEmployee = ({ open, handleClose, mode = "", employeeData = {} }) => {
                 margin="normal"
                 error={!!errors.Email}
                 helperText={errors.Email}
-                disabled={true}
+                disabled={mode !== "edit"}
               />
             </div>
           </div>
@@ -424,7 +487,7 @@ const AddEmployee = ({ open, handleClose, mode = "", employeeData = {} }) => {
                   name="Gender"
                   value={formValues.Gender}
                   onChange={handleChange}
-                  disabled={mode === "edit" || mode === "inactive"}
+                  disabled={mode === "inactive"}
                 >
                   <MenuItem value="Male">Male</MenuItem>
                   <MenuItem value="Female">Female</MenuItem>
@@ -592,17 +655,17 @@ const AddEmployee = ({ open, handleClose, mode = "", employeeData = {} }) => {
                   name="RoleID"
                   value={formValues.RoleID}
                   onChange={handleChange}
-                  disabled={mode === "edit" || mode === "inactive"}
+                  disabled={mode === "inactive"}
                 >
                   <MenuItem value="1">Admin</MenuItem>
                   <MenuItem value="3">User</MenuItem>
-
+{/* 
                   <MenuItem value="9">Fixed Asset Team</MenuItem>
                   <MenuItem value="5">Billing Team</MenuItem>
                   <MenuItem value="6">Key Accounts Supervisor</MenuItem>
                   <MenuItem value="7">ER Team</MenuItem>
                   <MenuItem value="10">Warehouse Team</MenuItem>
-                  <MenuItem value="11">Retail Store Supervisor</MenuItem>
+                  <MenuItem value="11">Retail Store Supervisor</MenuItem> */}
                   
                 </Select>
                 {errors.RoleID && (
@@ -630,7 +693,7 @@ const AddEmployee = ({ open, handleClose, mode = "", employeeData = {} }) => {
                 borderColor: "#1A69AC",
                 border: "1px solid",
               }}
-              // disabled={mode === "inactive"}
+              disabled={loading}
             >
               Submit
             </Button>

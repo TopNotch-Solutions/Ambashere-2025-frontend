@@ -29,18 +29,17 @@ const Employees = () => {
   const dispatch = useDispatch();
   const currentUser = useSelector((state) => state.auth.user);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await axiosInstance.get(`/staffmember`);
-        setData(response.data);
-      } catch (error) {
-        // console.log(error);
-        throw error;
-      }
-    };
+  const fetchEmployees = async () => {
+    try {
+      const response = await axiosInstance.get(`/staffmember`);
+      setData(response.data);
+    } catch (error) {
+      throw error;
+    }
+  };
 
-    fetchData();
+  useEffect(() => {
+    fetchEmployees();
   }, [dispatch]);
 
   const columns = [
@@ -131,6 +130,11 @@ const Employees = () => {
     setModalOpen(true);
   };
   const handleClose = () => setModalOpen(false);
+
+  const handleEmployeeSaved = () => {
+    setModalOpen(false);
+    fetchEmployees();
+  };
 
   const handleAddNewEmployee = () => {
     setModalMode("add");
@@ -246,6 +250,7 @@ const Employees = () => {
                 style={{ height: "100%" }}
                 open={modalOpen}
                 handleClose={handleClose}
+                onSuccess={handleEmployeeSaved}
                 mode={modalMode}
                 employeeData={currentEmployee}
               />
