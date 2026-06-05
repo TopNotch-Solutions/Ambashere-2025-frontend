@@ -3,7 +3,7 @@ import axios from 'axios';
 const axiosInstance = axios.create({
   //baseURL: 'http://localhost:4000',
   //baseURL: 'http://172.19.13.140:4000' uat,
- baseURL: 'https://amberspharebackend.mtc.com.na', // prod
+ baseURL: 'https://amberspherebackend.mtc.com.na', // prod
   headers: { 'Content-Type': 'application/json' },
 });
 
