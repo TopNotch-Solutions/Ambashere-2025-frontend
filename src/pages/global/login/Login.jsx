@@ -211,6 +211,7 @@ const Login = () => {
                   <input
                     type="text"
                     className="form-control"
+                    id="username"
                     placeholder="DoeJ"
                     autoComplete="off"
                     name="username"
