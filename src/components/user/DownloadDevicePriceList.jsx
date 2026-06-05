@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Button } from "@mui/material";
 import Swal from "sweetalert2";
 import axiosInstance from "../../utils/axiosInstance";
+import { ensureHttpsUrl } from "../../utils/ensureHttpsUrl";
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 
 const DownloadDevicePriceList = () => {
@@ -13,7 +14,7 @@ const DownloadDevicePriceList = () => {
       try {
         const response = await axiosInstance.get("/priceList/");
         if (response.data.fileUrl) {
-          setFileUrl(response.data.fileUrl);
+          setFileUrl(ensureHttpsUrl(response.data.fileUrl));
         } else {
           Swal.fire({
             title: "No File Available",

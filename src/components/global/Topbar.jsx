@@ -13,6 +13,7 @@ import { useSelector } from "react-redux";
 import NotificationDropdown from "./NotificationDropdown";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "../../utils/axiosInstance";
+import { ensureHttpsUrl } from "../../utils/ensureHttpsUrl";
 
 const Topbar = ({ profilePicture, OpenSidebar }) => {
   const theme = useTheme();
@@ -23,7 +24,7 @@ const Topbar = ({ profilePicture, OpenSidebar }) => {
   const currentUser = useSelector((state) => state.auth.user);
   const { role } = useSelector((state) => state.auth);
   let profileImage = currentUser?.ProfileImage
-    ? JSON.parse(currentUser.ProfileImage).ProfileImage
+    ? ensureHttpsUrl(JSON.parse(currentUser.ProfileImage).ProfileImage)
     : null;
   const notifications = useSelector(
     (state) => state.notifications.notifications

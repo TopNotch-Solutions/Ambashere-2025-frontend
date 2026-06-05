@@ -7,6 +7,7 @@ import {
 } from "@mui/material";
 import { tokens } from "../../../theme";
 import axiosInstance from "../../../utils/axiosInstance";
+import { ensureHttpsUrl } from "../../../utils/ensureHttpsUrl";
 
 const Personal = () => {
   const { employeeCode } = useParams();
@@ -15,7 +16,7 @@ const Personal = () => {
   const colors = tokens(theme.palette.mode);
   const [loading, setLoading] = useState(true);
   let profileImage = employee?.ProfileImage
-    ? JSON.parse(employee.ProfileImage).ProfileImage
+    ? ensureHttpsUrl(JSON.parse(employee.ProfileImage).ProfileImage)
     : null;
 
   useEffect(() => {

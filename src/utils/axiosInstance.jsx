@@ -1,13 +1,22 @@
 import axios from 'axios';
+import { ensureHttpsUrl } from './ensureHttpsUrl';
 
 const axiosInstance = axios.create({
-  
- baseURL: 'https://amberspherebackend.mtc.com.na', // prod
+  baseURL: ensureHttpsUrl(
+    process.env.REACT_APP_API_URL || 'https://amberspherebackend.mtc.com.na'
+  ),
   headers: { 'Content-Type': 'application/json' },
 });
 
 axiosInstance.interceptors.request.use(
   (config) => {
+    if (config.baseURL) {
+      config.baseURL = ensureHttpsUrl(config.baseURL);
+    }
+    if (config.url) {
+      config.url = ensureHttpsUrl(config.url);
+    }
+
     const token = localStorage.getItem('accessToken');
     if (token) {
       config.headers['Authorization'] = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
