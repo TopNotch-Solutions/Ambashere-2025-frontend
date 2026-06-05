@@ -86,7 +86,7 @@ const Landing = () => {
                   height="28"
                   viewBox="0 0 24 24"
                   fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
+                  xmlns="https://www.w3.org/2000/svg"
                   stroke="#fa0000"
                   strokeWidth="0.24"
                 >
@@ -116,7 +116,7 @@ const Landing = () => {
                   height="28px"
                   viewBox="0 0 24.00 24.00"
                   fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
+                  xmlns="https://www.w3.org/2000/svg"
                   stroke="#fa0000"
                   stroke-width="0.00024000000000000003"
                 >
@@ -155,7 +155,7 @@ const Landing = () => {
                   height="28px"
                   viewBox="0 0 24.00 24.00"
                   fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
+                  xmlns="https://www.w3.org/2000/svg"
                   stroke="#fa0000"
                   stroke-width="0.00024000000000000003"
                 >
@@ -191,7 +191,7 @@ const Landing = () => {
                 <svg
                   viewBox="0 0 24 24"
                   fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
+                  xmlns="https://www.w3.org/2000/svg"
                   stroke="#ffffff"
                   className="ms-3"
                   width="40px"
@@ -229,7 +229,7 @@ const Landing = () => {
                   enable-background="new 0 0 512 512"
                   id="chair_x5F_umbrella"
                   version="1.1"
-                  xmlns="http://www.w3.org/2000/svg"
+                  xmlns="httpx://www.w3.org/2000/svg"
                   stroke="#ff0000"
                 >
                   <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
