@@ -140,35 +140,23 @@
   background: linear-gradient(135deg, #0f4f86 0%, #0a7dc4 55%, #00aae9 100%);
 }
 
-.hero-content {
-  max-width: 540px;
-  color: #ffffff;
+.login-hero-image {
+  width: 100%;
+  height: 100%;
+  min-height: 100vh;
+  object-fit: cover;
+  display: block;
+  animation: loginHeroFadeIn 1s ease-out both;
 }
 
-.mtc-logo-login {
-  max-width: 420px;
-}
+@keyframes loginHeroFadeIn {
+  from {
+    opacity: 0;
+  }
 
-.hero-title {
-  font-size: clamp(1.6rem, 2.2vw, 2.2rem);
-  font-weight: 700;
-  letter-spacing: 0.2px;
-}
-
-.hero-subtitle {
-  font-size: 1rem;
-  line-height: 1.6;
-  opacity: 0.95;
-}
-
-.hero-points {
-  margin: 0;
-  padding-left: 1.2rem;
-}
-
-.hero-points li {
-  margin-bottom: 0.55rem;
-  font-size: 0.98rem;
+  to {
+    opacity: 0.92;
+  }
 }
 
 .login-right-panel {

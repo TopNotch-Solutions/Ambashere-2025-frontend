@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import "../../../assets/style/global/login.css";
-import logo from "../../../assets/Img/Group 2186.png";
+import heroBanner from "../../../assets/Img/landing/11960-Ambasphere-Hero-Banner-V1 (1)23.png";
 import mtclogo from "../../../assets/Img/image 1.png";
 import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
@@ -167,20 +167,12 @@ const Login = () => {
   return (
     <div className="login-page">
       <div className="login-layout d-flex min-vh-100 w-100">
-        <aside className="d-none d-lg-flex col-lg-6 col-xl-7 left-box justify-content-center align-items-center">
-          <div className="hero-content">
-            <img src={logo} alt="Ambasphere visual" className="img-fluid mtc-logo-login" />
-            <h2 className="hero-title mt-4 mb-3">Welcome to Ambasphere</h2>
-            <p className="hero-subtitle mb-4">
-              Securely access employee handset and airtime services from one
-              digital platform.
-            </p>
-            <ul className="hero-points">
-              <li>Manage claims and requests in one place</li>
-              <li>Track approvals and submission progress</li>
-              <li>Stay connected to HR support services</li>
-            </ul>
-          </div>
+        <aside className="d-none d-lg-flex col-lg-6 col-xl-7 login-hero-panel">
+          <img
+            src={heroBanner}
+            alt="Ambasphere hero banner"
+            className="login-hero-image"
+          />
         </aside>
 
         <main className="m-auto col-11 col-md-9 col-lg-6 col-xl-5 d-flex flex-column justify-content-center align-items-center login-right-panel">
