@@ -1,10 +1,9 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { useSelector, useDispatch } from "react-redux";
 import Dropdown from "react-bootstrap/Dropdown";
 import { useNavigate } from "react-router-dom";
 import { markNotificationRead as markAsRead } from "../../store/actions/notificationActions";
 import "../../assets/style/global/notification.css";
-import socket from "../../utils/socket";
 import axiosInstance from "../../utils/axiosInstance";
 
 const NotificationDropdown = () => {
@@ -15,19 +14,6 @@ const NotificationDropdown = () => {
   );
   const { role } = useSelector((state) => state.auth);
   const currentUser = useSelector((state) => state.auth.user);
-
-  useEffect(() => {
-    // Listen for incoming notifications
-    socket.on("notification", (data) => {
-      // console.log('Received notification:', data);
-      dispatch({ type: "ADD_NOTIFICATION", payload: data });
-    });
-
-    // Clean up the connection on component unmount
-    return () => {
-      socket.off("notification"); // Remove specific event listener
-    };
-  }, [dispatch]);
 
   const handleMarkAsRead = (NotificationID) => {
     // Dispatch action to mark notification as read
