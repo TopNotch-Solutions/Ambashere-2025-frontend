@@ -13,7 +13,7 @@ const ViewTable = ({ selectedRow }) => {
 
   const EmployeeReport = () => {
     useEffect(() => {
-      fetch("https://amberspherebackend.mtc.com.na/contracts/staffContracts")
+      fetch("https://ambaspherebackend.mtc.com.na/contracts/staffContracts")
         .then((res) => res.json())
         .then((data) => setData(data))
         .catch((err) => console.log(err));
