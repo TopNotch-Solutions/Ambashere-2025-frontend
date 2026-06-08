@@ -3,7 +3,7 @@ import { ensureHttpsUrl } from './ensureHttpsUrl';
 
 const axiosInstance = axios.create({
   baseURL: ensureHttpsUrl(
-    process.env.REACT_APP_API_URL || 'https://amberspherebackend.mtc.com.na'
+    process.env.REACT_APP_API_URL || 'https://ambaspherebackend.mtc.com.na'
   ),
   headers: { 'Content-Type': 'application/json' },
 });

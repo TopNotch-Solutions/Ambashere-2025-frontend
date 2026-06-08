@@ -13,6 +13,10 @@ import {
 import Swal from "sweetalert2";
 import CloseIcon from "@mui/icons-material/Close";
 import axiosInstance from "../../utils/axiosInstance";
+import {
+  DEPARTMENT_OPTIONS,
+  normalizeDepartment,
+} from "../../utils/departments";
 
 const INITIAL_FORM_VALUES = {
   EmployeeCode: "",
@@ -41,7 +45,7 @@ const mapEmployeeToForm = (employee = {}) => {
   FORM_FIELD_KEYS.forEach((key) => {
     const value = employee[key];
     if (value != null && value !== "") {
-      mapped[key] = value;
+      mapped[key] = key === "Department" ? normalizeDepartment(value) : value;
     }
   });
 
@@ -557,11 +561,19 @@ const AddEmployee = ({
                   onChange={handleChange}
                   disabled={mode === "inactive"}
                 >
-                  <MenuItem value="Commercial">Commercial</MenuItem>
-                  <MenuItem value="IT">Technology</MenuItem>
-                  <MenuItem value="Finance">Finance</MenuItem>
-                  <MenuItem value="Risk">Risk, Compilance & Legal</MenuItem>
-                  <MenuItem value="HR">Human Capital</MenuItem>
+                  {DEPARTMENT_OPTIONS.map((option) => (
+                    <MenuItem key={option.value} value={option.value}>
+                      {option.label}
+                    </MenuItem>
+                  ))}
+                  {formValues.Department &&
+                    !DEPARTMENT_OPTIONS.some(
+                      (option) => option.value === formValues.Department
+                    ) && (
+                      <MenuItem value={formValues.Department}>
+                        {formValues.Department}
+                      </MenuItem>
+                    )}
                 </Select>
                 {errors.Department && (
                   <FormHelperText>{errors.Department}</FormHelperText>
