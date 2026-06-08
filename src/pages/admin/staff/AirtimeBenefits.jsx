@@ -34,12 +34,10 @@ const AirtimeBenefits = () => {
     const fetchData = async () => {
       try {
         const response = await axiosInstance.get(`/contracts/${employeeCode}`);
-        console.log("gggggg contract data: ",response.data)
         setData(response.data.contracts || []);
         setAvailable(response.data.available);
         setNewAllowance(response.data.available + response.data.sul);
       } catch (error) {
-        // console.log(error);
       }
     };
 
@@ -52,7 +50,6 @@ const AirtimeBenefits = () => {
       const response = await axiosInstance.get(
         `/staffmember/allocation/${employeeCode}`
       );
-      // console.log("Response data:", response.data); // Log the response to inspect its structure
       if (Array.isArray(response?.data?.staffWithAirtimeAllocation)) {
         setUserDataQ(response.data); // Assuming you want the first element in the array
       } else {
@@ -100,7 +97,6 @@ Status: airtime.subscription_status,
       const response = await axiosInstance.get(
         `/staffmember/allocation/${employeeCode}`
       );
-      // console.log("Response data:", response.data); // Log the response to inspect its structure
       if (Array.isArray(response?.data?.staffWithAirtimeAllocation)) {
         setUserData(response.data); // Assuming you want the first element in the array
         setModalOpen(true);

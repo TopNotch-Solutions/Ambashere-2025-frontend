@@ -21,10 +21,8 @@ const HandsetBenefits = () => {
       try {
         const response = await axiosInstance.get(`/handsets/handset/${employeeCode}`);
         const handsetData = Array.isArray(response.data) ? response.data : [];
-        console.log(handsetData)
         setData(handsetData);
       } catch (error) {
-        // console.log(error);
       }
     };
 
@@ -33,7 +31,6 @@ const HandsetBenefits = () => {
         const response = await axiosInstance.get(
           `/staffmember/staff/handset-allocation/${employeeCode}`
         );
-        console.log("staffmember allocation", response?.data)
         const allocation = response?.data?.myAllocation?.HandsetAllocation || 0;
         setBenefitAmount(allocation);
       } catch (error) {

@@ -14,7 +14,6 @@ const EmployeeReport = () => {
     const fetchData = async () => {
       try {
         const response = await axiosInstance.get("/staffmember");
-        console.log("staff: ",response.data)
         setData(response.data);
       } catch (error) {
         console.error(error);

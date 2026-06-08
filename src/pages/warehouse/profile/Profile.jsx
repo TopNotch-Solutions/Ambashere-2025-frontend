@@ -32,7 +32,6 @@ function WarehouseProfile() {
     color: "red",
     borderColor: "red",
   };
-  // console.log(currentUser);
 
   const [formValues, setFormValues] = useState({
     FirstName: "",
@@ -67,7 +66,6 @@ function WarehouseProfile() {
       const parsedData = JSON.parse(currentUser.ProfileImage);
       profileImage = parsedData.ProfileImage;
       setProfilePic(profileImage);
-      // console.log(profileImage);
     }
   }, [currentUser]);
 
@@ -76,11 +74,9 @@ function WarehouseProfile() {
 
     reader.readAsDataURL(file);
     reader.onload = () => {
-      // console.log(reader.result);
       setNewProfilePic(reader.result);
     };
     reader.onerror = (error) => {
-      // console.log("Error: ", error);
     };
   };
 
@@ -150,7 +146,6 @@ function WarehouseProfile() {
       }
 
       const data = response.data;
-      // console.log("Upload successful:", data.ProfileImage);
 
       // Update local state with new ProfileImage
       setProfilePic(data.ProfileImage);
@@ -193,7 +188,6 @@ function WarehouseProfile() {
         });
         setIsEditing(false);
       } else {
-        console.log(response.data);
         Swal.fire({
           icon: "error",
           title: "Failed",
@@ -201,7 +195,6 @@ function WarehouseProfile() {
         });
       }
     } catch (error) {
-      console.log(error);
       Swal.fire({
         icon: "error",
         title: "Failed",

@@ -34,7 +34,6 @@ const AdminCalendar = () => {
     const fetchEvents = async () => {
       try {
         const response = await axiosInstance.get("/events");
-        console.log("Fetched Events:", response.data); // Debugging log
 
         const formattedEvents = response.data.map((event) => ({
           start: new Date(`${event.EventDate}T${event.EventTime}`),

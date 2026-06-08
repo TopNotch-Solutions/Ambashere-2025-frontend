@@ -27,8 +27,6 @@ const AddPackage = ({ open, handleClose, mode = "", packageData = {} }) => {
 
   useEffect(() => {
     if (mode === "edit" || mode === "remove") {
-       console.log("Loaded packageData:", packageData);
-       console.log("Loaded packageData:", mode);
       setFormValues(packageData);
     }
   }, [mode, packageData]);
@@ -77,16 +75,12 @@ const AddPackage = ({ open, handleClose, mode = "", packageData = {} }) => {
       if (mode === "add") {
         response = await axiosInstance.post("/packages/createPackage", formValues);
       } else if (mode === "edit") {
-        console.log("Attempting to edit:");
         response = await axiosInstance.put(
           `/packages/updatePackage/${formValues.PackageID}`,
           formValues
         );
-        console.log("My response: ",response);
       } else if (mode === "remove") {
-         console.log("Attempting to delete:");
         response = await axiosInstance.delete(`/packages/removePackage/${formValues.PackageID}`);
-         console.log("My response: ",response);
       }
   
       // Adjust the success status codes to be more flexible

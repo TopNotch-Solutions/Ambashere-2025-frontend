@@ -38,10 +38,8 @@ const AdminPackages = () => {
     const fetchData = async () => {
       try {
         const response = await axiosInstance.get(`/packages`);
-        console.log(response.data)
         setData(response.data);
       } catch (error) {
-        // console.log(error);
         throw error;
       }
     };
@@ -81,12 +79,6 @@ const AdminPackages = () => {
         return;
       }
 
-      console.log("Toggling package:", {
-        packageId,
-        currentStatus,
-        packageData,
-        newStatus: !currentStatus
-      });
 
       const updatePayload = {
         PackageName: packageData.PackageName,
@@ -95,7 +87,6 @@ const AdminPackages = () => {
         IsActive: !currentStatus
       };
 
-      console.log("Update payload:", updatePayload);
 
       const response = await axiosInstance.put(`/packages/updatePackage/${packageId}`, updatePayload);
       

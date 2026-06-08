@@ -11,8 +11,6 @@ const RoleSwitcher = ({title}) => {
   const navigate = useNavigate();
 
   const handleSwitchRole = () => {
-   console.log("Current user: ", currentUser);
-   console.log("role: ", role);
     if (title === "User") {
       if (currentUser.RoleID === 9) {
         dispatch(switchRole(9));

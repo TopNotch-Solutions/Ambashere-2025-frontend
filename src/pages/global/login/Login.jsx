@@ -128,7 +128,6 @@ const Login = () => {
         } else {
           sessionStorage.setItem("accessToken", token);
         }
-        console.log("My employee: ", employee);
         dispatch(
           login({
             isAuthenticated: true,

@@ -21,7 +21,6 @@ const UserAirtime = () => {
         const response = await axiosInstance.get(`/contracts/staffContracts/${currentUser.EmployeeCode}`);
         return response.data.contractData || [];
       } catch (error) {
-        // console.log(error);
         throw error;
       }
     };
@@ -30,11 +29,10 @@ const UserAirtime = () => {
       .then(( contractData) => {
         setContractData(contractData);
       })
-      .catch((err) => console.log(err));
+      .catch(() => {});
   }, []);
   
 
-  // console.log(contractData)
 
   const columns = [
     { field: "id", headerName: "#", width: 60 },

@@ -27,8 +27,6 @@ const LineChart = () => {
                 const createdData = Array.isArray(createdRes.data) ? createdRes.data : [];
                 const endedData = Array.isArray(endedRes.data) ? endedRes.data : [];
 
-                console.log("Raw createdData", createdData);
-                console.log("Raw endedData", endedData);
 
                 // Months for the x-axis
                 const months = [
@@ -72,8 +70,6 @@ const LineChart = () => {
                 const finalCreatedSeries = createFullSeries(createdSeries);
                 const finalEndedSeries = createFullSeries(endedSeries);
 
-                console.log("Final createdSeries:", finalCreatedSeries);
-                console.log("Final endedSeries:", finalEndedSeries);
 
 
                 // Format data for the line chart

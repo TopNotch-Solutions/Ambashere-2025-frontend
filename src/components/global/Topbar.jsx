@@ -38,7 +38,6 @@ const Topbar = ({ profilePicture, OpenSidebar }) => {
         const response = await axiosInstance.get(
           `/notifications/admin-notification`
         );
-        console.log("The notification count: ", response.data.count);
         if (response.status === 200) {
           setNotificationCount(response.data.count);
         } else {

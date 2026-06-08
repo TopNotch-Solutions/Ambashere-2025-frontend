@@ -57,7 +57,6 @@ const AdminHandsets = () => {
   const handleOpenAddHandset = () => setAddHandsetModalOpen(true);
   const handleCloseAddHandset = () => setAddHandsetModalOpen(false);
   const handleOpenProbationModal = (handsetData) => {
-    console.log('Opening probation modal for handset:', handsetData);
     setSelectedHandsetForProbation(handsetData);
     setProbationModalOpen(true);
   };
@@ -66,7 +65,6 @@ const AdminHandsets = () => {
     setSelectedHandsetForProbation(null);
   };
   const handleOpenMRNumberModal = (handsetData) => {
-    console.log('Opening MR Number modal for handset:', handsetData);
     setSelectedHandsetForMR(handsetData);
     setMrNumber(handsetData.MRNumber || "");
     setMrNumberModalOpen(true);
@@ -84,7 +82,6 @@ const AdminHandsets = () => {
         const response = await axiosInstance.get(`/handsets/staffHandsets`);
         setData(normalizeHandsetsResponse(response.data));
       } catch (error) {
-        // console.log(error);
         throw error;
       } finally {
         setIsLoading(false);
@@ -134,7 +131,6 @@ const AdminHandsets = () => {
     //     const actions = [];
 
     //     // Add probation verification action for New requests that are submitted
-    //     console.log('Checking row for probation button:', { 
     //       RequestType: row.RequestType, 
     //       Status: row.Status, 
     //       shouldShow: row.RequestType === 'New' && row.Status === 'Submitted' 
@@ -142,7 +138,6 @@ const AdminHandsets = () => {
         
     //     if (row.RequestType === 'New' && row.Status === 'Submitted') {
     //       // Show only probation verification button for New submitted requests
-    //       console.log('Adding probation verification button for row:', row);
     //       actions.push(
     //         <GridActionsCellItem
     //           icon={<VerifiedUserIcon />}
@@ -159,7 +154,6 @@ const AdminHandsets = () => {
     //       );
     //     } else if (row.FixedAssetCode && row.Status === 'Asset Code Assigned') {
     //       // Show MR creation button for handsets with Fixed Asset Code assigned
-    //       console.log('Adding MR creation button for row:', row);
     //       actions.push(
     //         <GridActionsCellItem
     //           icon={<AssignmentIcon />}
@@ -218,13 +212,6 @@ const AdminHandsets = () => {
       
       // Debug logging for New requests
       if (mappedRow.RequestType === 'New') {
-        console.log('Mapped New handset row:', {
-          id: mappedRow.id,
-          EmployeeCode: mappedRow.EmployeeCode,
-          RequestType: mappedRow.RequestType,
-          Status: mappedRow.Status,
-          originalStatus: handset.Status || handset.status
-        });
       }
       
       return mappedRow;
@@ -260,20 +247,16 @@ const AdminHandsets = () => {
 
   // Debug modal state
   useEffect(() => {
-    console.log('Modal state changed:', { probationModalOpen, selectedHandsetForProbation });
   }, [probationModalOpen, selectedHandsetForProbation]);
 
   const handleEditClick = async (data) => {
-    console.log("active data: ", data);
 
     try {
       const response = await axiosInstance.get(
         `/staffmember/${data.EmployeeCode}`
       );
-      console.log("Selected data: ", response.data);
       const employeeData = response.data; // Store the fetched employee data
 
-      console.log("Fetched employee data for voucher: ", employeeData);
 
       // Directly use the fetched employeeData and the passed handsetRowData
       // instead of relying on the async state updates of selectedEmployee and selectedHandset
@@ -283,7 +266,6 @@ const AdminHandsets = () => {
       });
       handleOpenEdit();
     } catch (error) {
-      // console.log(error);
       throw error;
     }
 
@@ -315,7 +297,6 @@ const AdminHandsets = () => {
             const response = await axiosInstance.get(`/handsets/staffHandsets`);
             setData(normalizeHandsetsResponse(response.data));
           } catch (error) {
-            console.log(error);
             throw error;
           } finally {
             setIsLoading(false);
@@ -363,7 +344,6 @@ const AdminHandsets = () => {
             const response = await axiosInstance.get(`/handsets/staffHandsets`);
             setData(normalizeHandsetsResponse(response.data));
           } catch (error) {
-            console.log(error);
             throw error;
           } finally {
             setIsLoading(false);
@@ -386,7 +366,6 @@ const AdminHandsets = () => {
       const response = await axiosInstance.get(
         `/staffmember/allocation/handset/${currentUser.EmployeeCode}`
       );
-      console.log("Response data handset admin:", response.data); // Log the response to inspect its structure
       if (
         Array.isArray(response?.data?.staffWithAirtimeAllocation) &&
         response?.data?.staffWithAirtimeAllocation?.length > 0
@@ -413,7 +392,6 @@ const AdminHandsets = () => {
         const response = await axiosInstance.get(`/handsets/staffHandsets`);
         setData(normalizeHandsetsResponse(response.data));
       } catch (error) {
-        console.log(error);
         throw error;
       } finally {
         setIsLoading(false);

@@ -40,7 +40,6 @@ const UserHandsets = () => {
   const { role } = useSelector((state) => state.auth);
   const currentUser = useSelector((state) => state.auth.user);
   const dispatch = useDispatch();
-  console.log("My HANDSET User: ", currentUser);
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -50,13 +49,7 @@ const UserHandsets = () => {
         );
         const handsetData = Array.isArray(response.data) ? response?.data : [];
         setDataAllocation(handsetData);
-        console.log("Handset data received:", response.data);
-        console.log(
-          "First handset RenewalVerified:",
-          handsetData[0]?.RenewalVerified,
-        );
       } catch (error) {
-        // console.log(error);
       } finally {
         setIsLoading(false);
       }
@@ -71,7 +64,6 @@ const UserHandsets = () => {
       const response = await axiosInstance.get(
         `/staffmember/allocation/handset/${currentUser.EmployeeCode}`,
       );
-       console.log("Response data:", response.data); // Log the response to inspect its structure
       if (
         Array.isArray(response?.data?.staffWithAirtimeAllocation) &&
         response?.data?.staffWithAirtimeAllocation.length > 0
@@ -211,7 +203,6 @@ const UserHandsets = () => {
 
     //     // Add delete action if status is 'Pending'
     //     if (row.Status === "Pending") {
-    //       console.log("Approval status: ", row.Status);
     //       actions.push(
     //         <Tooltip title={`Delete handset`} arrow>
     //           <GridActionsCellItem
@@ -228,7 +219,6 @@ const UserHandsets = () => {
     //     }
 
     //     // Add share IMEI action if renewal is verified
-    //     console.log("Row data for actions:", {
     //       id: row.id,
     //       RenewalVerified: row.RenewalVerified,
     //       Status: row.Status,
@@ -264,12 +254,6 @@ const UserHandsets = () => {
   ];
 
   const rows = dataAllocation?.map((handset, index) => {
-    console.log("Mapping handset:", {
-      id: handset.id,
-      RenewalVerified: handset.RenewalVerified,
-      Status: handset.status || handset.Status,
-      IMEINumber: handset.IMEINumber,
-    });
 
     return {
       id: handset.id,

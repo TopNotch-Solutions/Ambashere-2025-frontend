@@ -23,7 +23,6 @@ const NotificationDropdown = () => {
     axiosInstance
       .put(`/notifications/${NotificationID}/markAsRead`)
       .then((response) => {
-        console.log('Notification marked as read:', response.data);
       })
       .catch((error) => {
         console.error("Failed to mark notification as read", error);

@@ -16,7 +16,7 @@ const ViewTable = ({ selectedRow }) => {
       fetch("https://ambaspherebackend.mtc.com.na/contracts/staffContracts")
         .then((res) => res.json())
         .then((data) => setData(data))
-        .catch((err) => console.log(err));
+        .catch(() => {});
     }, []);
 
     const columns = [

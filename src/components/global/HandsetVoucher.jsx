@@ -65,7 +65,6 @@ const HandsetVoucher = ({ open, handleClose, userData, role }) => {
         );
         // Assuming response.data is an object like { data: { HandsetAllocation: 8000, ... } }
         setDataAllocation(response.data.myAllocation);
-        console.log("Fetched Allocation Data (response.data):", response.data);
       } catch (error) {
         console.error("Error fetching allocation data:", error);
         dispatch(

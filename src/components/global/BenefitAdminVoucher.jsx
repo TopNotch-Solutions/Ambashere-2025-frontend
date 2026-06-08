@@ -52,7 +52,6 @@ const BenefitAdminVoucher = ({ open, handleClose,userData, role }) => {
     if (Array.isArray(staff) && staff.length > 0) {
       const code = staff[0]?.EmployeeCode;
       setEmployeeCode(code);
-      console.log("Heeeee: ", code);
 
       try {
         const response = await axiosInstance.get(`/staffmember/allocation/${code}`);
@@ -75,13 +74,10 @@ const BenefitAdminVoucher = ({ open, handleClose,userData, role }) => {
 }, [userData]);
 
    useEffect(() => {
-    console.log("My current user dataaaaaaaaaaaa: ",updatingData)
     if (userData && updatingData?.staffWithAirtimeAllocation &&updatingData.staffWithAirtimeAllocation.length > 0) {
-      console.log("Gghhggh: ",updatingData?.staffWithAirtimeAllocation[0]?.EmployeeCode);
       setEmployeeCode(userData?.staffWithAirtimeAllocation[0]?.EmployeeCode);
     } else {
       // Optional: Log whatupdatingData looks like if it doesn't meet the conditions
-      console.log("userData or staffWithAirtimeAllocation is not fully loaded/empty:",updatingData);
     }
   }, [userData]);
 
@@ -414,14 +410,6 @@ const BenefitAdminVoucher = ({ open, handleClose,userData, role }) => {
   setWithinLimit(isWithinLimit);
 
   // Console logs for debugging the new logic
-  console.log("--- calculateMUL Debugging ---");
-  console.log("Base Available Amount (userData?.available):", baseAvailableAmount);
-  console.log("Sum Column 2 (Packages & Devices):", sumColumn2);
-  console.log("Sum Column 5 (Device Upfront/Other Costs):", sumColumn5);
-  console.log("Total Costs:", sumColumn2 + sumColumn5);
-  console.log("New Allowance (Remaining):", newAllowance);
-  console.log("Is Within Limit (newAllowance >= 0):", isWithinLimit);
-  console.log("--- End calculateMUL Debugging ---");
 
   // Update the rows with the new allowance and limit check status
   return updatedRows.map((row) => {
@@ -439,7 +427,6 @@ const BenefitAdminVoucher = ({ open, handleClose,userData, role }) => {
 
   useEffect(() => {
     const updatedRows = calculateMUL(rows);
-    console.log("Within Limit: ", withinLimit)
     if (JSON.stringify(updatedRows) !== JSON.stringify(rows)) {
       setRows(updatedRows);
     }
@@ -470,8 +457,6 @@ const BenefitAdminVoucher = ({ open, handleClose,userData, role }) => {
   }
 
   try {
-    console.log("handleSave function called");
-    console.log("Rows data at the start of handleSave:", rows);
 
     // --- 2. Basic Form Data Check ---
     if (!rows || rows.length === 0) {
@@ -648,8 +633,6 @@ const BenefitAdminVoucher = ({ open, handleClose,userData, role }) => {
       // UpfrontPayment: upfrontPayment, // This would be upfront from row 6 only if `upfrontPaymentRef.current[6]`
     };
 
-    console.log("Contract data for API submission:", contractData);
-    console.log("Current user role:", role);
 
     // --- 9. API Interaction Logic (Remains largely the same, but ensure contractData matches backend) ---
     if (role === 3) {
@@ -672,7 +655,6 @@ const BenefitAdminVoucher = ({ open, handleClose,userData, role }) => {
             }
     } else if (role === 1) {
       // Admin logic to handle pending contracts
-      console.log("Fetching latest pending contract for employee...");
 
       try {
         const pendingContractResponse = await axiosInstance.get(
@@ -704,7 +686,6 @@ const BenefitAdminVoucher = ({ open, handleClose,userData, role }) => {
 };
 
   const handleEmployeeSelect = (selectedUserData) => {
-    console.log("Selected Employee Code:", selectedUserData.EmployeeCode);
     selectedUserData =updatingData; // Directly setupdatingData based on selection
   };
 
@@ -723,7 +704,6 @@ const BenefitAdminVoucher = ({ open, handleClose,userData, role }) => {
           const response = await axiosInstance.get(
             `/contracts/latestPendingEmployeeContract/${userData.EmployeeCode}`
           );
-          console.log("code",updatingData.EmployeeCode);
           if (response.data) {
             const latestContract = response.data;
             setContractData(latestContract);
@@ -832,7 +812,6 @@ const BenefitAdminVoucher = ({ open, handleClose,userData, role }) => {
 
         if (notificationResponse.status === 201) {
           const notification = notificationResponse.data;
-          console.log("Notification created:", notification);
           dispatch(addNotification(notification));
         }
 

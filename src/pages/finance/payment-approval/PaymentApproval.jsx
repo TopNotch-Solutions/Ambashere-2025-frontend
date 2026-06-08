@@ -29,7 +29,6 @@ const PaymentApproval = () => {
       try {
         setLoading(true);
         const response = await axiosInstance.get('/handsets/pending-payments');
-        console.log('API Response:', response.data);
         setData(response.data.data || response.data);
         setError(null);
       } catch (err) {

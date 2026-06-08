@@ -71,22 +71,14 @@ const AirtimeAdminVoucher = ({ open, handleClose, userData, role }) => {
 
   // Effect to set initial values when userData changes
   useEffect(() => {
-    console.log("🔄 AirtimeAdminVoucher useEffect triggered with userData:", userData);
     
     // Check if userData exists and is not empty
     if (userData && Object.keys(userData).length > 0) {
-      console.log("🔍 AirtimeAdminVoucher userData:", userData);
-      console.log("🔍 userData.contracts:", userData.contracts);
-      console.log("🔍 userData.package:", userData.package);
       
       // Handle both direct userData and nested contracts structure
       const contractData = userData.contracts || userData;
       const packageData = userData.package || {};
       
-      console.log("🔍 contractData:", contractData);
-      console.log("🔍 packageData:", packageData);
-      console.log("🔍 DeviceName from contractData:", contractData.DeviceName);
-      console.log("🔍 DevicePrice from contractData:", contractData.DevicePrice);
       
       setEmployeeFullName(contractData.FullName || "");
       setEmployeeCode(contractData.EmployeeCode || "");
@@ -114,11 +106,6 @@ const AirtimeAdminVoucher = ({ open, handleClose, userData, role }) => {
       setPackagePrice(packageData.MonthlyPrice || "");
       setPackagePaymentPeriod(packageData.PaymentPeriod || "");
       
-      console.log("✅ State updates completed");
-      console.log("✅ handsetName set to:", contractData.DeviceName);
-      console.log("✅ price set to:", contractData.DevicePrice);
-      console.log("✅ deviceName set to:", contractData.DeviceName);
-      console.log("✅ devicePrice set to:", contractData.DevicePrice);
       // FixedAssetCode is not directly in your API response.
       // You'll need to determine where this value should come from.
       // For now, it will remain empty unless you assign it.
@@ -236,7 +223,6 @@ const AirtimeAdminVoucher = ({ open, handleClose, userData, role }) => {
       MSISDN: msisdn
     };
 
-    console.log("Submitting payload:", payload);
 
     try {
       // Perform the PUT request to update the existing contract record

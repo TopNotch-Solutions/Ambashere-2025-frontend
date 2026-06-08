@@ -146,7 +146,6 @@ const AddHandsetModal = ({ open, handleClose, onSuccess }) => {
         status: status
       };
 
-      console.log("Submitting handset data:", payload);
 
       const response = await axiosInstance.post("/handsets", payload);
 

@@ -22,7 +22,6 @@ const UserCalendar = () => {
       try {
         setIsLoading(true);
         const response = await axiosInstance.get("/events");
-        // console.log(response.data); // Ensure the data is correct
   
         const formattedEvents = response.data.map(event => {
           const eventStartDate = new Date(`${event.EventDate}T${event.EventTime}`);

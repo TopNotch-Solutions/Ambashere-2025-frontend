@@ -31,11 +31,9 @@ const MyReservations = () => {
   const fetchMyReservations = async () => {
     setLoading(true);
     try {
-      console.log("Fetching my reserved devices for:", currentUser.FullName);
       const response = await axiosInstance.get(`/handsets/my-reserved-devices?reservedBy=${encodeURIComponent(currentUser.FullName)}`);
       
       if (response.data.success) {
-        console.log("My reserved devices:", response.data.data);
         setData(response.data.data);
       } else {
         console.error("Failed to fetch my reserved devices:", response.data.message);

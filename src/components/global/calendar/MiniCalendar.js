@@ -68,7 +68,6 @@ export default function MiniCalendar(props) {
           permanent: true, // Flag as permanent
         });
 
-        // console.log("Permanent Events: ", permanentEvents);
 
       });
     }
@@ -93,7 +92,6 @@ export default function MiniCalendar(props) {
           };
         });
         const permanentEvents = generatePermanentEvents();
-        // console.log("Permanent Events: ", permanentEvents);
 
         setEvents([...formattedEvents, ...permanentEvents]);
         return [...formattedEvents, ...permanentEvents];
@@ -110,7 +108,7 @@ export default function MiniCalendar(props) {
     //     );
     //     return response.data.airtimeData || [];
     //   } catch (error) {
-    //     // console.log(error);
+    //     // 
     //     return [];
     //   }
     // };
@@ -122,7 +120,7 @@ export default function MiniCalendar(props) {
     //     );
     //     return response.data.handsetData || [];
     //   } catch (error) {
-    //     // console.log(error);
+    //     // 
     //     return [];
     //   }
     // };
@@ -177,7 +175,6 @@ export default function MiniCalendar(props) {
         const recurringEvents = generateRecurringEvents();
         setEvents([...airtimeData, ...handsetData, ...allEvents, ...recurringEvents]);
       } catch (error) {
-        // console.log(error);
       }
     };
 

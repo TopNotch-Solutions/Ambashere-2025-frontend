@@ -45,7 +45,6 @@ const ContractFormModal = ({ open, handleClose, contractData = null, onSave }) =
           initialData[toCamelCase(key)] = contractData[key];
         }
       }
-      console.log(contractData)
       return initialData;
     }
     return {
@@ -104,9 +103,7 @@ const ContractFormModal = ({ open, handleClose, contractData = null, onSave }) =
         if (Object.prototype.hasOwnProperty.call(contractData, key)) {
           initialData[toCamelCase(key)] = contractData[key];
         }
-        console.log("Initial data: ", initialData)
       }
-      console.log(initialData);
       setFormData(initialData);
     } else {
       // Reset form for new contract if contractData is null

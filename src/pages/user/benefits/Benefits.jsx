@@ -40,10 +40,8 @@ const UserBenefits = () => {
         const response = await axiosInstance.get(
           `/contracts/${currentUser.EmployeeCode}`
         );
-        console.log("gggggg contract data: ",response.data)
         setData(response.data.contracts || []);
       } catch (error) {
-        // console.log(error);
       }
     };
 
@@ -124,7 +122,6 @@ const UserBenefits = () => {
 
   //     // Only add the delete action if approvalStatus is 'Pending'
   //     if (row.ApprovalStatus === "Pending") {
-  //       console.log("Approval status: ",row.ApprovalStatus)
   //       actions.push(
   //         <Tooltip title={`Delete contract`} arrow> {/* Add Tooltip here */}
   //           <GridActionsCellItem
@@ -179,7 +176,6 @@ const UserBenefits = () => {
       const response = await axiosInstance.get(
         `/staffmember/allocation/${currentUser.EmployeeCode}`
       );
-      // console.log("Response data:", response.data); // Log the response to inspect its structure
       if(response.status === 200){
         setUserData(response.data); // Assuming you want the first element in the array
         setModalOpen(true)

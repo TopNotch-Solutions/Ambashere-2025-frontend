@@ -138,7 +138,6 @@ const HandsetAdminVoucher = ({ open, handleClose, userData, role }) => {
     // were already set during creation and are just being displayed.
     // We primarily focus on ensuring the identifying fields are still present in state
     // (as they should have been populated from userData) and that editable fields are valid if changed.
-    console.log("Here is the current handset id: ",userData?.handset?.id)
     if (
       !employeeCode ||
       !currentUser.AllocationID ||

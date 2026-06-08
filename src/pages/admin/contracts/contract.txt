@@ -33,9 +33,7 @@ const AdminContracts = () => {
       try {
         const response = await axiosInstance.get(`/contracts/staffContracts`);
         setData(response.data);
-        console.log("data :", response.data)
       } catch (error) {
-        // console.log(error);
         throw error;
       }
     };
@@ -45,12 +43,10 @@ const AdminContracts = () => {
 
   const handleContractSelection = async (id) =>{
     if(!id) return
-    console.log("Here is the conract id: ",id)
     try{
        const response = await axiosInstance.get(
         `/contracts/single/${id}`
       );
-      console.log("My response for single data: ",response.data)
       setUserData(response.data || {}); // Assuming you want the first element in the array
       setModalOpen(true);
     }catch (error) {

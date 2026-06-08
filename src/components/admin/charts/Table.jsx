@@ -34,7 +34,6 @@ const Table = () => {
     const fetchData = async () => {
       try {
         const response = await axiosInstance.get(`/handsets/staffHandsets`);
-        console.log(response.data);
         const normalizedData = Array.isArray(response.data)
           ? response.data
           : response.data && typeof response.data === "object"
@@ -42,7 +41,6 @@ const Table = () => {
             : [];
         setData(normalizedData);
       } catch (error) {
-        // console.log(error);
         throw error;
       }
     };

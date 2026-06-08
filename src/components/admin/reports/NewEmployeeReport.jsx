@@ -14,7 +14,6 @@ const NewEmployeeReport = () => {
     const fetchData = async () => {
       try {
         const response = await axiosInstance.get("/staffmember/new-staff");
-        console.log("New staff: ",response.data)
         setData(response.data);
       } catch (error) {
         console.error(error);

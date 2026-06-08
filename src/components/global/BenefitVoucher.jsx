@@ -53,7 +53,6 @@ const BenefitVoucher = ({ open, handleClose, role }) => {
         const response = await axiosInstance.get(
           `/staffmember/allocation/${currentUser.EmployeeCode}`
         );
-        // console.log("Response data:", response.data); // Log the response to inspect its structure
         if (response.status === 200) {
           setUserData(response.data); // Assuming you want the first element in the array
         } else {
@@ -75,23 +74,14 @@ const BenefitVoucher = ({ open, handleClose, role }) => {
     }
   }, [open, currentUser?.EmployeeCode]);
   useEffect(() => {
-    console.log("My current user dataaaaaaaaaaaa: ", userData);
     if (
       userData &&
       userData.staffWithAirtimeAllocation &&
       userData.staffWithAirtimeAllocation.length > 0
     ) {
-      console.log(
-        "Gghhggh: ",
-        userData.staffWithAirtimeAllocation[0]?.EmployeeCode
-      );
       setEmployeeCode(userData.staffWithAirtimeAllocation[0]?.EmployeeCode);
     } else {
       // Optional: Log what userData looks like if it doesn't meet the conditions
-      console.log(
-        "userData or staffWithAirtimeAllocation is not fully loaded/empty:",
-        userData
-      );
     }
   }, [userData]);
 
@@ -107,15 +97,12 @@ const BenefitVoucher = ({ open, handleClose, role }) => {
   useEffect(() => {
     const fetchDropdownValuesFromDatabase = async () => {
       try {
-        console.log("🔄 BenefitVoucher: Fetching packages from /packages/packageList...");
         const response = await axiosInstance.get(`/packages/packageList?t=${Date.now()}`);
         if (response.status < 200 || response.status >= 300) {
           throw new Error("Failed to fetch dropdown values");
         }
 
         const data = response.data;
-        console.log("📦 BenefitVoucher: Packages response:", data);
-        console.log("📊 BenefitVoucher: Total packages received:", data.length);
 
         // Add "Select Package" option if it's not in the data
         const dropdownOptions = data.some(
@@ -124,7 +111,6 @@ const BenefitVoucher = ({ open, handleClose, role }) => {
           ? data
           : [{ PackageName: "Select Package" }, ...data];
 
-        console.log("📋 BenefitVoucher: Dropdown options:", dropdownOptions.length);
         setDropdownOptions(dropdownOptions);
       } catch (error) {
         console.error("❌ BenefitVoucher: Error fetching dropdown values:", error);
@@ -433,7 +419,6 @@ const BenefitVoucher = ({ open, handleClose, role }) => {
   const calculateMUL = (updatedRows) => {
     // Guard clause: Don't calculate if userData is not available
     if (!userData || !userData.available) {
-      console.log("calculateMUL: userData not available, skipping calculation");
       return updatedRows;
     }
 
@@ -484,17 +469,6 @@ const BenefitVoucher = ({ open, handleClose, role }) => {
     setWithinLimit(isWithinLimit);
 
     // Console logs for debugging the new logic
-    console.log("--- calculateMUL Debugging ---");
-    console.log(
-      "Base Available Amount (userData?.available):",
-      baseAvailableAmount
-    );
-    console.log("Sum Column 2 (Packages & Devices):", sumColumn2);
-    console.log("Sum Column 5 (Device Upfront/Other Costs):", sumColumn5);
-    console.log("Total Costs:", sumColumn2 + sumColumn5);
-    console.log("New Allowance (Remaining):", newAllowance);
-    console.log("Is Within Limit (newAllowance >= 0):", isWithinLimit);
-    console.log("--- End calculateMUL Debugging ---");
 
     // Update the rows with the new allowance and limit check status
     return updatedRows.map((row) => {
@@ -514,7 +488,6 @@ const BenefitVoucher = ({ open, handleClose, role }) => {
     // Only calculate if userData is available and not loading
     if (userData && !isUserDataLoading) {
       const updatedRows = calculateMUL(rows);
-      console.log("Within Limit: ", withinLimit);
       if (JSON.stringify(updatedRows) !== JSON.stringify(rows)) {
         setRows(updatedRows);
       }
@@ -546,8 +519,6 @@ const BenefitVoucher = ({ open, handleClose, role }) => {
     }
 
     try {
-      console.log("handleSave function called");
-      console.log("Rows data at the start of handleSave:", rows);
 
       // --- 2. Basic Form Data Check ---
       if (!rows || rows.length === 0) {
@@ -706,8 +677,6 @@ const BenefitVoucher = ({ open, handleClose, role }) => {
         (sum, pkg) => sum + pkg.AdjustedMonthlyPrice,
         0
       );
-      console.log("Total packages monthly cost: ", totalPackagesMonthlyCost);
-      console.log(userData.available - totalPackagesMonthlyCost);
       if (userData.available - totalPackagesMonthlyCost < 0) {
         handleClose();
         Swal.fire({
@@ -748,8 +717,6 @@ const BenefitVoucher = ({ open, handleClose, role }) => {
         })),
       };
 
-      console.log("Contract data for API submission:", contractData);
-      console.log("Current user role:", role);
 
       // --- 9. API Interaction Logic (Remains largely the same, but ensure contractData matches backend) ---
       
@@ -783,7 +750,6 @@ const BenefitVoucher = ({ open, handleClose, role }) => {
   };
 
   const handleEmployeeSelect = (selectedUserData) => {
-    console.log("Selected Employee Code:", selectedUserData.EmployeeCode);
     selectedUserData = userData; // Directly set userData based on selection
   };
 
@@ -802,7 +768,6 @@ const BenefitVoucher = ({ open, handleClose, role }) => {
           const response = await axiosInstance.get(
             `/contracts/latestPendingEmployeeContract/${userData.EmployeeCode}`
           );
-          console.log("code", userData.EmployeeCode);
           if (response.data) {
             const latestContract = response.data;
             setContractData(latestContract);
@@ -928,7 +893,6 @@ const BenefitVoucher = ({ open, handleClose, role }) => {
 
         if (notificationResponse.status === 201) {
           const notification = notificationResponse.data;
-          console.log("Notification created:", notification);
           dispatch(addNotification(notification));
         }
 

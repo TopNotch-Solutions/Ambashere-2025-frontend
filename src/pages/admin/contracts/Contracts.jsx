@@ -42,9 +42,7 @@ const AdminContracts = () => {
       try {
         const response = await axiosInstance.get(`/contracts/staffContracts`);
         setData(normalizeContractsResponse(response.data));
-        console.log("data :", response.data);
       } catch (error) {
-        // console.log(error);
         throw error;
       }
     };
@@ -54,16 +52,10 @@ const AdminContracts = () => {
 
   const handleContractSelection = async (id) =>{
     if(!id) return
-    console.log("🔍 Admin Contracts - Contract ID: ",id)
     try{
        const response = await axiosInstance.get(
         `/contracts/single/${id}`
       );
-      console.log("📦 Admin Contracts - API Response: ",response.data)
-      console.log("📦 Admin Contracts - Contracts data: ",response.data.contracts)
-      console.log("📦 Admin Contracts - Package data: ",response.data.package)
-      console.log("📦 Admin Contracts - DeviceName: ",response.data.contracts?.DeviceName)
-      console.log("📦 Admin Contracts - DevicePrice: ",response.data.contracts?.DevicePrice)
       setUserData(response.data || {}); // Assuming you want the first element in the array
       setModalOpen(true);
     }catch (error) {

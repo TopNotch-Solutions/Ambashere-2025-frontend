@@ -29,7 +29,6 @@ const AssetCodeAssignment = () => {
       try {
         setLoading(true);
         const response = await axiosInstance.get('/handsets/asset-code-assignment');
-        console.log('API Response:', response.data);
         setData(response.data.data || response.data);
         setError(null);
       } catch (err) {

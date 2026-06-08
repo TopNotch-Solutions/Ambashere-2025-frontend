@@ -41,9 +41,7 @@ const ExportButton = ({ data, fileName = 'exported_data' }) => {
     //   document.body.removeChild(link);
     // }
 
-    console.log(`Exporting data to ${fileName}.csv`);
-    console.log('Data to be exported:', data);
-    alert(`Data export initiated for "${fileName}". Check console for details (actual download logic needs to be implemented).`);
+    alert(`Data export initiated for "${fileName}". (Actual download logic still needs to be implemented.)`);
   };
 
   return (

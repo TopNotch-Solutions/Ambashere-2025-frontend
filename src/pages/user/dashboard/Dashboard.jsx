@@ -30,7 +30,6 @@ const UserDashboard = () => {
   const [isLoadingHandset, setIsLoadingHandset] = useState(false);
   const [benefitAmount, setBenefitAmount] = useState(0);
   const currentUser = useSelector((state) => state.auth.user);
-  console.log("Current user loggedIn: ",currentUser)
   const navigate = useNavigate();
   const selfHelp = () => {
     navigate("/user/SelfHelp");
@@ -42,11 +41,9 @@ const UserDashboard = () => {
     const fetchTemData = async () => {
       try {
         setIsLoadingTemp(true);
-        console.log("Temporary user:", currentUser.EmployeeCode);
         const response = await axiosInstance.get(
           `/contracts/Temp/${currentUser.EmployeeCode}`
         );
-        console.log("My contract dataatta",response.data);
         setTempData(response.data);
       } catch (error) {
         console.error(error);
@@ -58,11 +55,9 @@ const UserDashboard = () => {
     const fetchAirtimeData = async () => {
       try {
         setIsLoadingAirtime(true);
-        console.log("Permanent user:", currentUser.EmployeeCode);
         const response = await axiosInstance.get(
           `/contracts/${currentUser.EmployeeCode}`
         );
-        console.log("Here are my airtime data: ", response.data);
         if (response.data.status === 1) {
           setNoContract(response.data);
         } else {
@@ -81,9 +76,7 @@ const UserDashboard = () => {
         const response = await axiosInstance.get(
           `/handsets/${currentUser.EmployeeCode}`
         );
-        console.log("Here are my handsets: ", response.data);
         if (response.data.status === 1) {
-          console.log(response.data);
           setNoHandset(response.data || {});
         } else {
           setHandsetData(response.data || []);
@@ -99,7 +92,6 @@ const UserDashboard = () => {
         const response = await axiosInstance.get(
           `/staffmember/staff/handset-allocation/${currentUser.EmployeeCode}`
         );
-        console.log("staffmember allocation", response?.data)
         const allocation = response?.data?.myAllocation?.HandsetAllocation || 0;
         setBenefitAmount(allocation);
       } catch (error) {
@@ -167,7 +159,6 @@ const UserDashboard = () => {
     { field: "Status", headerName: "Status", width: 180 },
 
   ];
-  console.log("this is the api: ", handsetData?.handsets);
   const handsetRows = (handsetData?.handsets || []).map((handset, index) => ({
     id: index + 1,
     FixedAssetCode: handset?.FixedAssetCode,
