@@ -10,20 +10,73 @@ import {
   CircularProgress,
 } from "@mui/material";
 import { useSelector } from "react-redux";
-import pic from "../../../assets/Img/wellness.png";
 import axiosInstance from "../../../utils/axiosInstance";
 import Swal from "sweetalert2";
-import EmailIcon from "@mui/icons-material/Email";
-import PhoneIcon from "@mui/icons-material/Phone";
-import InfoIcon from "@mui/icons-material/Info";
+import DevicesOtherIcon from "@mui/icons-material/DevicesOther";
+import AssignmentIcon from "@mui/icons-material/Assignment";
+import AccountCircleIcon from "@mui/icons-material/AccountCircle";
+import BuildIcon from "@mui/icons-material/Build";
+import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
+import ReportProblemOutlinedIcon from "@mui/icons-material/ReportProblemOutlined";
+import LightbulbOutlinedIcon from "@mui/icons-material/LightbulbOutlined";
+import SendIcon from "@mui/icons-material/Send";
 import "../../../assets/style/global/handsetBenefitSimulator.css";
 import "../../../assets/style/global/support.css";
 
+const tempSupportTopics = [
+  {
+    icon: <AssignmentIcon />,
+    title: "Airtime Issues",
+    value: "Airtime Issues",
+    description: "Questions about airtime packages, balances, or allocations.",
+  },
+  {
+    icon: <AccountCircleIcon />,
+    title: "Profile Updates",
+    value: "Profile Updates",
+    description: "Request changes to your account or employment details.",
+  },
+  {
+    icon: <DevicesOtherIcon />,
+    title: "Employment Inquiry",
+    value: "Employment Inquiry",
+    description: "Ask about your temporary employment status or terms.",
+  },
+  {
+    icon: <BuildIcon />,
+    title: "Technical Support",
+    value: "Technical Support",
+    description: "Report login problems, errors, or platform issues.",
+  },
+];
+
+const regularSupportTopics = [
+  {
+    icon: <ChatBubbleOutlineIcon />,
+    title: "General Inquiry",
+    value: "Inquiry",
+    description: "Ask a question about your benefits or how Ambasphere works.",
+  },
+  {
+    icon: <ReportProblemOutlinedIcon />,
+    title: "Complaint",
+    value: "Complaint",
+    description: "Raise a concern about a benefit, contract, or service.",
+  },
+  {
+    icon: <LightbulbOutlinedIcon />,
+    title: "Suggestion",
+    value: "Suggestion",
+    description: "Share feedback or ideas to improve the platform.",
+  },
+];
+
 const Support = () => {
   const currentUser = useSelector((state) => state.auth.user);
+  const isTemporary = currentUser?.EmploymentCategory === "Temporary";
 
   const [formData, setFormData] = useState({
-    email: currentUser?.Email || "", // Ensure currentUser exists
+    email: currentUser?.Email || "",
     subject: "",
     message: "",
   });
@@ -32,7 +85,6 @@ const Support = () => {
   const [responseMessage, setResponseMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Temporary user specific support options
   const tempSupportOptions = [
     { value: "Airtime Issues", label: "Airtime Issues" },
     { value: "Profile Updates", label: "Profile Updates" },
@@ -48,11 +100,19 @@ const Support = () => {
     { value: "Suggestion", label: "Suggestion" },
   ];
 
+  const supportTopics = isTemporary ? tempSupportTopics : regularSupportTopics;
+  const supportOptions = isTemporary ? tempSupportOptions : regularSupportOptions;
+
   const handleInputChange = (e) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
     });
+  };
+
+  const handleTopicSelect = (value) => {
+    setFormData((prev) => ({ ...prev, subject: value }));
+    setErrors((prev) => ({ ...prev, subject: undefined }));
   };
 
   const validateForm = () => {
@@ -78,26 +138,24 @@ const Support = () => {
         Swal.fire({
           icon: "success",
           title: "Success",
-          text: `Email sent successfully!`,
+          text: "Email sent successfully!",
         }).then((result) => {
           if (result.isConfirmed) {
             window.location.reload();
           }
         });
-        // setResponseMessage("Email sent successfully!");
       } else {
         Swal.fire({
           icon: "error",
           title: "Failed",
-          text: `Failed to send email. Please try again!`,
+          text: "Failed to send email. Please try again!",
         });
-        // setResponseMessage("Failed to send email. Please try again.");
       }
     } catch (error) {
       Swal.fire({
         icon: "error",
         title: "Error",
-        text: `Error sending email. Please try again!`,
+        text: "Error sending email. Please try again!",
       });
       setResponseMessage("Error sending email.");
     } finally {
@@ -107,90 +165,63 @@ const Support = () => {
 
   return (
     <div className="container-main m-3 handset-simulator-page support-page">
-      <div className="handset-hero mb-4">
+      <div className="support-hero mb-4">
         <div>
           <h2 className="handset-title">Support Center</h2>
           <p className="handset-subtitle mb-0">
-            Reach out to the Ambasphere team for assistance with accounts,
-            benefits, and technical issues.
+            Submit a request and the Ambasphere team will assist you with
+            benefits, account issues, and platform support.
           </p>
-          {currentUser?.EmploymentCategory === "Temporary" && (
+          {isTemporary && (
             <p className="support-temp-note mb-0 mt-2">
-              As temporary staff, you have access to specialized support options
-              for airtime, profile updates, and employment inquiries.
+              As temporary staff, you can request help with airtime, profile
+              updates, and employment-related inquiries.
             </p>
           )}
         </div>
       </div>
 
-      <div className="row g-4">
+      <div className="row g-4 align-items-start">
         <div className="col-12 col-xl-8">
-          <form className="handset-form-card shadow-sm" onSubmit={handleSubmit}>
-            <div className="form-header">
+          <form className="handset-form-card shadow-sm support-form-card" onSubmit={handleSubmit}>
+            <div className="form-header mb-1">
               <h5 className="mb-1">
-                {currentUser?.EmploymentCategory === "Temporary"
-                  ? "Staff Support Form"
-                  : "Support Form"}
+                {isTemporary ? "Staff Support Form" : "Support Form"}
               </h5>
               <p className="mb-0">
-                Share your request and our support team will get back to you as
-                soon as possible.
+                Complete the form below and your request will be routed to the
+                Ambasphere support team.
               </p>
+            </div>
+            <div className="support-routing-note">
+              Your message will be sent to the Ambasphere administrative and
+              support teams on your behalf.
             </div>
 
             {responseMessage && (
-              <Alert severity="info" className="mb-3">
+              <Alert severity="info" className="mb-3 mt-3">
                 {responseMessage}
               </Alert>
             )}
 
-            <div className="row">
-              <div className="col-md-6">
-                <TextField
-                  label="To"
-                  value="Ambasphere administrative team"
-                  fullWidth
-                  margin="normal"
-                  InputProps={{ readOnly: true }}
-                />
-              </div>
-              <div className="col-md-6">
-                <TextField
-                  label="CC"
-                  value="Ambasphere support team"
-                  fullWidth
-                  margin="normal"
-                  InputProps={{ readOnly: true }}
-                />
-              </div>
-            </div>
-
-            <div className="row">
-              <div className="col-md-12">
-                <FormControl fullWidth margin="normal" error={!!errors.subject}>
-                  <InputLabel>Reason for Support</InputLabel>
-                  <Select
-                    name="subject"
-                    value={formData.subject}
-                    onChange={handleInputChange}
-                    label="Reason for Support"
-                  >
-                    {(
-                      currentUser?.EmploymentCategory === "Temporary"
-                        ? tempSupportOptions
-                        : regularSupportOptions
-                    ).map((option) => (
-                      <MenuItem key={option.value} value={option.value}>
-                        {option.label}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                  {errors.subject && (
-                    <FormHelperText>{errors.subject}</FormHelperText>
-                  )}
-                </FormControl>
-              </div>
-            </div>
+            <FormControl fullWidth margin="normal" error={!!errors.subject}>
+              <InputLabel>Reason for Support</InputLabel>
+              <Select
+                name="subject"
+                value={formData.subject}
+                onChange={handleInputChange}
+                label="Reason for Support"
+              >
+                {supportOptions.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </Select>
+              {errors.subject && (
+                <FormHelperText>{errors.subject}</FormHelperText>
+              )}
+            </FormControl>
 
             <TextField
               label="Message"
@@ -200,7 +231,8 @@ const Support = () => {
               fullWidth
               margin="normal"
               multiline
-              minRows={4}
+              minRows={5}
+              placeholder="Describe your issue or question in as much detail as possible..."
               error={!!errors.message}
               helperText={errors.message || ""}
             />
@@ -210,8 +242,10 @@ const Support = () => {
               type="submit"
               disabled={isSubmitting}
             >
-              {isSubmitting && (
+              {isSubmitting ? (
                 <CircularProgress size={16} sx={{ color: "white" }} />
+              ) : (
+                <SendIcon fontSize="small" />
               )}
               {isSubmitting ? "Sending..." : "Send Request"}
             </button>
@@ -219,32 +253,30 @@ const Support = () => {
         </div>
 
         <div className="col-12 col-xl-4">
-          <div className="handset-summary-card shadow-sm support-summary-card">
-            <h6 className="summary-title">Support Contacts</h6>
-            <div className="summary-row">
-              <span>
-                <EmailIcon fontSize="small" className="support-icon" /> HR
-                Department
-              </span>
-              <strong>hr@mtc.com.na</strong>
-            </div>
-            <div className="summary-row">
-              <span>
-                <PhoneIcon fontSize="small" className="support-icon" /> IT
-                Support
-              </span>
-              <strong>itsupport@mtc.com.na</strong>
-            </div>
-            <hr className="summary-divider" />
-            <div className="summary-row">
-              <span>
-                <InfoIcon fontSize="small" className="support-icon" /> Response
-                Time
-              </span>
-              <strong>Within 24 hours</strong>
-            </div>
-            <div className="support-image-wrap mt-3">
-              <img src={pic} alt="Support" className="img-fluid support-image" />
+          <div className="support-topics-sidebar handset-form-card shadow-sm">
+            <h6 className="support-topics-heading">Choose a topic</h6>
+            <p className="support-topics-copy mb-0">
+              Select a category to pre-fill your support reason.
+            </p>
+            <div className="support-topics-list">
+              {supportTopics.map((topic) => (
+                <button
+                  key={topic.value}
+                  type="button"
+                  className={`support-topic-card${
+                    formData.subject === topic.value ? " is-selected" : ""
+                  }`}
+                  onClick={() => handleTopicSelect(topic.value)}
+                >
+                  <span className="support-topic-icon" aria-hidden="true">
+                    {topic.icon}
+                  </span>
+                  <span className="support-topic-content">
+                    <span className="support-topic-title">{topic.title}</span>
+                    <span className="support-topic-copy">{topic.description}</span>
+                  </span>
+                </button>
+              ))}
             </div>
           </div>
         </div>

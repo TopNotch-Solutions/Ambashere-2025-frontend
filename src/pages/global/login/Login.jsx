@@ -1,11 +1,56 @@
 import React, { useState, useEffect } from "react";
 import "../../../assets/style/global/login.css";
-import heroBanner from "../../../assets/Img/landing/11960-Ambasphere-Hero-Banner-V1 (1)23.png";
+import heroBanner from "../../../assets/Img/landing/loginImage.png";
 import mtclogo from "../../../assets/Img/image 1.png";
+import DashboardIcon from "@mui/icons-material/Dashboard";
+import DevicesOtherIcon from "@mui/icons-material/DevicesOther";
+import AssignmentIcon from "@mui/icons-material/Assignment";
+import AccountCircleIcon from "@mui/icons-material/AccountCircle";
+import HeadsetMicIcon from "@mui/icons-material/HeadsetMic";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { login } from "../../../store/reducers/authReducer.js";
 import axiosInstance from "../../../utils/axiosInstance";
+
+const userFeatures = [
+  {
+    icon: <DashboardIcon />,
+    title: "Dashboard",
+    description:
+      "See your handset and airtime benefits, renewal dates, and monthly allocations in one place.",
+  },
+  {
+    icon: <DevicesOtherIcon />,
+    title: "My Handsets",
+    description:
+      "Track device allocations and plan your next upgrade.",
+  },
+  {
+    icon: <AssignmentIcon />,
+    title: "My Benefits",
+    description:
+      "Manage airtime contracts and view package details securely.",
+  },
+  {
+    icon: <AccountCircleIcon />,
+    title: "Profile",
+    description:
+      "Review your ambassador details and keep your account information up to date.",
+  },
+  {
+    icon: <HeadsetMicIcon />,
+    title: "Support",
+    description:
+      "Reach the benefits team for help with contracts, devices, airtime, or account issues.",
+  },
+  {
+    icon: <HelpOutlineIcon />,
+    title: "Self-Help Hub",
+    description:
+      "Use benefit simulators to explore handset and airtime options before you apply.",
+  },
+];
 
 const Login = () => {
   const [passwordShown, setPasswordShown] = useState(false);
@@ -169,9 +214,43 @@ const Login = () => {
         <aside className="d-none d-lg-flex col-lg-6 col-xl-7 login-hero-panel">
           <img
             src={heroBanner}
-            alt="Ambasphere hero banner"
+            alt=""
+            aria-hidden="true"
             className="login-hero-image"
           />
+          <div className="login-hero-overlay" aria-hidden="true" />
+
+          <div className="login-hero-content">
+            <div className="login-hero-intro">
+              <p className="login-hero-eyebrow mb-2">Ambassador portal</p>
+              <h2 className="login-hero-title mb-3">
+                Your handset &amp; airtime benefits, all in one place
+              </h2>
+              <p className="login-hero-lead mb-0">
+                Sign in to manage your airtime and handset benefits.
+              </p>
+            </div>
+
+            <ul className="login-feature-list list-unstyled mb-0">
+              {userFeatures.map((feature, index) => (
+                <li
+                  key={feature.title}
+                  className="login-feature-item"
+                  style={{ animationDelay: `${index * 0.08}s` }}
+                >
+                  <span className="login-feature-icon" aria-hidden="true">
+                    {feature.icon}
+                  </span>
+                  <div>
+                    <h3 className="login-feature-title">{feature.title}</h3>
+                    <p className="login-feature-copy mb-0">
+                      {feature.description}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
         </aside>
 
         <main className="m-auto col-11 col-md-9 col-lg-6 col-xl-5 d-flex flex-column justify-content-center align-items-center login-right-panel">
@@ -244,26 +323,6 @@ const Login = () => {
                   >
                     {passwordShown ? "hide" : "show"}
                   </span>
-                </div>
-
-                <div className="form-group form-check mb-4">
-                  <input
-                    type="checkbox"
-                    className="form-check-input"
-                    id="rememberPassword"
-                    checked={rememberMe}
-                    onChange={() => {
-                      setRememberMe(!rememberMe);
-                      if (!rememberMe) {
-                        localStorage.setItem("savedUsername", username);
-                      } else {
-                        localStorage.removeItem("savedUsername");
-                      }
-                    }}
-                  />
-                  <label className="form-check-label" htmlFor="rememberPassword">
-                    Remember Me
-                  </label>
                 </div>
 
                 {loginError && (

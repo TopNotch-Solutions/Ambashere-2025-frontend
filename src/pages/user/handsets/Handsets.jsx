@@ -302,7 +302,7 @@ const UserHandsets = () => {
         <div className="row d-flex flex-column flex-md-row justify-content-around m-auto">
           {/* Learn More */}
           {dataAllocation.length > 0 ? (
-            <Box className="col-12 col-lg-11">
+            <Box className="col-12 col-lg-12">
               <div className="handset-summary-card shadow-sm benefits-stats-card">
                 <div className="row g-3">
                   <div className="col-sm-4">
@@ -321,7 +321,7 @@ const UserHandsets = () => {
                     <div className="benefit-metric">
                       <div>
                         <h5>Handset Price</h5>
-                        <h3>N$ {dataAllocation[0].HandsetPrice}</h3>
+                        <h3>N$ {dataAllocation[0].HandsetPrice.toFixed(2)}</h3>
                       </div>
                       <div className="benefit-metric-icon">
                         <FaMoneyBillTrendUp fontSize="large" />
@@ -367,7 +367,7 @@ const UserHandsets = () => {
             />
           </div>
           {/* Plan Table */}
-          <div className="col-12 col-lg-11 ml-1 d-flex flex-column">
+          <div className="col-12 ml-1 d-flex flex-column">
             <div className="m-1 m-sm-3">
               <Box
                 m="0"

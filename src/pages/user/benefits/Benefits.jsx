@@ -195,8 +195,8 @@ const UserBenefits = () => {
         <div>
           <h2 className="handset-title">My Benefits</h2>
           <p className="handset-subtitle mb-0">
-            View and manage your airtime and handset benefits, monitor active
-            contracts, and submit new contract applications.
+            View and manage your airtime benefits, monitor active
+            contracts, and simulate new contract applications.
           </p>
         </div>
         <Button

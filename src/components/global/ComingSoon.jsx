@@ -3,7 +3,7 @@ import "../../assets/style/global/comingSoon.css"
 
 const ComingSoon = () => {
   const calculateTimeLeft = () => {
-    const difference = +new Date("2026-07-01") - +new Date();
+    const difference = +new Date("2026-12-25") - +new Date();
     let timeLeft = {};
 
     if (difference > 0) {
