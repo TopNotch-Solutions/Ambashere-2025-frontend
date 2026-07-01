@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import "../../../assets/style/global/login.css";
 import heroBanner from "../../../assets/Img/landing/loginImage.png";
-import mtclogo from "../../../assets/Img/image 1.png";
+import mtclogo from "../../../assets/Img/landing/Ambasphere-Logo@2x.png";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import DevicesOtherIcon from "@mui/icons-material/DevicesOther";
 import AssignmentIcon from "@mui/icons-material/Assignment";
