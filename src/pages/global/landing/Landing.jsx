@@ -48,11 +48,15 @@ const Landing = () => {
             className="d-block w-100 carousel-image desktop-image"
             src={heroBanner}
             alt="Ambasphere desktop banner"
+            fetchPriority="high"
+            decoding="async"
           />
           <img
             className="d-block w-100 carousel-image mobile-image"
             src={heroBanner}
             alt="Ambasphere mobile banner"
+            fetchPriority="high"
+            decoding="async"
           />
         </div>
         <div className="carousel-text-container text-dark pt-3">
@@ -122,6 +126,8 @@ const Landing = () => {
                 src={img}
                 className="w-100 d-block"
                 alt={`Gallery ${index + 1}`}
+                loading="lazy"
+                decoding="async"
               />
             </div>
           ))}
@@ -134,6 +140,8 @@ const Landing = () => {
                 src={img}
                 className="w-100 d-block"
                 alt={`Gallery ${index + 5}`}
+                loading="lazy"
+                decoding="async"
               />
             </div>
           ))}
@@ -152,7 +160,7 @@ const Landing = () => {
             <p style={{ fontSize: "12px", marginTop: "10px" }}>
               a digital innovation by
             </p>
-            <img className="responsive-logo" src={logo} alt="MTC logo" />
+            <img className="responsive-logo" src={logo} alt="MTC logo" loading="lazy" decoding="async" />
           </div>
         </div>
       </footer>

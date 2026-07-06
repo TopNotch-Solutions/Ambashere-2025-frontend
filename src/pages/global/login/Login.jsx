@@ -217,6 +217,8 @@ const Login = () => {
             alt=""
             aria-hidden="true"
             className="login-hero-image"
+            fetchPriority="high"
+            decoding="async"
           />
           <div className="login-hero-overlay" aria-hidden="true" />
 
@@ -261,6 +263,8 @@ const Login = () => {
                   src={mtclogo}
                   alt="MTC logo"
                   className="img-fluid brand-logo"
+                  decoding="async"
+                  fetchPriority="high"
                 />
                 <h4 className="text-header mb-2">Ambasphere</h4>
                 <p className="brand-tagline mb-0">

@@ -212,7 +212,7 @@ const UserDashboard = () => {
               </Button>
             </div>
             <div className="col-lg-5 d-none d-lg-block dashboard-intro-image-wrap">
-              <img src={pic} alt="Benefits illustration" className="dashboard-intro-image" />
+              <img src={pic} alt="Benefits illustration" className="dashboard-intro-image" decoding="async" />
             </div>
           </div>
         </div>

@@ -33,8 +33,12 @@ const Breadcrumb = () => {
     );
   });
 
-  // If current location is login page, return null to hide breadcrumb
-  if (location.pathname === "/") {
+  // If current location is login page, SelfHelp, or Notifications, return null to hide breadcrumb
+  if (
+    location.pathname === "/" ||
+    location.pathname.includes("/SelfHelp") ||
+    location.pathname.toLowerCase().includes("/notification")
+  ) {
     return null;
   }
 

@@ -13,6 +13,7 @@ import Login from "./pages/global/login/Login.jsx";
 import Landing from "./pages/global/landing/Landing.jsx";
 import Breadcrumb from "./components/global/Breadcrumb";
 import Unauthorized from "./pages/global/Unauthorized.jsx";
+import { preloadImagesForApp } from "./utils/preloadImages";
 
 function App() {
   const [theme, colorMode] = useMode();
@@ -51,6 +52,13 @@ function App() {
 
     initializeAuth();
   }, [dispatch]);
+
+  useEffect(() => {
+    preloadImagesForApp({
+      pathname: location.pathname,
+      isAuthenticated,
+    });
+  }, [location.pathname, isAuthenticated]);
 
   if (loading) {
     return <div>Loading...</div>; // Display loading indicator

@@ -81,7 +81,7 @@ const Topbar = ({ profilePicture, OpenSidebar }) => {
       {/* LOGO*/}
       <div className="d-none d-lg-block">
         <Box display="flex" borderRadius="3px" height={"45px"}>
-          <img rounded-full w-8 h-8 src={logo} alt="user-profile" />
+          <img rounded-full w-8 h-8 src={logo} alt="user-profile" decoding="async" />
         </Box>
       </div>
       <div className="d-block d-lg-none" style={{ cursor: "pointer" }}>

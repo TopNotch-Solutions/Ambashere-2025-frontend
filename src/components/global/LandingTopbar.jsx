@@ -12,6 +12,8 @@ const LandingTopbar = () => {
           src={logo}
           alt="Ambasphere Logo"
           style={{ width: "35px", height: "auto" }}
+          decoding="async"
+          fetchPriority="high"
         />
       </Navbar.Brand>
 
