@@ -20,6 +20,7 @@ import axiosInstance from "../../../utils/axiosInstance";
 import HandsetVoucher from "../../../components/global/HandsetVoucher";
 import ShareIMEIModal from "../../../components/user/ShareIMEIModal";
 import formatDate from "../../../components/global/dateFormatter";
+import { formatMoney } from "../../../utils/formatMoney";
 import Swal from "sweetalert2";
 import HandsetBenfitSimulator from "../self-help/HandsetBenefitSimulator";
 import "../../../assets/style/global/handsetBenefitSimulator.css";
@@ -259,7 +260,7 @@ const UserHandsets = () => {
       id: handset.id,
       EmployeeCode: handset.EmployeeCode,
       HandsetName: handset.HandsetName,
-      DevicePrice: handset.HandsetPrice,
+      DevicePrice: formatMoney(handset.HandsetPrice),
       ExccessPrice: handset.AccessFeePaid,
       // StaffPrice: "N$ " + handset.StaffPrice || "N$" + 0,
       // UpfrontPayment: "N$ " + handset.UpfrontPayment,
@@ -321,7 +322,7 @@ const UserHandsets = () => {
                     <div className="benefit-metric">
                       <div>
                         <h5>Handset Price</h5>
-                        <h3>N$ {dataAllocation[0].HandsetPrice.toFixed(2)}</h3>
+                        <h3>{formatMoney(dataAllocation[0].HandsetPrice)}</h3>
                       </div>
                       <div className="benefit-metric-icon">
                         <FaMoneyBillTrendUp fontSize="large" />

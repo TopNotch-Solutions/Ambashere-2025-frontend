@@ -11,6 +11,7 @@ import UserCalendar from "../calendar/Calendar";
 import MiniCalendar from "../../../components/global/calendar/MiniCalendar";
 import { useNavigate } from "react-router-dom";
 import formatDate from "../../../components/global/dateFormatter";
+import { formatMoney } from "../../../utils/formatMoney";
 import "../../../assets/style/global/handsetBenefitSimulator.css";
 import "../../../assets/style/global/benefits.css";
 import "../../../assets/style/global/dashboard.css";
@@ -127,12 +128,6 @@ const UserDashboard = () => {
       ? airtimeData
       : [];
 
-  const formatMoney = (value) =>
-    `N$ ${Number(value || 0).toLocaleString("en-NA", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })}`;
-
   const airtimeRows = airtimeContracts.map((airtime, index) => ({
     id: `airtime-${airtime?.id ?? airtime?.ContractNumber ?? index + 1}`,
     MSISDN: airtime?.msisdn || airtime?.MSISDN || airtime?.staff_msisdn || "",
@@ -162,8 +157,8 @@ const UserDashboard = () => {
   const handsetRows = (handsetData?.handsets || []).map((handset, index) => ({
     id: index + 1,
     FixedAssetCode: handset?.FixedAssetCode,
-    HandsetAllocation: "N$ " + handset?.HandsetAllocation,
-    HandsetPrice: "N$ " + handset?.HandsetPrice,
+    HandsetAllocation: formatMoney(handset?.HandsetAllocation),
+    HandsetPrice: formatMoney(handset?.HandsetPrice),
     PackageName: handset?.PackageName,
     HandsetName: handset?.HandsetName,
     AllocationDate: formatDate(handset?.CollectionDate),
@@ -269,15 +264,12 @@ const UserDashboard = () => {
                             </Box>
                           ) : (
                             <p className="mt-1 text-center">
-                              N${" "}
-                              {(showAirtime
-                                ? Number(
+                              {showAirtime
+                                ? formatMoney(
                                     noContract?.airtimeAllocation ??
                                       airtimeData?.airtimeAllocation
-                                  ).toFixed(2)
-                                : Number(
-                                    benefitAmount
-                                  ).toFixed(2)) ?? 0}
+                                  )
+                                : formatMoney(benefitAmount)}
                             </p>
                           )}
                         </div>
@@ -296,13 +288,14 @@ const UserDashboard = () => {
                               </Box>
                             ) : (
                               <p className="mt-1 text-center">
-                                N${" "}
-                                {(showAirtime
-                                  ? Number(
+                                {showAirtime
+                                  ? formatMoney(
                                       noContract?.sul ?? airtimeData?.sul
-                                    ).toFixed(2)
-                                  : handsetData[0]?.HandsetAllocation -
-                                    handsetData[0]?.MonthlyPayment) || 0}
+                                    )
+                                  : formatMoney(
+                                      (handsetData[0]?.HandsetAllocation || 0) -
+                                        (handsetData[0]?.MonthlyPayment || 0)
+                                    )}
                               </p>
                             )}
                           </div>
@@ -322,16 +315,17 @@ const UserDashboard = () => {
                               </Box>
                             ) : (
                               <p className="mt-1 text-center">
-                                N${" "}
                                 {showAirtime
-                                  ? Number(
-                                      noContract?.available ?? airtimeData.available
-                                    ).toFixed(2)
-                                  : 0.7 * (handsetData[0]?.HandsetAllocation || 0) -
-                                    handsetData.reduce(
-                                      (total, item) =>
-                                        total + (item.MonthlyPayment || 0),
-                                      0
+                                  ? formatMoney(
+                                      noContract?.available ?? airtimeData?.available
+                                    )
+                                  : formatMoney(
+                                      0.7 * (handsetData[0]?.HandsetAllocation || 0) -
+                                        handsetData.reduce(
+                                          (total, item) =>
+                                            total + (item.MonthlyPayment || 0),
+                                          0
+                                        )
                                     )}
                               </p>
                             )}
@@ -445,7 +439,7 @@ const UserDashboard = () => {
                         </Box>
                       ) : (
                         <p className="mt-2" style={{ fontSize: "1.5rem", fontWeight: "bold" }}>
-                          N$ {tempData.AirtimeAllocation || "0.00"}
+                          {formatMoney(tempData.AirtimeAllocation || 0)}
                         </p>
                       )}
                     </div>

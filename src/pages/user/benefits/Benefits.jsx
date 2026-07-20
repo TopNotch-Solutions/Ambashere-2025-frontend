@@ -13,6 +13,7 @@ import RemoveCircleIcon from "@mui/icons-material/RemoveCircle";
 import axiosInstance from "../../../utils/axiosInstance";
 import Swal from "sweetalert2";
 import formatDate from "../../../components/global/dateFormatter";
+import { formatMoney } from "../../../utils/formatMoney";
 import AirtimeBenefitSimulator from "../self-help/AirtimeBenefitSimulator";
 import "../../../assets/style/global/handsetBenefitSimulator.css";
 import "../../../assets/style/global/benefits.css";
@@ -144,10 +145,7 @@ const UserBenefits = () => {
     PackageName: contract?.PackageName || contract?.package || "-",
     DeviceName: contract?.DeviceName || contract?.device || "-",
     MSISDN: contract?.MSISDN || contract?.msisdn || "-",
-    DevicePrice: `N$ ${Number(contract?.DevicePrice ?? contract?.device_initial_cost ?? 0).toLocaleString("en-NA", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })}`,
+    DevicePrice: formatMoney(contract?.DevicePrice ?? contract?.device_initial_cost ?? 0),
     ContractDuration:
       contract?.ContractDuration != null || contract?.contract_duration != null
         ? String(
@@ -159,14 +157,8 @@ const UserBenefits = () => {
     ContractStartDate: formatDate(contract?.ContractStartDate ?? contract?.contract_start_date),
     ContractEndDate: formatDate(contract?.ContractEndDate ?? contract?.contract_end_date),
     
-    MonthlyPayment: `N$ ${Number(contract?.MonthlyPayment ?? contract?.monthly_payment ?? 0).toLocaleString("en-NA", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })}`,
-    PayoutBalance: `N$ ${Number(contract?.device_payout_balance ?? contract?.device_payout_balance ?? 0).toLocaleString("en-NA", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })}`,
+    MonthlyPayment: formatMoney(contract?.MonthlyPayment ?? contract?.monthly_payment ?? 0),
+    PayoutBalance: formatMoney(contract?.device_payout_balance ?? contract?.device_payout_balance ?? 0),
     SubscriptionStatus: contract?.SubscriptionStatus || contract?.subscription_status || "-",
     ApprovalStatus: contract.ApprovalStatus
   }));
