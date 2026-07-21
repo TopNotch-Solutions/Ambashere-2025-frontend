@@ -7,7 +7,7 @@ const SOCKET_URL = ensureHttpsUrl(
 
 const socket = io(SOCKET_URL, {
   transports: ["websocket", "polling"],
-  secure: true,
+  secure: SOCKET_URL.startsWith("https://"),
   upgrade: false,
 });
 

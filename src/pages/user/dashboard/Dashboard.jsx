@@ -59,9 +59,11 @@ const UserDashboard = () => {
         const response = await axiosInstance.get(
           `/contracts/${currentUser.EmployeeCode}`
         );
+        console.log("airtime data", response.data);
         if (response.data.status === 1) {
           setNoContract(response.data);
         } else {
+          console.log("airtime data", response.data);
           setAirtimeData(response.data || {});
         }
       } catch (error) {

@@ -22,6 +22,7 @@ const AirtimeBenefitSimulator = ({ embedded = false }) => {
   ]);
   const [monthlyPayment, setMonthlyPayment] = useState(0);
   const [airtimeAllocation, setAirtimeAllocation] = useState("");
+  const [availableAllowance, setAvailableAllowance] = useState(null);
   const [checkLimit, setCheckLimit] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [devicesError, setDevicesError] = useState("");
@@ -93,6 +94,24 @@ const AirtimeBenefitSimulator = ({ embedded = false }) => {
     };
 
     fetchAirtimeAllocation();
+  }, [employeeCode]);
+
+  useEffect(() => {
+    const fetchAvailableAllowance = async () => {
+      if (!employeeCode) return;
+      try {
+        const response = await axiosInstance.get(
+          `/contracts/${employeeCode}`
+        );
+        if (response.data.status !== 1) {
+          setAvailableAllowance(response.data.available ?? null);
+        }
+      } catch (error) {
+        console.error("Failed to load available allowance", error);
+      }
+    };
+
+    fetchAvailableAllowance();
   }, [employeeCode]);
 
   const handleNumberOfContractsChange = (event) => {
@@ -209,8 +228,14 @@ const AirtimeBenefitSimulator = ({ embedded = false }) => {
   useEffect(() => {
     const allocation = parseFloat(airtimeAllocation) || 0;
     const limit = 0.7 * allocation;
-    setCheckLimit(monthlyPayment <= limit ? "Within Limit" : "Exceeding Limit");
-  }, [airtimeAllocation, monthlyPayment]);
+
+    if (availableAllowance !== null) {
+      const remaining = parseFloat(availableAllowance) - monthlyPayment;
+      setCheckLimit(remaining >= 0 ? "Within Limit" : "Exceeding Limit");
+    } else {
+      setCheckLimit(monthlyPayment <= limit ? "Within Limit" : "Exceeding Limit");
+    }
+  }, [airtimeAllocation, availableAllowance, monthlyPayment]);
 
   return (
     <div className={embedded ? "row g-4" : "container-main m-3 handset-simulator-page"}>
@@ -462,10 +487,32 @@ const AirtimeBenefitSimulator = ({ embedded = false }) => {
                 <span>Airtime allocation</span>
                 <strong>{formatCurrency(airtimeAllocation)}</strong>
               </div>
+              {availableAllowance !== null && (
+                <div className="summary-row">
+                  <span>Available (after existing contracts)</span>
+                  <strong>{formatCurrency(availableAllowance)}</strong>
+                </div>
+              )}
               <div className="summary-row">
-                <span>Monthly payment</span>
+                <span>Monthly payment (simulated)</span>
                 <strong>{formatCurrency(monthlyPayment)}</strong>
               </div>
+              {availableAllowance !== null && (
+                <div
+                  className={`summary-row ${
+                    parseFloat(availableAllowance) - monthlyPayment < 0
+                      ? "total-row-danger"
+                      : ""
+                  }`}
+                >
+                  <span>Remaining after simulation</span>
+                  <strong>
+                    {formatCurrency(
+                      parseFloat(availableAllowance) - monthlyPayment
+                    )}
+                  </strong>
+                </div>
+              )}
               <hr className="summary-divider" />
               <div
                 className={`summary-row total-row ${
