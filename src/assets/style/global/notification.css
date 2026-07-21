@@ -150,9 +150,18 @@
   margin-bottom: 0.35rem;
 }
 
+.notification-modern-page .notification-title {
+  color: #1a3a52;
+  font-weight: 700;
+  font-size: 1.05rem;
+  line-height: 1.4;
+  margin-bottom: 0.5rem;
+  word-break: break-word;
+}
+
 .notification-modern-page .notification-message {
   color: #1a3a52;
-  font-weight: 600;
+  font-weight: 500;
   font-size: 0.98rem;
   line-height: 1.55;
   word-break: break-word;

@@ -23,18 +23,21 @@ const UserCalendar = () => {
         setIsLoading(true);
         const response = await axiosInstance.get("/events");
   
-        const formattedEvents = response.data.map(event => {
-          const eventStartDate = new Date(`${event.EventDate}T${event.EventTime}`);
-          // If you don't have an explicit end time, you can add a duration (e.g., 1 hour) to calculate the end time
+        const formattedEvents = response.data.map((event) => {
+          const eventTime =
+            typeof event.EventTime === "string" && event.EventTime.length === 5
+              ? `${event.EventTime}:00`
+              : event.EventTime;
+          const eventStartDate = new Date(`${event.EventDate}T${eventTime}`);
           const eventEndDate = new Date(eventStartDate);
-          eventEndDate.setHours(eventEndDate.getHours() + 1); // Example: 1 hour duration
-  
+          eventEndDate.setHours(eventEndDate.getHours() + 1);
+
           return {
             start: eventStartDate,
             end: eventEndDate,
             title: event.EventName,
             description: event.EventDescription,
-            id: event.EventID // Ensure you're using EventID for uniqueness
+            id: event.EventID,
           };
         });
   

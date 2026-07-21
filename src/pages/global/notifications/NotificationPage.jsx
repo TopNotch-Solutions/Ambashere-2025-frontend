@@ -1,5 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import axiosInstance from "../../../utils/axiosInstance";
+import { useDispatch } from "react-redux";
+import {
+  markAllNotificationsAsRead,
+  setNotifications as setReduxNotifications,
+} from "../../../store/reducers/notificationReducer";
 import {
   Box,
   Typography,
@@ -20,6 +25,14 @@ import MarkEmailReadOutlinedIcon from "@mui/icons-material/MarkEmailReadOutlined
 import backgroundImage from "../../../assets/Img/landing/15248_MTC_Human Capital_Illustrations and Mock ups - Ambasphere Portal production-01.png";
 import "../../../assets/style/global/handsetBenefitSimulator.css";
 import "../../../assets/style/global/notification.css";
+
+const GENERIC_NOTIFICATION_TYPES = new Set([
+  "User Notification",
+  "Admin Notification",
+  "Temporary Staff Notification",
+]);
+
+const usesTitleAndBodyLayout = (type) => !GENERIC_NOTIFICATION_TYPES.has(type);
 
 const getNotificationIcon = (type) => {
   const iconClass = "notification-card-icon";
@@ -55,11 +68,14 @@ const getCardModifier = (type) => {
 };
 
 const NotificationPage = () => {
+  const dispatch = useDispatch();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const [shouldReFetch, setShouldReFetch] = useState(true);
+  const refreshNotificationCount = useCallback(() => {
+    window.dispatchEvent(new CustomEvent("notifications-updated"));
+  }, []);
 
   useEffect(() => {
     const fetchAndMarkNotifications = async () => {
@@ -68,15 +84,23 @@ const NotificationPage = () => {
       try {
         const response = await axiosInstance.get(`/notifications`);
         const fetchedNotifications = response.data;
+        const hasUnread = fetchedNotifications.some(
+          (notification) => !notification.Viewed
+        );
 
-        setNotifications(fetchedNotifications);
-
-        if (fetchedNotifications.length > 0) {
-          try {
-            await axiosInstance.put(`/notifications`);
-          } catch (markError) {
-            console.warn("Could not mark notifications as read:", markError);
-          }
+        if (hasUnread) {
+          await axiosInstance.put(`/notifications`);
+          const readNotifications = fetchedNotifications.map((notification) => ({
+            ...notification,
+            Viewed: true,
+          }));
+          setNotifications(readNotifications);
+          dispatch(setReduxNotifications(readNotifications));
+          dispatch(markAllNotificationsAsRead());
+          refreshNotificationCount();
+        } else {
+          setNotifications(fetchedNotifications);
+          dispatch(setReduxNotifications(fetchedNotifications));
         }
       } catch (err) {
         console.error("Error fetching or marking notifications:", err);
@@ -86,11 +110,8 @@ const NotificationPage = () => {
       }
     };
 
-    if (shouldReFetch) {
-      fetchAndMarkNotifications();
-      setShouldReFetch(false);
-    }
-  }, [shouldReFetch]);
+    fetchAndMarkNotifications();
+  }, [dispatch, refreshNotificationCount]);
 
   const handleDeleteNotification = async (notificationId) => {
     try {
@@ -211,8 +232,17 @@ const NotificationPage = () => {
                     <div className="notification-date">
                       {new Date(notification.Created_At).toLocaleString()}
                     </div>
-                    <div className="notification-message">{notification.Message}</div>
-                    <span className="notification-category">{notification.Type}</span>
+                    {usesTitleAndBodyLayout(notification.Type) ? (
+                      <>
+                        <div className="notification-title">{notification.Type}</div>
+                        <div className="notification-message">{notification.Message}</div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="notification-message">{notification.Message}</div>
+                        <span className="notification-category">{notification.Type}</span>
+                      </>
+                    )}
                   </div>
                   <IconButton
                     aria-label="delete notification"

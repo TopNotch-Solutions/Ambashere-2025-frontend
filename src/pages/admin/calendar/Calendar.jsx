@@ -26,7 +26,7 @@ const AdminCalendar = () => {
   const [eventDescription, setEventDescription] = useState("");
   const [eventDate, setEventDate] = useState(new Date());
   const [eventTime, setEventTime] = useState("12:00");
-  const [recurrenceType, setRecurrenceType] = useState("none");
+  const [recurrenceType, setRecurrenceType] = useState("None");
   const [recurrenceInterval, setRecurrenceInterval] = useState(1);
   const [isEdit, setIsEdit] = useState(false);
 
@@ -35,15 +35,19 @@ const AdminCalendar = () => {
       try {
         const response = await axiosInstance.get("/events");
 
-        const formattedEvents = response.data.map((event) => ({
-          start: new Date(`${event.EventDate}T${event.EventTime}`),
-          end: new Date(`${event.EventDate}T${event.EventTime}`).setHours(
-            new Date(`${event.EventDate}T${event.EventTime}`).getHours() + 1
-          ),
-          title: event.EventName,
-          description: event.EventDescription,
-          id: event.EventID, // Ensure EventID is mapped correctly
-        }));
+        const formattedEvents = response.data.map((event) => {
+          const start = new Date(`${event.EventDate}T${event.EventTime}`);
+          const end = new Date(start);
+          end.setHours(end.getHours() + 1);
+
+          return {
+            start,
+            end,
+            title: event.EventName,
+            description: event.EventDescription,
+            id: event.EventID,
+          };
+        });
 
         setEvents(formattedEvents);
       } catch (error) {
@@ -59,7 +63,7 @@ const AdminCalendar = () => {
     setEventDescription("");
     setEventDate(start);
     setEventTime("12:00");
-    setRecurrenceType("none");
+    setRecurrenceType("None");
     setRecurrenceInterval(1);
     setSelectedEvent(null);
     setIsEdit(false);
@@ -98,7 +102,7 @@ const AdminCalendar = () => {
     const eventData = {
       EventName: eventName,
       EventDescription: eventDescription,
-      EventDate: startDate.toISOString(),
+      EventDate: moment(startDate).format("YYYY-MM-DD"),
       EventTime: eventTime,
       RecurrenceType: recurrenceType,
       RecurrenceInterval: recurrenceInterval,
@@ -110,13 +114,17 @@ const AdminCalendar = () => {
           `/events/updateEvent/${selectedEvent.id}`,
           eventData
         );
+        const updatedStart = new Date(`${updatedEvent.data.EventDate}T${eventTime}`);
+        const updatedEnd = new Date(updatedStart);
+        updatedEnd.setHours(updatedEnd.getHours() + 1);
+
         setEvents(
           events.map((ev) =>
             ev.id === selectedEvent.id
               ? {
                   ...updatedEvent.data,
-                  start: startDate,
-                  end: new Date(startDate).setHours(startDate.getHours() + 1),
+                  start: updatedStart,
+                  end: updatedEnd,
                   title: updatedEvent.data.EventName,
                   description: updatedEvent.data.EventDescription,
                 }
@@ -128,12 +136,16 @@ const AdminCalendar = () => {
           "/events/createEvent",
           eventData
         );
+        const createdStart = new Date(`${newEvent.data.EventDate}T${eventTime}`);
+        const createdEnd = new Date(createdStart);
+        createdEnd.setHours(createdEnd.getHours() + 1);
+
         setEvents([
           ...events,
           {
             ...newEvent.data,
-            start: startDate,
-            end: new Date(startDate).setHours(startDate.getHours() + 1),
+            start: createdStart,
+            end: createdEnd,
             title: newEvent.data.EventName,
             description: newEvent.data.EventDescription,
           },

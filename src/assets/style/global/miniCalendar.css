@@ -168,6 +168,10 @@ body.chakra-ui-dark .react-calendar__tile--rangeEnd:enabled:focus {
   margin: 0 2px;
 }
 
+.event-dot-admin {
+  background-color: #0096d6;
+}
+
 .event-hover-box {
   position: absolute;
   background-color: rgba(0, 0, 0, 0.8);

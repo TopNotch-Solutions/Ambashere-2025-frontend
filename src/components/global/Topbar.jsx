@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Box, IconButton, useTheme, Avatar, Badge } from "@mui/material";
 import { useContext } from "react";
 import { ColorModeContext, tokens } from "../../theme";
@@ -11,7 +11,7 @@ import Dropdown from "react-bootstrap/Dropdown";
 import { BsPersonGear, BsGear, BsBoxArrowRight } from "react-icons/bs";
 import { useSelector } from "react-redux";
 import NotificationDropdown from "./NotificationDropdown";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import axiosInstance from "../../utils/axiosInstance";
 import { ensureHttpsUrl } from "../../utils/ensureHttpsUrl";
 
@@ -21,6 +21,7 @@ const Topbar = ({ profilePicture, OpenSidebar }) => {
   const colorMode = useContext(ColorModeContext);
   const [notificationCount, setNotificationCount] = useState(0);
   const navigate = useNavigate();
+  const location = useLocation();
   const currentUser = useSelector((state) => state.auth.user);
   const { role } = useSelector((state) => state.auth);
   let profileImage = currentUser?.ProfileImage
@@ -30,26 +31,40 @@ const Topbar = ({ profilePicture, OpenSidebar }) => {
     (state) => state.notifications.notifications
   );
 
-  useEffect(() => {
-    const fetchNotificationCount = async () => {
-      try {
-        if (!currentUser?.EmployeeCode) return;
+  const fetchNotificationCount = useCallback(async () => {
+    try {
+      if (!currentUser?.EmployeeCode) return;
 
-        const response = await axiosInstance.get(
-          `/notifications/admin-notification`
-        );
-        if (response.status === 200) {
-          setNotificationCount(response.data.count);
-        } else {
-          console.error("Failed to fetch notification count:", response);
-        }
-      } catch (error) {
-        console.error("Notification count error:", error.message);
+      const response = await axiosInstance.get(
+        `/notifications/admin-notification`
+      );
+      if (response.status === 200) {
+        setNotificationCount(response.data.count);
+      } else {
+        console.error("Failed to fetch notification count:", response);
       }
+    } catch (error) {
+      console.error("Notification count error:", error.message);
+    }
+  }, [currentUser?.EmployeeCode]);
+
+  useEffect(() => {
+    fetchNotificationCount();
+  }, [fetchNotificationCount, location.pathname]);
+
+  useEffect(() => {
+    const handleNotificationsUpdated = () => {
+      fetchNotificationCount();
     };
 
-    fetchNotificationCount();
-  }, [currentUser?.EmployeeCode]);
+    window.addEventListener("notifications-updated", handleNotificationsUpdated);
+    return () => {
+      window.removeEventListener(
+        "notifications-updated",
+        handleNotificationsUpdated
+      );
+    };
+  }, [fetchNotificationCount]);
 
   const roleNotifications = notifications.filter((notification) =>
     role === 1 ? notification.type === "1" : notification.type === "3"

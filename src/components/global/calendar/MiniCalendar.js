@@ -75,116 +75,95 @@ export default function MiniCalendar(props) {
     return permanentEvents;
   };
 
-  useEffect(() => {
-    const fetchAllEvents = async () => {
-      try {
-        const response = await axiosInstance.get("/events");
-        const formattedEvents = response.data.map((event) => {
-          const eventStartDate = new Date(`${event.EventDate}T${event.EventTime}`);
-          const eventEndDate = new Date(eventStartDate);
-          eventEndDate.setHours(eventEndDate.getHours() + 1); // Assuming 1-hour duration
-          return {
-            start: eventStartDate,
-            end: eventEndDate,
-            title: event.EventName,
-            description: event.EventDescription,
-            id: event.EventID,
-          };
-        });
-        const permanentEvents = generatePermanentEvents();
+  const formatApiEvent = (event) => {
+    const eventTime =
+      typeof event.EventTime === "string" && event.EventTime.length === 5
+        ? `${event.EventTime}:00`
+        : event.EventTime;
+    const eventStartDate = new Date(`${event.EventDate}T${eventTime}`);
+    const eventEndDate = new Date(eventStartDate);
+    eventEndDate.setHours(eventEndDate.getHours() + 1);
 
-        setEvents([...formattedEvents, ...permanentEvents]);
-        return [...formattedEvents, ...permanentEvents];
-      } catch (error) {
-        // console.error("Error fetching events:", error);
-        return [];
-      }
+    return {
+      start: eventStartDate,
+      end: eventEndDate,
+      title: event.EventName,
+      description: event.EventDescription,
+      id: `event-${event.EventID}`,
+      source: "admin",
     };
+  };
 
-    // const fetchAirtimeData = async () => {
-    //   try {
-    //     const response = await axiosInstance.get(
-    //       `/contracts/airtime/${currentUser.EmployeeCode}`
-    //     );
-    //     return response.data.airtimeData || [];
-    //   } catch (error) {
-    //     // 
-    //     return [];
-    //   }
-    // };
+  const generateRecurringEvents = () => {
+    const recurringEvents = [];
+    const now = moment();
 
-    // const fetchHandsetData = async () => {
-    //   try {
-    //     const response = await axiosInstance.get(
-    //       `/contracts/handsets/${currentUser.EmployeeCode}`
-    //     );
-    //     return response.data.handsetData || [];
-    //   } catch (error) {
-    //     // 
-    //     return [];
-    //   }
-    // };
-
-    const generateRecurringEvents = () => {
-      const recurringEvents = [];
-      const now = moment();
-
-      for (let i = 0; i < 12; i++) {
-        recurringEvents.push({
-          start: moment().date(14).add(i, "months").toDate(),
-          end: moment().date(14).add(i, "months").toDate(),
-          title: "Airtime is loaded today",
-          recurring: true,
-        });
-      }
-
-      const retrievedDate = moment("2022-07-01");
-      const twoYearEventDate = retrievedDate.add(2, "years").toDate();
+    for (let i = 0; i < 12; i++) {
       recurringEvents.push({
-        start: twoYearEventDate,
-        end: twoYearEventDate,
-        title: "Event every 2 years",
+        start: moment().date(14).add(i, "months").toDate(),
+        end: moment().date(14).add(i, "months").toDate(),
+        title: "Airtime is loaded today",
         recurring: true,
+        id: `airtime-load-${i}`,
       });
+    }
 
-      for (let i = 0; i < 24; i++) {
-        recurringEvents.push({
-          start: moment(twoYearEventDate)
-            .subtract(2, "years")
-            .add(i, "months")
-            .toDate(),
-          end: moment(twoYearEventDate)
-            .subtract(2, "years")
-            .add(i, "months")
-            .toDate(),
-          title: "Monthly Event for 2-year item",
-          recurring: true,
-        });
-      }
+    const retrievedDate = moment("2022-07-01");
+    const twoYearEventDate = retrievedDate.add(2, "years").toDate();
+    recurringEvents.push({
+      start: twoYearEventDate,
+      end: twoYearEventDate,
+      title: "Event every 2 years",
+      recurring: true,
+      id: "two-year-event",
+    });
 
-      return recurringEvents;
-    };
+    for (let i = 0; i < 24; i++) {
+      recurringEvents.push({
+        start: moment(twoYearEventDate)
+          .subtract(2, "years")
+          .add(i, "months")
+          .toDate(),
+        end: moment(twoYearEventDate)
+          .subtract(2, "years")
+          .add(i, "months")
+          .toDate(),
+        title: "Monthly Event for 2-year item",
+        recurring: true,
+        id: `monthly-two-year-${i}`,
+      });
+    }
 
+    return recurringEvents;
+  };
+
+  useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const [airtimeData, handsetData, allEvents] = await Promise.all([
-          // fetchAirtimeData(),
-          // fetchHandsetData(),
-          fetchAllEvents(),
-        ]);
+        const response = await axiosInstance.get("/events");
+        const formattedEvents = (response.data || []).map(formatApiEvent);
+        const permanentEvents = generatePermanentEvents();
         const recurringEvents = generateRecurringEvents();
-        setEvents([...airtimeData, ...handsetData, ...allEvents, ...recurringEvents]);
+
+        setEvents([...formattedEvents, ...permanentEvents, ...recurringEvents]);
       } catch (error) {
+        console.error("Error fetching events:", error);
+        setEvents([
+          ...generatePermanentEvents(),
+          ...generateRecurringEvents(),
+        ]);
       }
     };
 
     fetchEvents();
-  }, [currentUser.EmployeeCode]);
+  }, [currentUser?.EmployeeCode]);
 
   const getTileContent = ({ date, view }) => {
     if (view === "month") {
       const dayEvents = events.filter(
-        (event) => new Date(event.start).toDateString() === date.toDateString()
+        (event) =>
+          moment(event.start).format("YYYY-MM-DD") ===
+          moment(date).format("YYYY-MM-DD")
       );
   
       if (dayEvents.length > 0) {
@@ -199,8 +178,13 @@ export default function MiniCalendar(props) {
             hasArrow
           >
             <Box className="event-day">
-              {dayEvents.map((event, index) => (
-                <Box key={index} className="event-dot" />
+              {dayEvents.map((event) => (
+                <Box
+                  key={event.id}
+                  className={`event-dot ${
+                    event.source === "admin" ? "event-dot-admin" : ""
+                  }`}
+                />
               ))}
             </Box>
           </Tooltip>
