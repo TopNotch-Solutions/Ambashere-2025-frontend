@@ -169,12 +169,22 @@ export default function MiniCalendar(props) {
       if (dayEvents.length > 0) {
         return (
           <Tooltip
-            label={dayEvents.map((event) => (
-              <Box key={event.id} className="event-tooltip" p="10px" style={{ backgroundColor: "#0C1E33", color: "white" }}>
-                <Text fontWeight="bold">{event.title}</Text>
-                <Text>{event.description}</Text>
+            label={
+              <Box className="event-tooltip-list">
+                {dayEvents.map((event) => (
+                  <Box key={event.id} className="event-tooltip">
+                    <Text fontWeight="bold" className="event-tooltip-title">
+                      {event.title}
+                    </Text>
+                    {event.description && (
+                      <Text className="event-tooltip-description">
+                        {event.description}
+                      </Text>
+                    )}
+                  </Box>
+                ))}
               </Box>
-            ))}
+            }
             hasArrow
           >
             <Box className="event-day">

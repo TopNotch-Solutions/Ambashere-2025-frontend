@@ -2,7 +2,7 @@ import { Button } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import LandingTopbar from "../../../components/global/LandingTopbar";
 import "../../../assets/style/landing.css";
-import heroBanner from "../../../assets/Img/landing/11960-Ambasphere-Hero-Banner-V12.png";
+import heroBanner from "../../../assets/Img/landing/12859_MTC_Human-Capital_Resizing---Ambashphere-Portal-Images.jpg";
 import img1 from "../../../assets/Img/landing/img-1@2x.png";
 import img2 from "../../../assets/Img/landing/img-2@2x.png";
 import img3 from "../../../assets/Img/landing/img-3@2x.png";

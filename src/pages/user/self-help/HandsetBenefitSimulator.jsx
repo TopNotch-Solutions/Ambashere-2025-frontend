@@ -107,7 +107,7 @@ const HandsetBenfitSimulator = ({ embedded = false }) => {
             <h2 className="handset-title">Handset Benefit Simulator</h2>
             <p className="handset-subtitle mb-0">
               Select your handset allocation and preferred device to instantly see
-              your estimated once-off access payment.
+              your estimated once-off excess payment.
             </p>
           </div>
         </div>
@@ -187,7 +187,7 @@ const HandsetBenfitSimulator = ({ embedded = false }) => {
               <div className="col-md-6">
                 <TextField
                   name="Topup"
-                  label="Access Payment"
+                  label="Excess Payment"
                   fullWidth
                   margin="normal"
                   sx={{
@@ -206,7 +206,7 @@ const HandsetBenfitSimulator = ({ embedded = false }) => {
             </div>
 
             <p className="simulator-note mb-0">
-              Access Payment = Device Price - Handset Allocation (minimum N$
+              Excess Payment = Device Price - Handset Allocation (minimum N$
               0.00)
             </p>
           </form>
@@ -233,7 +233,7 @@ const HandsetBenfitSimulator = ({ embedded = false }) => {
             </div>
             <hr className="summary-divider" />
             <div className={`summary-row total-row ${topupPayment > 0 ? "total-row-danger" : ""}`}>
-              <span>Access payment</span>
+              <span>Excess payment</span>
               <strong>{formatCurrency(topupPayment)}</strong>
             </div>
           </div>

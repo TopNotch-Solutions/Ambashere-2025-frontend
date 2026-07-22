@@ -20,10 +20,8 @@ const AirtimeBenefitSimulator = ({ embedded = false }) => {
   const [contractData, setContractData] = useState([
     { selectedPackage: "", devicePrice: "", deviceName: "", packagePrice: "" },
   ]);
-  const [monthlyPayment, setMonthlyPayment] = useState(0);
   const [airtimeAllocation, setAirtimeAllocation] = useState("");
   const [availableAllowance, setAvailableAllowance] = useState(null);
-  const [checkLimit, setCheckLimit] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [devicesError, setDevicesError] = useState("");
   const [packagesError, setPackagesError] = useState("");
@@ -103,9 +101,11 @@ const AirtimeBenefitSimulator = ({ embedded = false }) => {
         const response = await axiosInstance.get(
           `/contracts/${employeeCode}`
         );
-        if (response.data.status !== 1) {
-          setAvailableAllowance(response.data.available ?? null);
-        }
+        setAvailableAllowance(
+          response.data.available != null
+            ? parseFloat(response.data.available)
+            : null
+        );
       } catch (error) {
         console.error("Failed to load available allowance", error);
       }
@@ -114,11 +114,119 @@ const AirtimeBenefitSimulator = ({ embedded = false }) => {
     fetchAvailableAllowance();
   }, [employeeCode]);
 
+  const getPackageMonthlyCost = (contract) => {
+    const selectedPkg = packages.find(
+      (pkg) => pkg.PackageID === contract.selectedPackage
+    );
+    let packageTotal = parseFloat(selectedPkg?.MonthlyPrice) || 0;
+    if (contract.netOption === "Yes") {
+      packageTotal += 50;
+    }
+    return packageTotal;
+  };
+
+  const getDeviceMonthlyCost = (contract) => {
+    const selectedPkg = packages.find(
+      (pkg) => pkg.PackageID === contract.selectedPackage
+    );
+    const durationMatch = selectedPkg?.PackageName.match(/\((\d+)\)/);
+    const duration = durationMatch ? parseInt(durationMatch[1], 10) : 0;
+
+    const monthlyDevicePayment = duration
+      ? (parseFloat(contract.devicePrice) || 0) / duration
+      : 0;
+    const additionalDevicePayment = duration
+      ? (parseFloat(contract.additionalDevicePrice) || 0) / duration
+      : 0;
+
+    return monthlyDevicePayment + additionalDevicePayment;
+  };
+
+  const getContractMonthlyPayment = (contract) =>
+    getPackageMonthlyCost(contract) + getDeviceMonthlyCost(contract);
+
+  const limitBudget = useMemo(() => {
+    if (availableAllowance !== null) {
+      return parseFloat(availableAllowance) || 0;
+    }
+    return 0.7 * (parseFloat(airtimeAllocation) || 0);
+  }, [availableAllowance, airtimeAllocation]);
+
+  const getRemainingBeforeContract = (index, data = contractData) => {
+    let remaining = limitBudget;
+    for (let i = 0; i < index; i++) {
+      remaining = Math.max(0, remaining - getContractMonthlyPayment(data[i]));
+    }
+    return remaining;
+  };
+
+  const isPackageWithinLimit = (packagePrice, remaining) =>
+    (parseFloat(packagePrice) || 0) <= remaining;
+
+  const packageAllowsDevice = (pkg) => {
+    if (!pkg) return false;
+    if (pkg.AllowsDevice === undefined || pkg.AllowsDevice === null) return true;
+    return (
+      pkg.AllowsDevice === true ||
+      pkg.AllowsDevice === 1 ||
+      pkg.AllowsDevice === "1" ||
+      pkg.AllowsDevice === "true"
+    );
+  };
+
+  const contractCalculations = useMemo(() => {
+    let remaining = limitBudget;
+
+    return contractData.map((contract) => {
+      const selectedPkg = packages.find(
+        (pkg) => pkg.PackageID === contract.selectedPackage
+      );
+      const packageCost = getPackageMonthlyCost(contract);
+      const allowsDevice = packageAllowsDevice(selectedPkg);
+      const deviceCost = allowsDevice ? getDeviceMonthlyCost(contract) : 0;
+      const monthly = packageCost + deviceCost;
+      const packageWithinLimit = isPackageWithinLimit(packageCost, remaining);
+
+      // Top-up only when package itself is within limit but device pushes over
+      let topUp = 0;
+      if (packageWithinLimit && allowsDevice && monthly > remaining) {
+        topUp = monthly - remaining;
+      }
+
+      remaining = Math.max(0, remaining - monthly);
+
+      return {
+        monthly,
+        packageCost,
+        deviceCost,
+        packageWithinLimit,
+        allowsDevice,
+        topUp,
+        canSelectDevice:
+          packageWithinLimit && !!contract.selectedPackage && allowsDevice,
+      };
+    });
+  }, [contractData, packages, limitBudget]);
+
+  const monthlyPayment = useMemo(
+    () =>
+      contractCalculations.reduce((total, item) => total + item.monthly, 0),
+    [contractCalculations]
+  );
+
+  const totalTopUp = useMemo(
+    () => contractCalculations.reduce((total, item) => total + item.topUp, 0),
+    [contractCalculations]
+  );
+
+  const remainingAfterSimulation = limitBudget - monthlyPayment;
+  const checkLimit =
+    remainingAfterSimulation >= 0 ? "Within Limit" : "Exceeding Limit";
+
   const handleNumberOfContractsChange = (event) => {
     const numContracts = parseInt(event.target.value);
     setNumberOfContracts(numContracts);
 
-    // Adjust contractData based on the number of contracts
     setContractData((prevData) => {
       const newData = [...prevData];
       while (newData.length < numContracts) {
@@ -130,31 +238,86 @@ const AirtimeBenefitSimulator = ({ embedded = false }) => {
           showNetOption: false,
           netOption: "",
           netAdditionalRow: false,
+          packageError: "",
         });
       }
       return newData.slice(0, numContracts);
     });
   };
 
+  const clearDeviceSelection = (contract) => ({
+    ...contract,
+    deviceName: "",
+    devicePrice: "",
+    additionalDeviceName: "",
+    additionalDevicePrice: "",
+  });
+
   const handleContractChange = (index, field, value) => {
     setContractData((prevData) => {
       const updatedData = [...prevData];
-      const updatedContract = { ...updatedData[index], [field]: value };
+      let updatedContract = { ...updatedData[index], [field]: value };
+      const remaining = getRemainingBeforeContract(index, updatedData);
 
       if (field === "selectedPackage") {
-        const selectedPkg = packages.find((pkg) => pkg.PackageID === value);
-        updatedContract.showNetOption =
-          selectedPkg?.PackageName.startsWith("Netman Capped") ||
-          selectedPkg?.PackageName.startsWith("Select");
-        updatedContract.packagePrice = selectedPkg?.MonthlyPrice || ""; // Set the package price
+        if (!value) {
+          updatedContract = clearDeviceSelection({
+            ...updatedContract,
+            selectedPackage: "",
+            packagePrice: "",
+            showNetOption: false,
+            netOption: "",
+            netAdditionalRow: false,
+            packageError: "",
+          });
+          } else {
+          const selectedPkg = packages.find((pkg) => pkg.PackageID === value);
+          const packagePrice = parseFloat(selectedPkg?.MonthlyPrice) || 0;
+
+          if (!isPackageWithinLimit(packagePrice, remaining)) {
+            // Package alone exceeds limit — cannot select, no top-up allowed
+            updatedContract = clearDeviceSelection({
+              ...updatedData[index],
+              selectedPackage: "",
+              packagePrice: "",
+              showNetOption: false,
+              netOption: "",
+              netAdditionalRow: false,
+              packageError: `This package (${formatCurrency(
+                packagePrice
+              )}) exceeds your remaining allowance (${formatCurrency(
+                remaining
+              )}). Choose a cheaper package — top-up cannot cover package overage.`,
+            });
+          } else {
+            updatedContract = clearDeviceSelection({
+              ...updatedContract,
+              showNetOption:
+                selectedPkg?.PackageName.startsWith("Netman Capped") ||
+                selectedPkg?.PackageName.startsWith("Select"),
+              packagePrice: selectedPkg?.MonthlyPrice || "",
+              netOption: "",
+              netAdditionalRow: false,
+              packageError: "",
+            });
+          }
+        }
       }
 
       if (field === "deviceName") {
+        const calc = contractCalculations[index];
+        if (!calc?.canSelectDevice) {
+          return prevData;
+        }
         const selectedDevice = devices.find((d) => d.device_name === value);
         updatedContract.devicePrice = selectedDevice?.amount ?? 0;
       }
 
       if (field === "additionalDeviceName") {
+        const calc = contractCalculations[index];
+        if (!calc?.canSelectDevice) {
+          return prevData;
+        }
         const selectedAdditionalDevice = devices.find(
           (d) => d.device_name === value
         );
@@ -170,72 +333,48 @@ const AirtimeBenefitSimulator = ({ embedded = false }) => {
   const handleNetOptionChange = (index, value) => {
     setContractData((prevData) => {
       const updatedData = [...prevData];
-      const updatedContract = { ...updatedData[index], netOption: value };
+      const current = updatedData[index];
+      const selectedPkg = packages.find(
+        (pkg) => pkg.PackageID === current.selectedPackage
+      );
+      const basePackagePrice = parseFloat(selectedPkg?.MonthlyPrice) || 0;
+      const packagePriceWithNet =
+        value === "Yes" ? basePackagePrice + 50 : basePackagePrice;
+      const remaining = getRemainingBeforeContract(index, updatedData);
 
-      // Toggle additional row based on "Yes" selection
+      if (!isPackageWithinLimit(packagePriceWithNet, remaining)) {
+        updatedData[index] = {
+          ...current,
+          netOption: "No",
+          netAdditionalRow: false,
+          packagePrice: basePackagePrice,
+          packageError: `Adding Net Package would exceed your remaining allowance (${formatCurrency(
+            remaining
+          )}). Top-up cannot cover package overage.`,
+        };
+        return updatedData;
+      }
+
+      const updatedContract = {
+        ...current,
+        netOption: value,
+        packageError: "",
+      };
+
       if (value === "Yes") {
-        updatedContract.packagePrice =
-          parseFloat(updatedContract.packagePrice) + 50;
+        updatedContract.packagePrice = packagePriceWithNet;
         updatedContract.netAdditionalRow = true;
       } else {
-        // Reset if "No" is selected
-        const selectedPkg = packages.find(
-          (pkg) => pkg.PackageID === updatedContract.selectedPackage
-        );
-        updatedContract.packagePrice = selectedPkg?.MonthlyPrice || "";
+        updatedContract.packagePrice = basePackagePrice;
         updatedContract.netAdditionalRow = false;
+        updatedContract.additionalDeviceName = "";
+        updatedContract.additionalDevicePrice = "";
       }
 
       updatedData[index] = updatedContract;
       return updatedData;
     });
   };
-
-  useEffect(() => {
-    const calculateMonthlyPayment = () => {
-      const totalMonthlyPayment = contractData.reduce((total, contract) => {
-        const selectedPkg = packages.find(
-          (pkg) => pkg.PackageID === contract.selectedPackage
-        );
-        const durationMatch = selectedPkg?.PackageName.match(/\((\d+)\)/);
-        const duration = durationMatch ? parseInt(durationMatch[1], 10) : 0;
-  
-        // Calculate the initial device and package price
-        const monthlyDevicePayment = duration
-          ? contract.devicePrice / duration
-          : 0;
-        let packageTotal = selectedPkg?.MonthlyPrice || 0;
-  
-        // Add 50 if the net option is "Yes"
-        if (contract.netOption === "Yes") {
-          packageTotal += 50;
-        }
-  
-        // Add additional device price if provided
-        const additionalDevicePayment = duration
-          ? (contract.additionalDevicePrice || 0) / duration
-          : 0;
-  
-        // Sum up for each contract
-        return total + packageTotal + monthlyDevicePayment + additionalDevicePayment;
-      }, 0);
-  
-      setMonthlyPayment(totalMonthlyPayment);
-    };
-    calculateMonthlyPayment();
-  }, [contractData, packages]);
-  
-  useEffect(() => {
-    const allocation = parseFloat(airtimeAllocation) || 0;
-    const limit = 0.7 * allocation;
-
-    if (availableAllowance !== null) {
-      const remaining = parseFloat(availableAllowance) - monthlyPayment;
-      setCheckLimit(remaining >= 0 ? "Within Limit" : "Exceeding Limit");
-    } else {
-      setCheckLimit(monthlyPayment <= limit ? "Within Limit" : "Exceeding Limit");
-    }
-  }, [airtimeAllocation, availableAllowance, monthlyPayment]);
 
   return (
     <div className={embedded ? "row g-4" : "container-main m-3 handset-simulator-page"}>
@@ -299,7 +438,14 @@ const AirtimeBenefitSimulator = ({ embedded = false }) => {
                 </div>
               </div>
 
-              {contractData.map((contract, index) => (
+              {contractData.map((contract, index) => {
+                const calc = contractCalculations[index] || {};
+                const remainingBefore = getRemainingBeforeContract(index);
+                const canSelectDevice = !!calc.canSelectDevice;
+                const packageBlocksDevice =
+                  !!contract.selectedPackage && calc.allowsDevice === false;
+
+                return (
                 <div key={index} className="contract-section">
                   <div className="contract-heading">Contract {index + 1}</div>
 
@@ -308,6 +454,12 @@ const AirtimeBenefitSimulator = ({ embedded = false }) => {
                       <Autocomplete
                         options={sortedPackages}
                         getOptionLabel={(option) => option?.PackageName || ""}
+                        getOptionDisabled={(option) =>
+                          !isPackageWithinLimit(
+                            option?.MonthlyPrice,
+                            remainingBefore
+                          )
+                        }
                         value={
                           sortedPackages.find(
                             (pkg) => pkg.PackageID === contract.selectedPackage
@@ -329,6 +481,13 @@ const AirtimeBenefitSimulator = ({ embedded = false }) => {
                             label="Select Package"
                             margin="normal"
                             fullWidth
+                            error={!!contract.packageError}
+                            helperText={
+                              contract.packageError ||
+                              `Packages over remaining allowance (${formatCurrency(
+                                remainingBefore
+                              )}) cannot be selected`
+                            }
                           />
                         )}
                       />
@@ -366,13 +525,20 @@ const AirtimeBenefitSimulator = ({ embedded = false }) => {
                         isOptionEqualToValue={(option, value) =>
                           option.device_name === value.device_name
                         }
-                        disabled={!!devicesError}
+                        disabled={!!devicesError || !canSelectDevice}
                         renderInput={(params) => (
                           <TextField
                             {...params}
                             label="Device Name"
                             margin="normal"
                             fullWidth
+                            helperText={
+                              packageBlocksDevice
+                                ? "This package does not allow a device"
+                                : canSelectDevice
+                                  ? "Device selection allowed — package is within limit"
+                                  : "Select a package within limit before choosing a device"
+                            }
                           />
                         )}
                       />
@@ -444,7 +610,7 @@ const AirtimeBenefitSimulator = ({ embedded = false }) => {
                             isOptionEqualToValue={(option, value) =>
                               option.device_name === value.device_name
                             }
-                            disabled={!!devicesError}
+                            disabled={!!devicesError || !canSelectDevice}
                             renderInput={(params) => (
                               <TextField
                                 {...params}
@@ -471,8 +637,42 @@ const AirtimeBenefitSimulator = ({ embedded = false }) => {
                       </div>
                     </>
                   )}
+
+                  <div className="row">
+                    <div className="col-md-6">
+                      <TextField
+                        name={`ContractMonthlyPayment-${index}`}
+                        label="Contract Monthly Payment"
+                        value={formatCurrency(calc.monthly || 0)}
+                        fullWidth
+                        margin="normal"
+                        InputProps={{ readOnly: true }}
+                      />
+                    </div>
+                    {(calc.topUp || 0) > 0 && (
+                      <div className="col-md-6">
+                        <TextField
+                          name={`Topup-${index}`}
+                          label="Top Up (device excess only)"
+                          value={formatCurrency(calc.topUp || 0)}
+                          fullWidth
+                          margin="normal"
+                          helperText="Top-up only covers device cost that exceeds the remaining limit"
+                          sx={{
+                            "& .MuiInputBase-input": {
+                              color: "#d32f2f",
+                              WebkitTextFillColor: "#d32f2f",
+                              fontWeight: 600,
+                            },
+                          }}
+                          InputProps={{ readOnly: true }}
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
-              ))}
+                );
+              })}
             </form>
           </div>
 
@@ -487,30 +687,26 @@ const AirtimeBenefitSimulator = ({ embedded = false }) => {
                 <span>Airtime allocation</span>
                 <strong>{formatCurrency(airtimeAllocation)}</strong>
               </div>
-              {availableAllowance !== null && (
-                <div className="summary-row">
-                  <span>Available (after existing contracts)</span>
-                  <strong>{formatCurrency(availableAllowance)}</strong>
-                </div>
-              )}
+              <div className="summary-row">
+                <span>Available (after existing contracts)</span>
+                <strong>{formatCurrency(limitBudget)}</strong>
+              </div>
               <div className="summary-row">
                 <span>Monthly payment (simulated)</span>
                 <strong>{formatCurrency(monthlyPayment)}</strong>
               </div>
-              {availableAllowance !== null && (
-                <div
-                  className={`summary-row ${
-                    parseFloat(availableAllowance) - monthlyPayment < 0
-                      ? "total-row-danger"
-                      : ""
-                  }`}
-                >
-                  <span>Remaining after simulation</span>
-                  <strong>
-                    {formatCurrency(
-                      parseFloat(availableAllowance) - monthlyPayment
-                    )}
-                  </strong>
+              <div
+                className={`summary-row ${
+                  remainingAfterSimulation < 0 ? "total-row-danger" : ""
+                }`}
+              >
+                <span>Remaining after simulation</span>
+                <strong>{formatCurrency(remainingAfterSimulation)}</strong>
+              </div>
+              {totalTopUp > 0 && (
+                <div className="summary-row total-row-danger">
+                  <span>Total top up</span>
+                  <strong>{formatCurrency(totalTopUp)}</strong>
                 </div>
               )}
               <hr className="summary-divider" />
@@ -522,6 +718,15 @@ const AirtimeBenefitSimulator = ({ embedded = false }) => {
                 <span>Limit status</span>
                 <strong>{checkLimit || "-"}</strong>
               </div>
+            </div>
+
+            <div className="handset-summary-card shadow-sm mt-3">
+              <h6 className="summary-title">Tip</h6>
+              <p className="simulator-tip mb-0">
+                Packages over the remaining allowance cannot be selected and
+                cannot use top-up. Top-up only applies when the package is
+                within limit but the device pushes the total over.
+              </p>
             </div>
           </div>
         </div>

@@ -194,14 +194,14 @@ const Sidebar = ({ openSidebarToggle, OpenSidebar }) => {
       {
         to: "user/Handsets",
         icon: <DevicesOtherIcon />,
-        label: "My Handsets",
+        label: "Staff Handsets",
         restrictedTo: "Permanent",
         key: "3",
       },
       {
         to: "user/Benefits",
         icon: <AssignmentIcon />,
-        label: "My Benefits",
+        label: "Airtime Benefits",
         restrictedTo: "Permanent",
         key: "4",
       },

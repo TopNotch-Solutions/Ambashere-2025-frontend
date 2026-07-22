@@ -67,60 +67,75 @@ const AdminPackages = () => {
 
   const handleToggleActive = async (packageId, currentStatus) => {
     try {
-      const packageData = data.find(pkg => pkg.PackageID === packageId);
+      const packageData = data.find(
+        (pkg) => String(pkg.PackageID) === String(packageId)
+      );
       if (!packageData) {
-        console.error("Package not found");
         Swal.fire({
           icon: "error",
           title: "Error!",
           text: "Package not found in current data.",
-          confirmButtonText: "OK"
+          confirmButtonText: "OK",
         });
         return;
       }
 
+      const paymentPeriod = String(packageData.PaymentPeriod || "").replace(
+        /\s*months?/i,
+        ""
+      );
+      const monthlyPrice = parseFloat(
+        String(packageData.MonthlyPrice).replace(/[^\d.-]/g, "")
+      );
+      const isCurrentlyActive =
+        currentStatus === true ||
+        currentStatus === 1 ||
+        currentStatus === "1" ||
+        currentStatus === "true";
 
       const updatePayload = {
         PackageName: packageData.PackageName,
-        PaymentPeriod: parseInt(packageData.PaymentPeriod), // Convert to number
-        MonthlyPrice: parseFloat(packageData.MonthlyPrice), // Convert to number
-        IsActive: !currentStatus
+        PaymentPeriod: parseInt(paymentPeriod, 10),
+        MonthlyPrice: monthlyPrice,
+        IsActive: !isCurrentlyActive,
+        AllowsDevice:
+          packageData.AllowsDevice === undefined ||
+          packageData.AllowsDevice === null
+            ? true
+            : packageData.AllowsDevice === true ||
+              packageData.AllowsDevice === 1 ||
+              packageData.AllowsDevice === "1" ||
+              packageData.AllowsDevice === "true",
       };
 
+      const response = await axiosInstance.put(
+        `/packages/updatePackage/${packageId}`,
+        updatePayload
+      );
 
-      const response = await axiosInstance.put(`/packages/updatePackage/${packageId}`, updatePayload);
-      
       if (response.status === 200) {
-        // Show success message
         Swal.fire({
           icon: "success",
           title: "Success!",
-          text: `Package "${packageData.PackageName}" has been ${!currentStatus ? 'activated' : 'deactivated'} successfully!`,
+          text: `Package "${packageData.PackageName}" has been ${
+            !isCurrentlyActive ? "activated" : "deactivated"
+          } successfully!`,
           timer: 2000,
-          showConfirmButton: false
+          showConfirmButton: false,
         });
-        
-        // Refresh data
-        const fetchData = async () => {
-          try {
-            const response = await axiosInstance.get(`/packages`);
-            setData(response.data);
-          } catch (error) {
-            console.error("Error refreshing data:", error);
-          }
-        };
-        fetchData();
+
+        const refreshResponse = await axiosInstance.get(`/packages`);
+        setData(refreshResponse.data);
       }
     } catch (error) {
       console.error("Error toggling package status:", error);
-      console.error("Error details:", error.response?.data || error.message);
-      
-      // Show error message to user
       Swal.fire({
         icon: "error",
         title: "Error!",
-        text: `Failed to update package status: ${error.response?.data?.message || error.message}`,
-        confirmButtonText: "OK"
+        text: `Failed to update package status: ${
+          error.response?.data?.message || error.message
+        }`,
+        confirmButtonText: "OK",
       });
     }
   };
@@ -130,25 +145,56 @@ const AdminPackages = () => {
     { field: "PackageName", headerName: "Package Name", width: 250 },
     { field: "PaymentPeriod", headerName: "Payment Period", width: 200 },
     { field: "MonthlyPrice", headerName: "Package Price", width: 180 },
+    {
+      field: "AllowsDevice",
+      headerName: "Allows Device",
+      width: 140,
+      renderCell: (params) => {
+        const allowsDevice =
+          params.value === undefined || params.value === null
+            ? true
+            : params.value === true ||
+              params.value === 1 ||
+              params.value === "1" ||
+              params.value === "true";
+        return (
+          <span
+            style={{
+              color: allowsDevice ? "#4caf50" : "#f44336",
+              fontWeight: "bold",
+            }}
+          >
+            {allowsDevice ? "Yes" : "No"}
+          </span>
+        );
+      },
+    },
     { 
       field: "IsActive", 
       headerName: "Status", 
       width: 120,
-      renderCell: (params) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {params.value ? (
-            <>
-              <ToggleOnIcon style={{ color: '#4caf50', fontSize: '24px' }} />
-              <span style={{ color: '#4caf50', fontWeight: 'bold' }}>Active</span>
-            </>
-          ) : (
-            <>
-              <ToggleOffIcon style={{ color: '#f44336', fontSize: '24px' }} />
-              <span style={{ color: '#f44336', fontWeight: 'bold' }}>Inactive</span>
-            </>
-          )}
-        </div>
-      )
+      renderCell: (params) => {
+        const isActive =
+          params.value === true ||
+          params.value === 1 ||
+          params.value === "1" ||
+          params.value === "true";
+        return (
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            {isActive ? (
+              <>
+                <ToggleOnIcon style={{ color: "#4caf50", fontSize: "24px" }} />
+                <span style={{ color: "#4caf50", fontWeight: "bold" }}>Active</span>
+              </>
+            ) : (
+              <>
+                <ToggleOffIcon style={{ color: "#f44336", fontSize: "24px" }} />
+                <span style={{ color: "#f44336", fontWeight: "bold" }}>Inactive</span>
+              </>
+            )}
+          </div>
+        );
+      }
     },
     {
       field: "actions",
@@ -156,29 +202,36 @@ const AdminPackages = () => {
       headerName: "Actions",
       width: 250,
       cellClassName: "actions",
-      getActions: ({ row }) => [
-        <GridActionsCellItem
-          icon={<EditIcon />}
-          label="Edit"
-          className="textPrimary"
-          onClick={() => handleEditClick(row)}
-          color="inherit"
-        />,
-        <GridActionsCellItem
-          icon={row.IsActive ? <ToggleOffIcon /> : <ToggleOnIcon />}
-          label={row.IsActive ? "Deactivate" : "Activate"}
-          className="textPrimary"
-          onClick={() => handleToggleActive(row.PackageID, row.IsActive)}
-          color="inherit"
-        />,
-        <GridActionsCellItem
-          icon={<RemoveCircleIcon />}
-          label="Remove"
-          className="textPrimary"
-          onClick={() => handleRemoveClick(row)}
-          color="inherit"
-        />,
-      ],
+      getActions: ({ row }) => {
+        const isActive =
+          row.IsActive === true ||
+          row.IsActive === 1 ||
+          row.IsActive === "1" ||
+          row.IsActive === "true";
+        return [
+          <GridActionsCellItem
+            icon={<EditIcon />}
+            label="Edit"
+            className="textPrimary"
+            onClick={() => handleEditClick(row)}
+            color="inherit"
+          />,
+          <GridActionsCellItem
+            icon={isActive ? <ToggleOffIcon /> : <ToggleOnIcon />}
+            label={isActive ? "Deactivate" : "Activate"}
+            className="textPrimary"
+            onClick={() => handleToggleActive(row.PackageID, row.IsActive)}
+            color="inherit"
+          />,
+          <GridActionsCellItem
+            icon={<RemoveCircleIcon />}
+            label="Remove"
+            className="textPrimary"
+            onClick={() => handleRemoveClick(row)}
+            color="inherit"
+          />,
+        ];
+      },
     },
   ];
 

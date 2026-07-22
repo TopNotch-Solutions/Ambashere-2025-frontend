@@ -50,6 +50,13 @@
   margin-top: 0.65rem;
 }
 
+.simulator-tip {
+  color: #5f738b;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  margin: 0;
+}
+
 .contract-section {
   border: 1px solid #e7eef6;
   border-radius: 10px;

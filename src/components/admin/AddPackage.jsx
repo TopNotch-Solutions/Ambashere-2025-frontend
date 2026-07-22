@@ -14,6 +14,26 @@ import Swal from "sweetalert2";
 import CloseIcon from "@mui/icons-material/Close";
 import axiosInstance from "../../utils/axiosInstance";
 
+const normalizePaymentPeriod = (value) => {
+  if (value === null || value === undefined || value === "") return "";
+  const match = String(value).match(/(\d+)/);
+  return match ? match[1] : "";
+};
+
+const normalizeMonthlyPrice = (value) => {
+  if (value === null || value === undefined || value === "") return "";
+  const parsed = parseFloat(String(value).replace(/[^\d.-]/g, ""));
+  return Number.isNaN(parsed) ? "" : parsed;
+};
+
+const normalizeIsActive = (value) =>
+  value === true || value === 1 || value === "1" || value === "true";
+
+const normalizeAllowsDevice = (value) => {
+  if (value === undefined || value === null || value === "") return true;
+  return value === true || value === 1 || value === "1" || value === "true";
+};
+
 const AddPackage = ({ open, handleClose, mode = "", packageData = {} }) => {
   const [errors, setErrors] = useState({});
 
@@ -23,13 +43,31 @@ const AddPackage = ({ open, handleClose, mode = "", packageData = {} }) => {
     PaymentPeriod: "",
     MonthlyPrice: "",
     IsActive: true,
+    AllowsDevice: true,
   });
 
   useEffect(() => {
     if (mode === "edit" || mode === "remove") {
-      setFormValues(packageData);
+      setFormValues({
+        PackageID: packageData?.PackageID ?? "",
+        PackageName: packageData?.PackageName ?? "",
+        PaymentPeriod: normalizePaymentPeriod(packageData?.PaymentPeriod),
+        MonthlyPrice: normalizeMonthlyPrice(packageData?.MonthlyPrice),
+        IsActive: normalizeIsActive(packageData?.IsActive),
+        AllowsDevice: normalizeAllowsDevice(packageData?.AllowsDevice),
+      });
+    } else if (mode === "add") {
+      setFormValues({
+        PackageID: "",
+        PackageName: "",
+        PaymentPeriod: "",
+        MonthlyPrice: "",
+        IsActive: true,
+        AllowsDevice: true,
+      });
     }
-  }, [mode, packageData]);
+    setErrors({});
+  }, [mode, packageData, open]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -44,6 +82,14 @@ const AddPackage = ({ open, handleClose, mode = "", packageData = {} }) => {
         }
       }
 
+      if (name === "IsActive") {
+        newValues.IsActive = value === true || value === "true";
+      }
+
+      if (name === "AllowsDevice") {
+        newValues.AllowsDevice = value === true || value === "true";
+      }
+
       return newValues;
     });
   };
@@ -51,41 +97,62 @@ const AddPackage = ({ open, handleClose, mode = "", packageData = {} }) => {
   const handleSave = async (e) => {
     e.preventDefault();
     let validationErrors = {};
-  
-    // Check required fields
-    for (const [key, value] of Object.entries(formValues)) {
-      if (!value && key !== "PackageID") {
-        validationErrors[key] = "This field is required";
+
+    if (mode !== "remove") {
+      if (!formValues.PackageName?.trim()) {
+        validationErrors.PackageName = "This field is required";
+      } else if (!/\((12|24|36)\)$/.test(formValues.PackageName)) {
+        validationErrors.PackageName =
+          "Package name must include a number in brackets (12, 24, or 36)";
+      }
+
+      if (!formValues.PaymentPeriod) {
+        validationErrors.PaymentPeriod = "This field is required";
+      }
+
+      if (
+        formValues.MonthlyPrice === "" ||
+        formValues.MonthlyPrice === null ||
+        formValues.MonthlyPrice === undefined
+      ) {
+        validationErrors.MonthlyPrice = "This field is required";
       }
     }
-  
-    // Validate package name format
-    if (!/\((12|24|36)\)$/.test(formValues.PackageName)) {
-      validationErrors.PackageName =
-        "Package name must include a number in brackets (12, 24, or 36)";
+
+    if ((mode === "edit" || mode === "remove") && !formValues.PackageID) {
+      validationErrors.PackageID = "Package ID is missing";
     }
-  
+
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;
     }
-  
+
+    const payload = {
+      PackageName: formValues.PackageName?.trim(),
+      PaymentPeriod: normalizePaymentPeriod(formValues.PaymentPeriod),
+      MonthlyPrice: normalizeMonthlyPrice(formValues.MonthlyPrice),
+      IsActive: normalizeIsActive(formValues.IsActive),
+      AllowsDevice: normalizeAllowsDevice(formValues.AllowsDevice),
+    };
+
     try {
       let response;
       if (mode === "add") {
-        response = await axiosInstance.post("/packages/createPackage", formValues);
+        response = await axiosInstance.post("/packages/createPackage", payload);
       } else if (mode === "edit") {
         response = await axiosInstance.put(
           `/packages/updatePackage/${formValues.PackageID}`,
-          formValues
+          payload
         );
       } else if (mode === "remove") {
-        response = await axiosInstance.delete(`/packages/removePackage/${formValues.PackageID}`);
+        response = await axiosInstance.delete(
+          `/packages/removePackage/${formValues.PackageID}`
+        );
       }
-  
-      // Adjust the success status codes to be more flexible
+
       if (response.status >= 200 && response.status < 300) {
-        handleClose(); // Close the modal before showing the success popup
+        handleClose();
         Swal.fire({
           icon: "success",
           title: "Success",
@@ -93,10 +160,10 @@ const AddPackage = ({ open, handleClose, mode = "", packageData = {} }) => {
             mode === "add" ? "added" : mode === "edit" ? "updated" : "deleted"
           } successfully!`,
         }).then(() => {
-        window.location.reload(); // Reload after user clicks OK
-      });
+          window.location.reload();
+        });
       } else {
-        handleClose(); // Close the modal before showing the error popup
+        handleClose();
         Swal.fire({
           icon: "error",
           title: "Failed",
@@ -106,17 +173,22 @@ const AddPackage = ({ open, handleClose, mode = "", packageData = {} }) => {
         });
       }
     } catch (error) {
-      handleClose(); // Close the modal before showing the error popup
+      handleClose();
       Swal.fire({
         icon: "error",
         title: "Error",
-        text: `Error ${
-          mode === "add" ? "adding" : mode === "edit" ? "updating" : "deleting"
-        } package. Please try again.`,
+        text:
+          error.response?.data?.message ||
+          `Error ${
+            mode === "add"
+              ? "adding"
+              : mode === "edit"
+                ? "updating"
+                : "deleting"
+          } package. Please try again.`,
       });
     }
   };
-  
 
   return (
     <Modal open={open} onClose={handleClose}>
@@ -139,7 +211,11 @@ const AddPackage = ({ open, handleClose, mode = "", packageData = {} }) => {
           <div className="row">
             <div className="col">
               <h2 className="text-center">
-                {mode === "add" ? "Add a New Package" : mode === "edit" ? "Edit Package" : "Delete Package"}
+                {mode === "add"
+                  ? "Add a New Package"
+                  : mode === "edit"
+                    ? "Edit Package"
+                    : "Delete Package"}
               </h2>
             </div>
             <div className="col-sm-1">
@@ -150,9 +226,11 @@ const AddPackage = ({ open, handleClose, mode = "", packageData = {} }) => {
           </div>
 
           <p className="text-center">
-            Please fill in all the information below
+            {mode === "remove"
+              ? "Confirm you want to delete this package"
+              : "Please fill in all the information below"}
           </p>
-          
+
           {mode !== "add" && (
             <div className="row">
               <div className="col">
@@ -171,7 +249,6 @@ const AddPackage = ({ open, handleClose, mode = "", packageData = {} }) => {
             </div>
           )}
 
-          {/* Row 1: Package Name */}
           <div className="row">
             <div className="col">
               <TextField
@@ -188,7 +265,6 @@ const AddPackage = ({ open, handleClose, mode = "", packageData = {} }) => {
             </div>
           </div>
 
-          {/* Row 2: Monthly Price & Payment Period*/}
           <div className="row">
             <div className="col">
               <TextField
@@ -214,7 +290,8 @@ const AddPackage = ({ open, handleClose, mode = "", packageData = {} }) => {
                 <InputLabel>Payment Period</InputLabel>
                 <Select
                   name="PaymentPeriod"
-                  value={formValues.PaymentPeriod}
+                  value={formValues.PaymentPeriod || ""}
+                  label="Payment Period"
                   onChange={handleChange}
                   disabled={mode === "remove"}
                 >
@@ -229,7 +306,6 @@ const AddPackage = ({ open, handleClose, mode = "", packageData = {} }) => {
             </div>
           </div>
 
-          {/* Row 3: IsActive Status */}
           <div className="row">
             <div className="col">
               <FormControl
@@ -241,15 +317,43 @@ const AddPackage = ({ open, handleClose, mode = "", packageData = {} }) => {
                 <InputLabel>Status</InputLabel>
                 <Select
                   name="IsActive"
-                  value={formValues.IsActive}
+                  value={formValues.IsActive ? "true" : "false"}
+                  label="Status"
                   onChange={handleChange}
                   disabled={mode === "remove"}
                 >
-                  <MenuItem value={true}>Active</MenuItem>
-                  <MenuItem value={false}>Inactive</MenuItem>
+                  <MenuItem value="true">Active</MenuItem>
+                  <MenuItem value="false">Inactive</MenuItem>
                 </Select>
                 {errors.IsActive && (
                   <FormHelperText>{errors.IsActive}</FormHelperText>
+                )}
+              </FormControl>
+            </div>
+            <div className="col">
+              <FormControl
+                fullWidth
+                margin="normal"
+                error={!!errors.AllowsDevice}
+                disabled={mode === "remove"}
+              >
+                <InputLabel>Allows Device</InputLabel>
+                <Select
+                  name="AllowsDevice"
+                  value={formValues.AllowsDevice ? "true" : "false"}
+                  label="Allows Device"
+                  onChange={handleChange}
+                  disabled={mode === "remove"}
+                >
+                  <MenuItem value="true">Yes</MenuItem>
+                  <MenuItem value="false">No</MenuItem>
+                </Select>
+                {errors.AllowsDevice ? (
+                  <FormHelperText>{errors.AllowsDevice}</FormHelperText>
+                ) : (
+                  <FormHelperText>
+                    If No, users cannot add a device to this package
+                  </FormHelperText>
                 )}
               </FormControl>
             </div>
@@ -262,18 +366,17 @@ const AddPackage = ({ open, handleClose, mode = "", packageData = {} }) => {
               style={{
                 fontSize: "13px",
                 height: "100%",
-                backgroundColor: "#1A69AC",
+                backgroundColor: mode === "remove" ? "#d32f2f" : "#1A69AC",
                 color: "#fff",
                 padding: "8px",
                 paddingLeft: "10px",
                 borderRadius: "5px",
                 cursor: "pointer",
-                borderColor: "#1A69AC",
+                borderColor: mode === "remove" ? "#d32f2f" : "#1A69AC",
                 border: "1px solid",
               }}
-            //   disabled={mode === "remove"}
             >
-              Submit
+              {mode === "remove" ? "Delete" : "Submit"}
             </Button>
           </Box>
         </form>
