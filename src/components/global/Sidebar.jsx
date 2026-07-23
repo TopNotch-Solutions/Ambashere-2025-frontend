@@ -47,6 +47,7 @@ const Sidebar = ({ openSidebarToggle, OpenSidebar }) => {
       "/admin/Dashboard": "1",
       "/admin/Employees": "2",
       "/admin/Handsets": "3",
+      "/admin/AirtimeContracts": "3b",
       "/admin/Packages": "4",
       "/admin/Contracts": "5",
       "/admin/Reports": "6",
@@ -124,6 +125,12 @@ const Sidebar = ({ openSidebarToggle, OpenSidebar }) => {
           icon: <DevicesIcon />,
           label: "Staff Handset",
           key: "3",
+        },
+        {
+          to: "admin/AirtimeContracts",
+          icon: <AssignmentIcon />,
+          label: "Airtime Contracts",
+          key: "3b",
         },
         {
           to: "admin/Packages",

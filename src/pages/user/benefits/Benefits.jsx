@@ -24,30 +24,67 @@ const UserBenefits = () => {
   const [data, setData] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [userData, setUserData] = useState(null);
+  const [simulationPrefill, setSimulationPrefill] = useState(null);
+  const [simulationMeta, setSimulationMeta] = useState(null);
   const [showSimulator, setShowSimulator] = useState(false);
+  const [availableAllowance, setAvailableAllowance] = useState(null);
+  const [minPackagePrice, setMinPackagePrice] = useState(null);
   const currentUser = useSelector((state) => state.auth.user);
   const { role } = useSelector((state) => state.auth);
-  const isActiveStatus = (status) =>
-    String(status || "").trim().toLowerCase() === "active";
+  const isActiveStatus = (status) => {
+    const normalized = String(status || "").trim().toLowerCase();
+    return (
+      normalized === "active" ||
+      normalized === "pending" ||
+      normalized === "in progress"
+    );
+  };
   const hasDeviceName = (item) => {
     const value = item?.DeviceName ?? item?.device ?? "";
     const normalized = String(value).trim().toLowerCase();
     return normalized !== "" && normalized !== "null" && normalized !== "undefined";
   };
 
+  const canSimulateAirtimeBenefit =
+    availableAllowance != null &&
+    minPackagePrice != null &&
+    Number(availableAllowance) >= Number(minPackagePrice);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await axiosInstance.get(
-          `/contracts/${currentUser.EmployeeCode}`
+        const [contractsResponse, packagesResponse] = await Promise.all([
+          axiosInstance.get(`/contracts/${currentUser.EmployeeCode}`),
+          axiosInstance.get(`/packages/packageList?t=${Date.now()}`),
+        ]);
+
+        setData(contractsResponse.data.contracts || []);
+        setAvailableAllowance(
+          contractsResponse.data.available != null
+            ? parseFloat(contractsResponse.data.available)
+            : null
         );
-        setData(response.data.contracts || []);
+
+        const packages = packagesResponse.data || [];
+        const prices = packages
+          .map((pkg) => parseFloat(pkg.MonthlyPrice))
+          .filter((price) => !isNaN(price) && price > 0);
+        setMinPackagePrice(prices.length ? Math.min(...prices) : null);
       } catch (error) {
+        console.error("Error loading benefits eligibility:", error);
       }
     };
 
-    fetchData();
+    if (currentUser?.EmployeeCode) {
+      fetchData();
+    }
   }, [currentUser?.EmployeeCode]);
+
+  useEffect(() => {
+    if (!canSimulateAirtimeBenefit && showSimulator) {
+      setShowSimulator(false);
+    }
+  }, [canSimulateAirtimeBenefit, showSimulator]);
 
   const handleContractDelection = async (id) => {
   Swal.fire({
@@ -154,7 +191,21 @@ const UserBenefits = () => {
             )
           )
         : "-",
-    ContractStartDate: formatDate(contract?.ContractStartDate ?? contract?.contract_start_date),
+    ContractStartDate: (() => {
+      const status = String(
+        contract?.SubscriptionStatus || contract?.subscription_status || ""
+      )
+        .trim()
+        .toLowerCase();
+      const isOpenSubmission =
+        contract?.isSubmission ||
+        status === "pending" ||
+        status === "in progress";
+      if (isOpenSubmission) return "-";
+      return formatDate(
+        contract?.ContractStartDate ?? contract?.contract_start_date
+      );
+    })(),
     ContractEndDate: formatDate(contract?.ContractEndDate ?? contract?.contract_end_date),
     
     MonthlyPayment: formatMoney(contract?.MonthlyPayment ?? contract?.monthly_payment ?? 0),
@@ -179,7 +230,17 @@ const UserBenefits = () => {
     }
   };
 
-  const handleClose = () => setModalOpen(false);
+  const handleClose = () => {
+    setModalOpen(false);
+    setSimulationPrefill(null);
+    setSimulationMeta(null);
+  };
+
+  const handleApplySimulation = (prefillData, meta = null) => {
+    setSimulationPrefill(prefillData);
+    setSimulationMeta(meta);
+    setModalOpen(true);
+  };
 
   return (
     <div className="container-main m-3 handset-simulator-page benefits-page">
@@ -191,16 +252,30 @@ const UserBenefits = () => {
             contracts, and simulate new contract applications.
           </p>
         </div>
-        <Button
-          className="benefits-cta-btn"
-          onClick={() => setShowSimulator((prev) => !prev)}
-        >
-          {showSimulator ? "Back to My Benefits" : "Simulate Airtime Benefit"}
-        </Button>
+        {(canSimulateAirtimeBenefit || showSimulator) && (
+          <Button
+            className="benefits-cta-btn"
+            onClick={() => setShowSimulator((prev) => !prev)}
+          >
+            {showSimulator ? "Back to My Benefits" : "Simulate Airtime Benefit"}
+          </Button>
+        )}
       </div>
 
+      <BenefitVoucher
+        open={modalOpen}
+        handleClose={handleClose}
+        userData={userData}
+        role={role}
+        prefillData={simulationPrefill}
+        simulationMeta={simulationMeta}
+      />
+
       {showSimulator ? (
-        <AirtimeBenefitSimulator embedded />
+        <AirtimeBenefitSimulator
+          embedded
+          onApplySimulation={handleApplySimulation}
+        />
       ) : (
         <div className="row d-flex flex-column flex-md-row justify-content-around m-auto">
           {currentUser.EmploymentCategory === "Temporary" && (
@@ -266,16 +341,6 @@ const UserBenefits = () => {
                   one
                 </h3>
               )}
-
-              <div style={{ height: "100%" }}>
-                <BenefitVoucher
-                  style={{ height: "100%" }}
-                  open={modalOpen}
-                  handleClose={handleClose}
-                  userData={userData}
-                  role={role}
-                />
-              </div>
 
               {/* Plan Table */}
               <div className="col-12 ml-1 d-flex flex-column">

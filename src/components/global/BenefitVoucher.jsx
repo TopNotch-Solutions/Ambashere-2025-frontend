@@ -18,7 +18,13 @@ import "../../assets/style/global/voucher.css";
 import UploadVoucher from "../../pages/admin/upload/UploadVoucher";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 
-const BenefitVoucher = ({ open, handleClose, role }) => {
+const BenefitVoucher = ({
+  open,
+  handleClose,
+  role,
+  prefillData = null,
+  simulationMeta = null,
+}) => {
   const [dropdownOptions, setDropdownOptions] = useState([]);
   const [rows, setRows] = useState([]);
   const theme = useTheme();
@@ -39,12 +45,16 @@ const BenefitVoucher = ({ open, handleClose, role }) => {
   const deviceNameRef = useRef({});
   const msisdnRef = useRef({});
   const upfrontPaymentRef = useRef({});
-  const devicePriceRefCol6To8 = useRef({});
 
   const [modalOpen, setModalOpen] = useState(false);
   const handleOpenUpload = () => setModalOpen(true);
   const handleCloseUpload = () => setModalOpen(false);
   const [withinLimit, setWithinLimit] = useState(null);
+  const [topUpEligible, setTopUpEligible] = useState(false);
+  const [topUpAmount, setTopUpAmount] = useState(0);
+  const [acceptsTopUp, setAcceptsTopUp] = useState(false);
+  const isSimulationLocked =
+    Array.isArray(prefillData) && prefillData.length > 0;
 
   useEffect(() => {
     const handle = async () => {
@@ -71,6 +81,9 @@ const BenefitVoucher = ({ open, handleClose, role }) => {
       setUserData(null);
       setRows([]);
       setWithinLimit(null);
+      setTopUpEligible(false);
+      setTopUpAmount(0);
+      setAcceptsTopUp(false);
     }
   }, [open, currentUser?.EmployeeCode]);
   useEffect(() => {
@@ -164,49 +177,58 @@ const BenefitVoucher = ({ open, handleClose, role }) => {
       });
   };
 
-  // Initialize rows with user data when both are available
-  useEffect(() => {
-    if (userData && dropdownOptions.length > 0 && rows.length === 0) {
-      // Initialize the first five rows
-      const initialRows = Array.from({ length: 5 }, (_, index) => ({
-        id: index + 1,
+  const buildPackageRow = (index, prefill) => {
+    const id = index + 1;
+    if (!prefill?.packageName) {
+      return {
+        id,
         dropdown: "Select Package",
         column2: "",
         column3: "",
         column4: "",
         column5: "",
         column6: "Select Type",
-      }));
+      };
+    }
 
-      // Static rows definition
+    const selectedOption = dropdownOptions.find(
+      (option) => option.PackageName === prefill.packageName
+    );
+    const price = prefill.packagePrice ?? selectedOption?.MonthlyPrice ?? "";
+
+    return {
+      id,
+      dropdown: prefill.packageName,
+      column2: `${price}`,
+      column3: "",
+      column4: "",
+      column5: "",
+      column6: prefill.subscriptionType || "New",
+      packageID: prefill.packageID ?? selectedOption?.PackageID ?? null,
+    };
+  };
+
+  const buildEquipmentRow = (index, prefill) => ({
+    id: index + 6,
+    dropdown: "Equipment Plan",
+    column2: prefill?.devicePrice ? `${prefill.devicePrice}` : "",
+    column3: prefill?.deviceName || "",
+    column4: "",
+    column5: "",
+    column6: "",
+  });
+
+  // Initialize rows with user data when both are available
+  useEffect(() => {
+    if (userData && dropdownOptions.length > 0 && rows.length === 0) {
+      const initialRows = Array.from({ length: 5 }, (_, index) =>
+        buildPackageRow(index, prefillData?.[index])
+      );
+
       const staticRows = [
-        {
-          id: 6,
-          dropdown: "Equipment Plan",
-          column2: "",
-          column3: "",
-          column4: "",
-          column5: "",
-          column6: "",
-        },
-        {
-          id: 7,
-          dropdown: "Equipment Plan",
-          column2: "",
-          column3: "",
-          column4: "",
-          column5: "",
-          column6: "",
-        },
-        {
-          id: 8,
-          dropdown: "Equipment Plan",
-          column2: "",
-          column3: "",
-          column4: "",
-          column5: "",
-          column6: "",
-        },
+        buildEquipmentRow(0, prefillData?.[0]),
+        buildEquipmentRow(1, prefillData?.[1]),
+        buildEquipmentRow(2, prefillData?.[2]),
         {
           id: 9,
           dropdown: "Name of Employee:",
@@ -276,10 +298,35 @@ const BenefitVoucher = ({ open, handleClose, role }) => {
         },
       ];
 
-      // Combine initial and static rows
       setRows([...initialRows, ...staticRows]);
+
+      if (prefillData?.length) {
+        const prefilledDevicePrices = {};
+        prefillData.forEach((contract, index) => {
+          if (contract?.devicePrice) {
+            prefilledDevicePrices[index + 6] = parseFloat(contract.devicePrice) || 0;
+          }
+        });
+        if (Object.keys(prefilledDevicePrices).length > 0) {
+          setDevicePrices((prev) => ({ ...prev, ...prefilledDevicePrices }));
+        }
+      }
     }
-  }, [userData, dropdownOptions.length]);
+  }, [userData, dropdownOptions.length, prefillData]);
+
+  useEffect(() => {
+    if (!open || !prefillData?.length || rows.length === 0) return;
+
+    prefillData.forEach((contract, index) => {
+      const deviceRowId = index + 6;
+      if (contract?.deviceName && deviceNameRef.current[deviceRowId]) {
+        deviceNameRef.current[deviceRowId].value = contract.deviceName;
+      }
+      if (contract?.devicePrice && devicePriceRef.current[deviceRowId]) {
+        devicePriceRef.current[deviceRowId].value = contract.devicePrice;
+      }
+    });
+  }, [open, prefillData, rows.length]);
 
   // Pre-fill information for existing rows
   useEffect(() => {
@@ -328,6 +375,9 @@ const BenefitVoucher = ({ open, handleClose, role }) => {
 
   // Handle change in inputs
   const handleInputChange = (event, id, field) => {
+    if (isSimulationLocked && id >= 1 && id <= 8) {
+      return;
+    }
     const { value } = event.target;
 
     if (field === "column2") {
@@ -379,6 +429,18 @@ const BenefitVoucher = ({ open, handleClose, role }) => {
 
   // Handle Dropdown changes
   const handleDropdownChange = (event, rowId, field) => {
+    if (isSimulationLocked && field === "dropdown" && rowId >= 1 && rowId <= 5) {
+      return;
+    }
+    if (field === "column6" && rowId >= 1 && rowId <= 5) {
+      const packageRow = rows.find((row) => row.id === rowId);
+      const hasPackage =
+        !!packageRow?.packageID ||
+        (!!packageRow?.dropdown &&
+          packageRow.dropdown !== "Select Package" &&
+          !!packageRow?.column2);
+      if (!hasPackage) return;
+    }
     const { value } = event.target;
 
     if (field === "dropdown") {
@@ -416,68 +478,88 @@ const BenefitVoucher = ({ open, handleClose, role }) => {
     }
   };
 
+  const getContractDurationForDeviceRow = (updatedRows, deviceRowId) => {
+    // Equipment rows 6/7/8 link to package rows 1/2/3
+    const packageRow = updatedRows.find((row) => row.id === deviceRowId - 5);
+    if (!packageRow?.dropdown || packageRow.dropdown === "Select Package") {
+      return 0;
+    }
+    const durationMatch = String(packageRow.dropdown).match(/\((\d+)\)/)
+      || String(packageRow.dropdown).match(/(\d+)/);
+    return durationMatch ? parseInt(durationMatch[1], 10) : 0;
+  };
+
+  const getDevicePriceForRow = (row) => {
+    const fromRef = parseFloat(devicePriceRef.current?.[row.id]?.value);
+    if (!isNaN(fromRef) && fromRef > 0) return fromRef;
+    const fromRow = parseFloat(row.column2 || 0);
+    return !isNaN(fromRow) ? fromRow : 0;
+  };
+
   const calculateMUL = (updatedRows) => {
     // Guard clause: Don't calculate if userData is not available
-    if (!userData || !userData.available) {
+    if (!userData || userData.available == null) {
       return updatedRows;
     }
 
-    // Calculate the sum of column2 values for rows with id between 1 and 8
-    const sumColumn2 = updatedRows.reduce((sum, row) => {
-      if (row.id >= 1 && row.id <= 8) {
-        // Add device price for rows 6 to 8 into sumColumn2 calculation
-        // Ensure devicePriceRefCol6To8.current[row.id] exists and has a value property
-        if (row.id >= 6 && row.id <= 8) {
-          return (
-            sum +
-            parseFloat(row.column2 || 0) +
-            parseFloat(
-              devicePriceRefCol6To8.current &&
-                devicePriceRefCol6To8.current[row.id]
-                ? devicePriceRefCol6To8.current[row.id].value || 0
-                : 0
-            )
-          );
-        }
-        return sum + parseFloat(row.column2 || 0);
+    // Package rows 1-5: column2 is already monthly package price
+    const packageMonthlyTotal = updatedRows.reduce((sum, row) => {
+      if (row.id >= 1 && row.id <= 5) {
+        return sum + (parseFloat(row.column2) || 0);
       }
       return sum;
     }, 0);
 
-    // Calculate the sum of column5 values for rows with id between 6 and 8
-    const sumColumn5 = updatedRows.reduce((sum, row) => {
-      if (row.id >= 6 && row.id <= 8) {
-        return sum + parseFloat(row.column5 || 0);
-      }
-      return sum;
+    // Equipment rows 6-8: column2 is the full device price — amortize over
+    // the linked package duration (same as handleSave / simulator)
+    const deviceMonthlyTotal = updatedRows.reduce((sum, row) => {
+      if (row.id < 6 || row.id > 8) return sum;
+
+      const devicePrice = getDevicePriceForRow(row);
+      if (!devicePrice) return sum;
+
+      const duration = getContractDurationForDeviceRow(updatedRows, row.id);
+      const monthlyDeviceCost = duration > 0 ? devicePrice / duration : 0;
+      const upfrontPayment = parseFloat(row.column5) || 0;
+
+      return sum + monthlyDeviceCost + upfrontPayment;
     }, 0);
 
-    // IMPORTANT: The user states `userData?.available` is the current available amount.
-    // We will use this as the base for calculating the new allowance.
-    const baseAvailableAmount = parseFloat(userData.available);
+    const baseAvailableAmount = parseFloat(userData.available) || 0;
+    const totalMonthlyCost = packageMonthlyTotal + deviceMonthlyTotal;
+    const newAllowance = parseFloat(
+      (baseAvailableAmount - totalMonthlyCost).toFixed(2)
+    );
+    const isWithinLimit = newAllowance >= 0;
 
-    // Calculate the new allowance: User's available amount minus total costs
-    const newAllowance = baseAvailableAmount - (sumColumn2 + sumColumn5);
+    // Top-up is allowed only when packages fit but device cost pushes over
+    const packagesWithinLimit = packageMonthlyTotal <= baseAvailableAmount;
+    const calculatedTopUp =
+      !isWithinLimit && packagesWithinLimit ? Math.abs(newAllowance) : 0;
+    const isTopUpEligible = calculatedTopUp > 0;
 
-    // --- NEW LIMIT CHECK LOGIC ---
-    // The limit is that the newAllowance (remaining available amount) should not go below 0.
-    // If newAllowance is 0 or positive, it's within the limit.
-    // If newAllowance is negative, it's exceeding the limit.
-    let isWithinLimit = newAllowance >= 0;
-
-    // Update the component's state for 'withinLimit' (this update is asynchronous)
     setWithinLimit(isWithinLimit);
+    setTopUpEligible(isTopUpEligible);
+    setTopUpAmount(calculatedTopUp);
+    if (!isTopUpEligible && !simulationMeta?.acceptsTopUp) {
+      setAcceptsTopUp(false);
+    }
 
-    // Console logs for debugging the new logic
+    let limitLabel = "Within limit";
+    if (!isWithinLimit && isTopUpEligible) {
+      limitLabel = acceptsTopUp
+        ? "Within limit (with top-up)"
+        : "Top-up required";
+    } else if (!isWithinLimit) {
+      limitLabel = "Exceeding limit";
+    }
 
-    // Update the rows with the new allowance and limit check status
     return updatedRows.map((row) => {
       if (row.id === 14) {
         return {
           ...row,
-          column2: newAllowance, // Display the calculated newAllowance
-          // Use the locally calculated `isWithinLimit` for immediate update
-          column5: isWithinLimit ? "Within limit" : "Exceeding limit",
+          column2: newAllowance,
+          column5: limitLabel,
         };
       }
       return row;
@@ -492,9 +574,28 @@ const BenefitVoucher = ({ open, handleClose, role }) => {
         setRows(updatedRows);
       }
     }
-  }, [rows, withinLimit, userData, isUserDataLoading]);
+  }, [rows, withinLimit, userData, isUserDataLoading, acceptsTopUp]);
+
+  useEffect(() => {
+    if (open && simulationMeta?.acceptsTopUp) {
+      setAcceptsTopUp(true);
+    } else if (!open) {
+      setAcceptsTopUp(false);
+    }
+  }, [open, simulationMeta]);
+
+  const canSubmitApplication = withinLimit || (topUpEligible && acceptsTopUp);
+
+  const formatCurrency = (value) =>
+    `N$ ${(Number(value) || 0).toLocaleString("en-NA", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
 
   const isCellEditable = (params) => {
+    if (isSimulationLocked && params.id >= 1 && params.id <= 8) {
+      return false;
+    }
     const { id, field } = params;
     if (role === 1 && (field === "MSISDN" || field === "FixedAssetCode")) {
       return true; // Admins can edit MSISDN and FixedAssetCode
@@ -508,7 +609,17 @@ const BenefitVoucher = ({ open, handleClose, role }) => {
   // Fetch contract data for admin
   const handleSave = async () => {
     // --- 1. Initial Limit Check (remains first) ---
-    if (!withinLimit) {
+    if (!canSubmitApplication) {
+      if (topUpEligible && !acceptsTopUp) {
+        Swal.fire({
+          icon: "warning",
+          title: "Top-up Confirmation Required",
+          text: `This application exceeds your available allowance by ${formatCurrency(
+            topUpAmount
+          )}. Confirm that you can top up before submitting.`,
+        });
+        return;
+      }
       handleClose();
       Swal.fire({
         icon: "error",
@@ -668,38 +779,59 @@ const BenefitVoucher = ({ open, handleClose, role }) => {
       const newAllowance = parseFloat(
         updatedRows.find((row) => row.id === 14)?.column2 || 0
       ); // Row 14 for New Allowance
-      const limitCheckStatus = updatedRows.find(
-        (row) => row.id === 14
-      )?.column5; // Row 14 for Limit Check Status
 
       // Calculate total monthly payment across all selected packages + currentAllowance - newAllowance
       const totalPackagesMonthlyCost = selectedPackagesDetails.reduce(
         (sum, pkg) => sum + pkg.AdjustedMonthlyPrice,
         0
       );
-      if (userData.available - totalPackagesMonthlyCost < 0) {
+      const packageOnlyMonthlyCost = selectedPackagesDetails.reduce(
+        (sum, pkg) => sum + pkg.BaseMonthlyPrice,
+        0
+      );
+
+      // Packages alone cannot exceed allowance — top-up only covers device excess
+      if (userData.available - packageOnlyMonthlyCost < 0) {
         handleClose();
         Swal.fire({
           icon: "error",
           title: "Cost Limit Exceeded",
-          text: `The total monthly cost for packages and equipment plan exceeds the allowed limit (${userData.staffWithAirtimeAllocation[0].AirtimeAllocation.toFixed(
+          text: `The total monthly package cost exceeds the allowed limit (${userData.staffWithAirtimeAllocation[0].AirtimeAllocation.toFixed(
             2
-          )}).`,
+          )}). Top-up cannot cover package overage.`,
         }).then((result) => {
-          // Check if the user clicked the "OK" button (which is 'isConfirmed' by default)
           if (result.isConfirmed) {
-            window.location.reload(); // Reload the page
+            window.location.reload();
           }
+        });
+        return;
+      }
+
+      // Device excess is allowed only when the user confirms top-up
+      if (
+        userData.available - totalPackagesMonthlyCost < 0 &&
+        !acceptsTopUp
+      ) {
+        Swal.fire({
+          icon: "warning",
+          title: "Top-up Confirmation Required",
+          text: "Device costs exceed your available allowance. Confirm that you can top up before submitting.",
         });
         return;
       }
       const monthlyPayment = currentAllowance - newAllowance;
 
+      // contracts.LimitCheck ENUM: "Within Limit" | "Exceeding Limit"
+      const limitCheckForDb =
+        withinLimit || (topUpEligible && acceptsTopUp)
+          ? "Within Limit"
+          : "Exceeding Limit";
+
       // --- 8. Construct Final `contractData` Payload ---
       const contractData = {
         EmployeeCode: employeeCode,
         MonthlyPayment: monthlyPayment, // Overall calculated payment (from allowances)
-        LimitCheck: limitCheckStatus, // "Within limit" or "Exceeding limit"
+        LimitCheck: limitCheckForDb,
         ApprovalStatus: "Pending",
         ContractStartDate: new Date().toISOString().split("T")[0],
         ContractEndDate: "", // Needs calculation based on max duration of selected packages or a specific field
@@ -922,6 +1054,15 @@ const BenefitVoucher = ({ open, handleClose, role }) => {
       width: 230,
       renderCell: (params) => {
         if (params.row.id <= 5) {
+          if (isSimulationLocked) {
+            return (
+              <span className="border-0 shadow-none bg-transparent">
+                {params.value && params.value !== "Select Package"
+                  ? params.value
+                  : ""}
+              </span>
+            );
+          }
           return (
             <select
               className="border-0 shadow-none bg-transparent"
@@ -945,10 +1086,9 @@ const BenefitVoucher = ({ open, handleClose, role }) => {
       field: "column2",
       headerName: "PRICE/MUL",
       width: 150,
-      editable: true, // Make editable for all rows
+      editable: !isSimulationLocked,
       renderCell: (params) => {
         if (params.row.id >= 6 && params.row.id <= 8) {
-          // Rows with id between 6 and 8, show empty input or placeholder
           return (
             <input
               className="border-0 shadow-none bg-transparent"
@@ -958,13 +1098,12 @@ const BenefitVoucher = ({ open, handleClose, role }) => {
                 handleInputChange(event, params.row.id, "column2")
               }
               ref={(el) => (devicePriceRef.current[params.row.id] = el)}
-              placeholder="Enter Device Price Per Month"
-              disabled={false}
-              // Optionally disable editing for these rows
+              placeholder={isSimulationLocked ? "" : "Enter Device Price"}
+              readOnly={isSimulationLocked}
+              disabled={isSimulationLocked}
             />
           );
         } else {
-          // Rows with id <= 5 or id >= 9, show existing value or editable input
           return params.value;
         }
       },
@@ -974,10 +1113,10 @@ const BenefitVoucher = ({ open, handleClose, role }) => {
       headerName: "DEVICE",
       width: 150,
       editable: (params) =>
-        params.row.id === 6 || params.row.id === 7 || params.row.id === 8,
+        !isSimulationLocked &&
+        (params.row.id === 6 || params.row.id === 7 || params.row.id === 8),
       renderCell: (params) => {
         if (params.row.id >= 6 && params.row.id <= 8) {
-          // Rows with id between 6 and 8, show empty input or placeholder
           return (
             <input
               className="border-0 shadow-none bg-transparent"
@@ -987,13 +1126,12 @@ const BenefitVoucher = ({ open, handleClose, role }) => {
                 handleInputChange(event, params.row.id, "column3")
               }
               ref={(el) => (deviceNameRef.current[params.row.id] = el)}
-              placeholder="Enter Device Name"
-              disabled={false}
-              // Optionally disable editing for these rows
+              placeholder={isSimulationLocked ? "" : "Enter Device Name"}
+              readOnly={isSimulationLocked}
+              disabled={isSimulationLocked}
             />
           );
         } else {
-          // Rows with id <= 5 or id >= 9, show existing value or editable input
           return params.value;
         }
       },
@@ -1002,10 +1140,9 @@ const BenefitVoucher = ({ open, handleClose, role }) => {
       field: "column4",
       headerName: "MSISDN",
       width: 150,
-      editable: role === 1, // Only editable by admin
+      editable: role === 1,
       renderCell: (params) => {
         if (params.row.id >= 6 && params.row.id <= 8) {
-          // Rows with id between 6 and 8, show empty input or placeholder
           return (
             <input
               className="border-0 shadow-none bg-transparent"
@@ -1015,13 +1152,12 @@ const BenefitVoucher = ({ open, handleClose, role }) => {
                 handleInputChange(event, params.row.id, "column4")
               }
               ref={(el) => (msisdnRef.current[params.row.id] = el)}
-              placeholder="Enter Device MSISDN"
-              disabled={false}
-              // Optionally disable editing for these rows
+              placeholder={isSimulationLocked ? "" : "Enter Device MSISDN"}
+              readOnly={isSimulationLocked}
+              disabled={isSimulationLocked}
             />
           );
         } else {
-          // Rows with id <= 5 or id >= 9, show existing value or editable input
           return params.value;
         }
       },
@@ -1030,10 +1166,9 @@ const BenefitVoucher = ({ open, handleClose, role }) => {
       field: "column5",
       headerName: "UPFRONT PAYMENT",
       width: 150,
-      editable: true,
+      editable: !isSimulationLocked,
       renderCell: (params) => {
         if (params.row.id >= 6 && params.row.id <= 8) {
-          // Rows with id between 6 and 8, show empty input or placeholder
           return (
             <input
               className="border-0 shadow-none bg-transparent"
@@ -1043,13 +1178,12 @@ const BenefitVoucher = ({ open, handleClose, role }) => {
                 handleInputChange(event, params.row.id, "column5")
               }
               ref={(el) => (upfrontPaymentRef.current[params.row.id] = el)}
-              placeholder="Enter price/mul"
-              disabled={false}
-              // Optionally disable editing for these rows
+              placeholder={isSimulationLocked ? "" : "Enter price/mul"}
+              readOnly={isSimulationLocked}
+              disabled={isSimulationLocked}
             />
           );
         } else {
-          // Rows with id <= 5 or id >= 9, show existing value or editable input
           return params.value;
         }
       },
@@ -1061,6 +1195,22 @@ const BenefitVoucher = ({ open, handleClose, role }) => {
       editable: true,
       renderCell: (params) => {
         if (params.row.id <= 5) {
+          const hasPackage =
+            !!params.row.packageID ||
+            (!!params.row.dropdown &&
+              params.row.dropdown !== "Select Package" &&
+              !!params.row.column2);
+
+          if (!hasPackage) {
+            return (
+              <span className="border-0 shadow-none bg-transparent">
+                {params.value && params.value !== "Select Type"
+                  ? params.value
+                  : ""}
+              </span>
+            );
+          }
+
           return (
             <select
               className="border-0 shadow-none bg-transparent"
@@ -1145,7 +1295,7 @@ const BenefitVoucher = ({ open, handleClose, role }) => {
         <div>
           <div className="top text-center">
             {/* Title and close modal button */}
-            <div className="mt-4 row justify-content-end">
+            <div className="mt-4 row justify-content-end align-items-center">
               <div className="col-4"></div>
               <div className="col-md-4 text-center">
                 <h5 className="fw-bold">
@@ -1153,40 +1303,17 @@ const BenefitVoucher = ({ open, handleClose, role }) => {
                 </h5>
               </div>
 
-              <div className="col-md-4 mb-1 align-items-center">
-                <>
-                  <Button
-                    onClick={handleSave}
-                    className="download-btn"
-                    style={{
-                      fontSize: "14px",
-                      height: "100%",
-                      width: "40%",
-                      backgroundColor: "#0096D6",
-                      color: "#fff",
-                      padding: "8px",
-                      paddingLeft: "10px",
-                      borderRadius: "5px",
-                      cursor: "pointer",
-                      borderColor: "#1A69AC",
-                      border: "1px solid",
-                    }}
-                  >
-                    Submit
-                  </Button>
-
-                  <CancelPresentationIcon
-                    onClick={() => {
-                      handleClose();
-                    }}
-                    style={{
-                      marginLeft: "10px",
-                      color: "#BB1616",
-                      fontSize: "40px",
-                      cursor: "pointer",
-                    }}
-                  />
-                </>
+              <div className="col-md-4 mb-1 d-flex justify-content-end align-items-center">
+                <CancelPresentationIcon
+                  onClick={() => {
+                    handleClose();
+                  }}
+                  style={{
+                    color: "#BB1616",
+                    fontSize: "40px",
+                    cursor: "pointer",
+                  }}
+                />
               </div>
             </div>
 
@@ -1240,6 +1367,7 @@ const BenefitVoucher = ({ open, handleClose, role }) => {
               }}
             >
               <DataGrid
+                key={prefillData ? `prefill-${prefillData.length}` : "default"}
                 rows={rows}
                 columns={columns}
                 pageSize={5}
@@ -1254,6 +1382,25 @@ const BenefitVoucher = ({ open, handleClose, role }) => {
                 getRowClassName={getRowClassName}
               />
             </Box>
+          </div>
+
+          <div className="d-flex justify-content-end align-items-center mt-3 mb-2 px-3">
+            <Button
+              onClick={handleSave}
+              className="download-btn"
+              style={{
+                fontSize: "14px",
+                backgroundColor: "#0096D6",
+                color: "#fff",
+                padding: "8px 24px",
+                borderRadius: "5px",
+                cursor: "pointer",
+                borderColor: "#1A69AC",
+                border: "1px solid",
+              }}
+            >
+              Submit
+            </Button>
           </div>
 
           {modalOpen && (

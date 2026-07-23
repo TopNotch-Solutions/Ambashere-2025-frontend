@@ -140,7 +140,19 @@ const UserDashboard = () => {
     DevicePrice: formatMoney(
       airtime?.DevicePrice ?? airtime?.device_initial_cost ?? airtime?.device_payout_balance
     ),
-    ContractStartDate: formatDate(airtime?.contract_start_date ?? airtime?.ContractStartDate),
+    ContractStartDate: (() => {
+      const status = String(airtime?.subscription_status || airtime?.SubscriptionStatus || "")
+        .trim()
+        .toLowerCase();
+      const isOpenSubmission =
+        airtime?.isSubmission ||
+        status === "pending" ||
+        status === "in progress";
+      if (isOpenSubmission) return "-";
+      return formatDate(
+        airtime?.contract_start_date ?? airtime?.ContractStartDate
+      );
+    })(),
     ContractEndDate: formatDate(airtime?.contract_end_date ?? airtime?.ContractEndDate),
     Status: airtime?.subscription_status,
     TotalMonthlyPayment: formatMoney(airtime?.TotalMonthlyPayment ?? airtime?.device_monthly_price + airtime?.serviceplan_monthly_price),

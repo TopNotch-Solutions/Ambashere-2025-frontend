@@ -8,12 +8,15 @@ import {
   InputLabel,
   CircularProgress,
   Alert,
+  Button,
 } from "@mui/material";
+import PostAddIcon from "@mui/icons-material/PostAdd";
 import axiosInstance from "../../../utils/axiosInstance";
 import { useSelector } from "react-redux";
+import Swal from "sweetalert2";
 import "../../../assets/style/global/handsetBenefitSimulator.css";
 
-const AirtimeBenefitSimulator = ({ embedded = false }) => {
+const AirtimeBenefitSimulator = ({ embedded = false, onApplySimulation }) => {
   const [packages, setPackages] = useState([]);
   const [devices, setDevices] = useState([]);
   const [numberOfContracts, setNumberOfContracts] = useState(1);
@@ -330,6 +333,76 @@ const AirtimeBenefitSimulator = ({ embedded = false }) => {
     });
   };
 
+  const hasSelectedPackages = contractData.some(
+    (contract) => !!contract.selectedPackage
+  );
+
+  const canProceedToApplication =
+    hasSelectedPackages &&
+    (checkLimit === "Within Limit" || totalTopUp > 0);
+
+  const handleProceedToApplication = async () => {
+    if (!canProceedToApplication) return;
+
+    const prefillData = contractData
+      .map((contract, index) => ({
+        contract,
+        topUp: contractCalculations[index]?.topUp || 0,
+      }))
+      .filter(({ contract }) => contract.selectedPackage)
+      .map(({ contract, topUp }) => {
+        const selectedPkg = packages.find(
+          (pkg) => pkg.PackageID === contract.selectedPackage
+        );
+        return {
+          packageName: selectedPkg?.PackageName || "",
+          packageID: contract.selectedPackage,
+          packagePrice: contract.packagePrice,
+          deviceName: contract.deviceName || "",
+          devicePrice: contract.devicePrice || "",
+          subscriptionType: "New",
+          topUp,
+        };
+      });
+
+    const openVoucher = (acceptsTopUp = false) => {
+      onApplySimulation?.(prefillData, {
+        requiresTopUp: totalTopUp > 0,
+        topUpAmount: totalTopUp,
+        acceptsTopUp,
+      });
+    };
+
+    if (totalTopUp > 0) {
+      const result = await Swal.fire({
+        icon: "warning",
+        title: "Top-up Required",
+        html: `
+          <p style="text-align:left;margin:0 0 12px;">
+            Your selected packages are within limit, but device costs exceed
+            your available allowance by
+            <strong>${formatCurrency(totalTopUp)}</strong>. Top-up can cover
+            this device excess.
+          </p>
+          <p style="text-align:left;margin:0;font-weight:600;">
+            I confirm that I can top up the excess amount
+          </p>
+        `,
+        showCancelButton: true,
+        confirmButtonColor: "#0096D6",
+        cancelButtonColor: "#6c757d",
+        confirmButtonText: "Confirm & Continue",
+        cancelButtonText: "Cancel",
+      });
+
+      if (!result.isConfirmed) return;
+      openVoucher(true);
+      return;
+    }
+
+    openVoucher(false);
+  };
+
   const handleNetOptionChange = (index, value) => {
     setContractData((prevData) => {
       const updatedData = [...prevData];
@@ -398,11 +471,22 @@ const AirtimeBenefitSimulator = ({ embedded = false }) => {
         <div className="row g-4 w-100 m-0">
           <div className="col-12 col-xl-8">
             <form className="handset-form-card shadow-sm">
-              <div className="form-header">
-                <h5 className="mb-1">Configure your simulation</h5>
-                <p className="mb-0">
-                  Device prices are auto-populated from the latest device list.
-                </p>
+              <div className="form-header d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between gap-3">
+                <div>
+                  <h5 className="mb-1">Configure your simulation</h5>
+                  <p className="mb-0">
+                    Device prices are auto-populated from the latest device list.
+                  </p>
+                </div>
+                {onApplySimulation && canProceedToApplication && (
+                  <Button
+                    className="benefits-cta-btn flex-shrink-0"
+                    onClick={handleProceedToApplication}
+                    endIcon={<PostAddIcon />}
+                  >
+                    Proceed to Contract Application
+                  </Button>
+                )}
               </div>
 
               {(packagesError || devicesError) && (
