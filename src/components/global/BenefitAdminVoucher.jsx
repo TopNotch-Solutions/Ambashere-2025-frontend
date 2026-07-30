@@ -277,7 +277,7 @@ const BenefitAdminVoucher = ({ open, handleClose,userData, role }) => {
           case 10:
             return { ...row, column2:userData.staffWithAirtimeAllocation[0].EmployeeCode };
           case 11:
-            return userData.staffWithAirtimeAllocation[0].ServicePlan === "Postpaid"
+            return userData.staffWithAirtimeAllocation[0].ServicePlan === "PostPaid"
               ? { ...row, column2: "POST: " +userData.staffWithAirtimeAllocation[0].PhoneNumber }
               : { ...row, column3: "PRE: " +userData.staffWithAirtimeAllocation[0].PhoneNumber };
           case 12:
@@ -482,14 +482,30 @@ const BenefitAdminVoucher = ({ open, handleClose,userData, role }) => {
           );
         }
 
-        const contractDurationMatch = packageRow.dropdown.match(/\d+/);
-        if (!contractDurationMatch) {
+        const selectedOption = dropdownOptions.find(
+          (option) =>
+            option.PackageID === packageRow.packageID ||
+            option.PackageName === packageRow.dropdown
+        );
+        const fromPaymentPeriod = parseInt(
+          String(selectedOption?.PaymentPeriod || "").replace(/\s*months?/i, ""),
+          10
+        );
+        const durationMatch =
+          String(packageRow.dropdown || "").match(/\((\d+)\)/) ||
+          String(packageRow.dropdown || "").match(/(\d+)/);
+        const contractDuration =
+          !isNaN(fromPaymentPeriod) && fromPaymentPeriod > 0
+            ? fromPaymentPeriod
+            : durationMatch
+              ? parseInt(durationMatch[1], 10)
+              : NaN;
+        if (!contractDuration) {
           handleClose();
           throw new Error(
             `Invalid package format for ${packageRow.dropdown || `row ${packageRow.id}`}. Could not extract contract duration.`
           );
         }
-        const contractDuration = parseInt(contractDurationMatch[0], 10);
         const monthlyPrice = parseFloat(packageRow.column2); // Base monthly price from column2
 
         selectedPackagesDetails.push({
@@ -759,7 +775,7 @@ const BenefitAdminVoucher = ({ open, handleClose,userData, role }) => {
         case 10:
           return { ...row, column2:updatingData.staffWithAirtimeAllocation[0].EmployeeCode };
         case 11:
-          return updatingData.ServicePlan === "Postpaid"
+          return updatingData.ServicePlan === "PostPaid"
             ? { ...row, column2: "POST: " +updatingData.staffWithAirtimeAllocation[0].PhoneNumber }
             : { ...row, column3: "PRE: " +updatingData.staffWithAirtimeAllocation[0].PhoneNumber };
         case 13:

@@ -25,14 +25,14 @@ const DoughnutChart = () => {
 
       setData([
         {
-          id: "Prepaid",
-          label: "Prepaid",
+          id: "PrePaid",
+          label: "PrePaid",
           value: prepaidCount,
           color: "#D73832",
         },
         {
-          id: "Postpaid",
-          label: "Postpaid",
+          id: "PostPaid",
+          label: "PostPaid",
           value: postpaidCount,
           color:  "#1674BB",
         },
@@ -117,10 +117,10 @@ const DoughnutChart = () => {
           ]}
           fill={[
             {
-              match: { id: "Prepaid" },
+              match: { id: "PrePaid" },
             },
             {
-              match: { id: "Postpaid" },
+              match: { id: "PostPaid" },
             },
           ]}
           legends={[

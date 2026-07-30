@@ -39,6 +39,39 @@ const UserBenefits = () => {
       normalized === "in progress"
     );
   };
+
+  const getStatusStyle = (status) => {
+    const normalized = String(status || "").trim().toLowerCase();
+
+    if (normalized === "pending") {
+      return { background: "#FEF3C7", color: "#92400E", border: "#F59E0B" };
+    }
+    if (normalized === "in progress") {
+      return { background: "#DBEAFE", color: "#1E40AF", border: "#3B82F6" };
+    }
+    if (
+      normalized === "completed" ||
+      normalized === "active" ||
+      normalized === "ongoing" ||
+      normalized === "renewed" ||
+      normalized === "approved" ||
+      normalized === "done"
+    ) {
+      return { background: "#DCFCE7", color: "#166534", border: "#22C55E" };
+    }
+    if (
+      normalized === "expired" ||
+      normalized === "rejected" ||
+      normalized === "inactive" ||
+      normalized === "cancelled" ||
+      normalized === "canceled"
+    ) {
+      return { background: "#FEE2E2", color: "#991B1B", border: "#EF4444" };
+    }
+
+    return { background: "#F3F4F6", color: "#374151", border: "#9CA3AF" };
+  };
+
   const hasDeviceName = (item) => {
     const value = item?.DeviceName ?? item?.device ?? "";
     const normalized = String(value).trim().toLowerCase();
@@ -148,7 +181,28 @@ const UserBenefits = () => {
     { field: "PayoutBalance", headerName: "PAYOUT AMOUNT", width: 180 },
     { field: "ContractStartDate", headerName: "CONTRACT START", width: 180 },
     { field: "ContractEndDate", headerName: "CONTRACT END", width: 180 },
-    { field: "SubscriptionStatus", headerName: "STATUS", width: 180 },
+    {
+      field: "SubscriptionStatus",
+      headerName: "STATUS",
+      width: 180,
+      renderCell: (params) => {
+        const status = params.value || "-";
+        const style = getStatusStyle(status);
+
+        return (
+          <span
+            className="benefit-status-badge"
+            style={{
+              backgroundColor: style.background,
+              color: style.color,
+              borderColor: style.border,
+            }}
+          >
+            {status}
+          </span>
+        );
+      },
+    },
   //   {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
   //         field: "actions",
   //         type: "actions",

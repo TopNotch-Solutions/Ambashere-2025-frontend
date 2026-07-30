@@ -111,6 +111,56 @@ const UserDashboard = () => {
     }
   }, [currentUser?.EmployeeCode]);
 
+  const getStatusStyle = (status) => {
+    const normalized = String(status || "").trim().toLowerCase();
+
+    if (normalized === "pending") {
+      return { background: "#FEF3C7", color: "#92400E", border: "#F59E0B" };
+    }
+    if (normalized === "in progress") {
+      return { background: "#DBEAFE", color: "#1E40AF", border: "#3B82F6" };
+    }
+    if (
+      normalized === "completed" ||
+      normalized === "active" ||
+      normalized === "ongoing" ||
+      normalized === "renewed" ||
+      normalized === "approved" ||
+      normalized === "done"
+    ) {
+      return { background: "#DCFCE7", color: "#166534", border: "#22C55E" };
+    }
+    if (
+      normalized === "expired" ||
+      normalized === "rejected" ||
+      normalized === "inactive" ||
+      normalized === "cancelled" ||
+      normalized === "canceled"
+    ) {
+      return { background: "#FEE2E2", color: "#991B1B", border: "#EF4444" };
+    }
+
+    return { background: "#F3F4F6", color: "#374151", border: "#9CA3AF" };
+  };
+
+  const renderStatusCell = (params) => {
+    const status = params.value || "-";
+    const style = getStatusStyle(status);
+
+    return (
+      <span
+        className="benefit-status-badge"
+        style={{
+          backgroundColor: style.background,
+          color: style.color,
+          borderColor: style.border,
+        }}
+      >
+        {status}
+      </span>
+    );
+  };
+
   const airtimeColumns = [
     { field: "MSISDN", headerName: "MSISDN", width: 170 },
     { field: "PackageName", headerName: "Package Name", width: 180 },
@@ -121,7 +171,12 @@ const UserDashboard = () => {
     { field: "TotalMonthlyPayment", headerName: "Total Monthly Payment", width: 180 },
     { field: "ContractStartDate", headerName: "Contract Start Date", width: 200 },
     { field: "ContractEndDate", headerName: "Contract End Date", width: 200 },
-    { field: "Status", headerName: "Status", width: 180 },
+    {
+      field: "Status",
+      headerName: "Status",
+      width: 180,
+      renderCell: renderStatusCell,
+    },
   ];
 
   const airtimeContracts = Array.isArray(airtimeData?.contracts)
@@ -154,7 +209,7 @@ const UserDashboard = () => {
       );
     })(),
     ContractEndDate: formatDate(airtime?.contract_end_date ?? airtime?.ContractEndDate),
-    Status: airtime?.subscription_status,
+    Status: airtime?.subscription_status || airtime?.SubscriptionStatus || "-",
     TotalMonthlyPayment: formatMoney(airtime?.TotalMonthlyPayment ?? airtime?.device_monthly_price + airtime?.serviceplan_monthly_price),
   }));
 
@@ -165,8 +220,12 @@ const UserDashboard = () => {
     // { field: "StaffPrice", headerName: "Handset Price", width: 130 },
     { field: "AllocationDate", headerName: "Date Issued", width: 180 },
     { field: "NewAllocationDate", headerName: "New Handset Date", width: 180 },
-    { field: "Status", headerName: "Status", width: 180 },
-
+    {
+      field: "Status",
+      headerName: "Status",
+      width: 180,
+      renderCell: renderStatusCell,
+    },
   ];
   const handsetRows = (handsetData?.handsets || []).map((handset, index) => ({
     id: index + 1,
@@ -177,7 +236,7 @@ const UserDashboard = () => {
     HandsetName: handset?.HandsetName,
     AllocationDate: formatDate(handset?.CollectionDate),
     NewAllocationDate: formatDate(handset?.RenewalDate),
-    Status: handset?.Status
+    Status: handset?.Status || "-",
     // DevicePrice: "N$ " + handset.DevicePrice,
   }));
 

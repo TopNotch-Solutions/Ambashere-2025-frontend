@@ -23,7 +23,6 @@ const INITIAL_FORM_VALUES = {
   FirstName: "",
   LastName: "",
   FullName: "",
-  UserName: "",
   Email: "",
   PhoneNumber: "",
   Gender: "",
@@ -83,15 +82,19 @@ const AddEmployee = ({
     { value: "Retired", label: "Retired" },
   ];
 
-  const employementCategoryOptions = {
-    Permanent: [
-      { value: "1", label: "General Staff" },
-      { value: "2", label: "Technicians" },
-      { value: "3", label: "Middle Management" },
-      { value: "4", label: "Chief/General Manager" },
-    ],
-    Temporary: [{ value: "5", label: "Temporary Staff" }],
-    Retired: [{ value: "6", label: "Retiree" }],
+  const allocationOptions = [
+    { value: "1", label: "General Staff", employmentCategory: "Permanent" },
+    { value: "2", label: "Technicians", employmentCategory: "Permanent" },
+    { value: "3", label: "Middle Management", employmentCategory: "Permanent" },
+    { value: "4", label: "Chief/General Manager", employmentCategory: "Permanent" },
+    { value: "5", label: "Temporary Staff", employmentCategory: "Temporary" },
+    { value: "6", label: "Retiree", employmentCategory: "Retired" },
+  ];
+
+  const defaultAllocationByCategory = {
+    Permanent: "1",
+    Temporary: "5",
+    Retired: "6",
   };
 
   const [formValues, setFormValues] = useState(INITIAL_FORM_VALUES);
@@ -143,13 +146,20 @@ const AddEmployee = ({
       let newValues = { ...prevValues, [name]: value };
 
       if (name === "EmploymentCategory") {
-        const newAllocationID =
-          employementCategoryOptions[value]?.[0]?.value || ""; // Set default value if available
         newValues = {
           ...newValues,
           EmploymentCategory: value,
-          AllocationID: newAllocationID,
+          AllocationID: defaultAllocationByCategory[value] || "",
         };
+      }
+
+      if (name === "AllocationID") {
+        const selectedAllocation = allocationOptions.find(
+          (option) => option.value === value
+        );
+        if (selectedAllocation) {
+          newValues.EmploymentCategory = selectedAllocation.employmentCategory;
+        }
       }
 
       if (name === "PhoneNumber") {
@@ -157,7 +167,7 @@ const AddEmployee = ({
         newValues = { ...newValues, [name]: formattedPhoneNumber };
       }
 
-      // Autofill email and username when adding a new employee
+      // Autofill email and full name when adding a new employee
       if (mode === "add" && (name === "FirstName" || name === "LastName")) {
         const firstName = name === "FirstName" ? value : prevValues.FirstName;
         const lastName = name === "LastName" ? value : prevValues.LastName;
@@ -166,9 +176,6 @@ const AddEmployee = ({
           newValues.Email = `${firstName[0].toLowerCase()}${lastName
             .trim()
             .toLowerCase()}@mtc.com.na`;
-          newValues.UserName = `${lastName
-            .trim()
-            .toLowerCase()}${firstName.trim().toLowerCase()}`;
           newValues.FullName = `${firstName} ${lastName}`;
         }
       }
@@ -177,9 +184,7 @@ const AddEmployee = ({
     });
   };
 
-  const getAllocationOptions = () => {
-    return employementCategoryOptions[formValues.EmploymentCategory] || [];
-  };
+  const getAllocationOptions = () => allocationOptions;
 
   const validatePhoneNumber = (PhoneNumber) => {
     if (phoneNumberRegex.test(PhoneNumber)) {
@@ -425,28 +430,6 @@ const AddEmployee = ({
 
           <div className="row">
             <div className="col">
-              {" "}
-              <TextField
-                name="UserName"
-                label="User Name"
-                value={
-                  mode === "add"
-                    ? `${formValues.LastName}${formValues.FirstName.charAt(0) || ""}`
-                    : formValues.UserName
-                }
-                onChange={handleChange}
-                fullWidth
-                margin="normal"
-                error={!!errors.UserName}
-                helperText={errors.UserName}
-                disabled={mode !== "edit"}
-                sx={{
-                  color: "black",
-                }}
-              />
-            </div>
-
-            <div className="col">
               <TextField
                 name="Email"
                 label="Email"
@@ -520,8 +503,8 @@ const AddEmployee = ({
                   onChange={handleChange}
                   disabled={mode === "inactive"}
                 >
-                  <MenuItem value="Prepaid">Prepaid</MenuItem>
-                  <MenuItem value="Postpaid">Postpaid</MenuItem>
+                  <MenuItem value="PrePaid">PrePaid</MenuItem>
+                  <MenuItem value="PostPaid">PostPaid</MenuItem>
                 </Select>
                 {errors.ServicePlan && (
                   <FormHelperText>{errors.ServicePlan}</FormHelperText>
@@ -636,11 +619,7 @@ const AddEmployee = ({
                 <InputLabel>Staff Category</InputLabel>
                 <Select
                   name="AllocationID"
-                  disabled={
-                    formValues.EmploymentCategory === "Temporary" ||
-                    formValues.EmploymentCategory === "Retired" ||
-                    mode === "inactive"
-                  }
+                  disabled={mode === "inactive"}
                   value={formValues.AllocationID}
                   onChange={handleChange}
                 >

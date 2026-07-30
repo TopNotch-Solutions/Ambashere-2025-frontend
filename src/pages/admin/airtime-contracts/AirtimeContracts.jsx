@@ -129,6 +129,7 @@ const AdminAirtimeContracts = () => {
       contract_duration: item.contract_duration
         ? String(Math.trunc(Number(item.contract_duration)))
         : "-",
+      top_up_amount: formatMoney(item.top_up_amount),
       device_monthly_price: formatMoney(item.device_monthly_price),
       serviceplan_monthly_price: formatMoney(item.serviceplan_monthly_price),
       contract_submitted_date: formatDate(item.contract_submitted_date),
@@ -150,6 +151,11 @@ const AdminAirtimeContracts = () => {
       width: 130,
     },
     { field: "contract_duration", headerName: "Duration", width: 100 },
+    {
+      field: "top_up_amount",
+      headerName: "Top-up",
+      width: 130,
+    },
     {
       field: "serviceplan_monthly_price",
       headerName: "Plan Monthly",

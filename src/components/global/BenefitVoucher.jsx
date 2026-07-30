@@ -53,6 +53,7 @@ const BenefitVoucher = ({
   const [topUpEligible, setTopUpEligible] = useState(false);
   const [topUpAmount, setTopUpAmount] = useState(0);
   const [acceptsTopUp, setAcceptsTopUp] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const isSimulationLocked =
     Array.isArray(prefillData) && prefillData.length > 0;
 
@@ -84,6 +85,7 @@ const BenefitVoucher = ({
       setTopUpEligible(false);
       setTopUpAmount(0);
       setAcceptsTopUp(false);
+      setIsSubmitting(false);
     }
   }, [open, currentUser?.EmployeeCode]);
   useEffect(() => {
@@ -250,10 +252,10 @@ const BenefitVoucher = ({
         {
           id: 11,
           dropdown: "Service Account/ MSISDN",
-          column2: userData.staffWithAirtimeAllocation[0].ServicePlan === "Postpaid" 
+          column2: userData.staffWithAirtimeAllocation[0].ServicePlan === "PostPaid" 
             ? "POST: " + userData.staffWithAirtimeAllocation[0].PhoneNumber 
             : "",
-          column3: userData.staffWithAirtimeAllocation[0].ServicePlan === "Prepaid" 
+          column3: userData.staffWithAirtimeAllocation[0].ServicePlan === "PrePaid" 
             ? "PRE: " + userData.staffWithAirtimeAllocation[0].PhoneNumber 
             : "",
           column4: "",
@@ -345,7 +347,7 @@ const BenefitVoucher = ({
             };
           case 11:
             return userData.staffWithAirtimeAllocation[0].ServicePlan ===
-              "Postpaid"
+              "PostPaid"
               ? {
                   ...row,
                   column2:
@@ -478,14 +480,23 @@ const BenefitVoucher = ({
     }
   };
 
-  const getContractDurationForDeviceRow = (updatedRows, deviceRowId) => {
-    // Equipment rows 6/7/8 link to package rows 1/2/3
-    const packageRow = updatedRows.find((row) => row.id === deviceRowId - 5);
-    if (!packageRow?.dropdown || packageRow.dropdown === "Select Package") {
-      return 0;
+  const resolvePackageDuration = (packageName, packageID = null) => {
+    const selectedOption = dropdownOptions.find(
+      (option) =>
+        (packageID && option.PackageID === packageID) ||
+        option.PackageName === packageName
+    );
+    const fromPaymentPeriod = parseInt(
+      String(selectedOption?.PaymentPeriod || "").replace(/\s*months?/i, ""),
+      10
+    );
+    if (!isNaN(fromPaymentPeriod) && fromPaymentPeriod > 0) {
+      return fromPaymentPeriod;
     }
-    const durationMatch = String(packageRow.dropdown).match(/\((\d+)\)/)
-      || String(packageRow.dropdown).match(/(\d+)/);
+
+    const durationMatch =
+      String(packageName || "").match(/\((\d+)\)/) ||
+      String(packageName || "").match(/(\d+)/);
     return durationMatch ? parseInt(durationMatch[1], 10) : 0;
   };
 
@@ -494,6 +505,40 @@ const BenefitVoucher = ({
     if (!isNaN(fromRef) && fromRef > 0) return fromRef;
     const fromRow = parseFloat(row.column2 || 0);
     return !isNaN(fromRow) ? fromRow : 0;
+  };
+
+  const getContractDurationForDeviceRow = (updatedRows, deviceRowId) => {
+    // Equipment rows 6/7/8 link to package rows 1/2/3
+    const packageRow = updatedRows.find((row) => row.id === deviceRowId - 5);
+    if (!packageRow?.dropdown || packageRow.dropdown === "Select Package") {
+      return 0;
+    }
+    return resolvePackageDuration(packageRow.dropdown, packageRow.packageID);
+  };
+
+  const getTopUpDuration = (updatedRows) => {
+    let maxDuration = 0;
+
+    for (let deviceRowId = 6; deviceRowId <= 8; deviceRowId++) {
+      const row = updatedRows.find((r) => r.id === deviceRowId);
+      if (!row) continue;
+      if (!getDevicePriceForRow(row)) continue;
+
+      const duration = getContractDurationForDeviceRow(updatedRows, deviceRowId);
+      if (duration > maxDuration) maxDuration = duration;
+    }
+
+    if (maxDuration > 0) return maxDuration;
+
+    for (const row of updatedRows) {
+      if (row.id < 1 || row.id > 5) continue;
+      if (!row.dropdown || row.dropdown === "Select Package") continue;
+
+      const duration = resolvePackageDuration(row.dropdown, row.packageID);
+      if (duration > 0) return duration;
+    }
+
+    return 0;
   };
 
   const calculateMUL = (updatedRows) => {
@@ -532,10 +577,16 @@ const BenefitVoucher = ({
     );
     const isWithinLimit = newAllowance >= 0;
 
-    // Top-up is allowed only when packages fit but device cost pushes over
+    // Top-up is allowed only when packages fit but device cost pushes over.
+    // Total top-up = monthly excess × package duration.
     const packagesWithinLimit = packageMonthlyTotal <= baseAvailableAmount;
-    const calculatedTopUp =
+    const monthlyTopUp =
       !isWithinLimit && packagesWithinLimit ? Math.abs(newAllowance) : 0;
+    const topUpDuration = getTopUpDuration(updatedRows);
+    const calculatedTopUp =
+      monthlyTopUp > 0 && topUpDuration > 0
+        ? parseFloat((monthlyTopUp * topUpDuration).toFixed(2))
+        : monthlyTopUp;
     const isTopUpEligible = calculatedTopUp > 0;
 
     setWithinLimit(isWithinLimit);
@@ -584,8 +635,6 @@ const BenefitVoucher = ({
     }
   }, [open, simulationMeta]);
 
-  const canSubmitApplication = withinLimit || (topUpEligible && acceptsTopUp);
-
   const formatCurrency = (value) =>
     `N$ ${(Number(value) || 0).toLocaleString("en-NA", {
       minimumFractionDigits: 2,
@@ -607,20 +656,30 @@ const BenefitVoucher = ({
   };
 
   // Fetch contract data for admin
-  const handleSave = async () => {
+  const handleSave = async (options = {}) => {
+    const topUpConfirmed = options.topUpConfirmed === true || acceptsTopUp;
+
     // --- 1. Initial Limit Check (remains first) ---
-    if (!canSubmitApplication) {
-      if (topUpEligible && !acceptsTopUp) {
-        Swal.fire({
+    if (!(withinLimit || (topUpEligible && topUpConfirmed))) {
+      if (topUpEligible && !topUpConfirmed) {
+        const result = await Swal.fire({
           icon: "warning",
           title: "Top-up Confirmation Required",
-          text: `This application exceeds your available allowance by ${formatCurrency(
+          html: `This application exceeds your available allowance.<br/><br/>Total top-up required: <strong>${formatCurrency(
             topUpAmount
-          )}. Confirm that you can top up before submitting.`,
+          )}</strong><br/><br/>Confirm that you can top up to submit this voucher.`,
+          showCancelButton: true,
+          confirmButtonColor: "#0096D6",
+          cancelButtonColor: "#6c757d",
+          confirmButtonText: "Confirm & Submit",
+          cancelButtonText: "Cancel",
         });
+        if (result.isConfirmed) {
+          setAcceptsTopUp(true);
+          return handleSave({ topUpConfirmed: true });
+        }
         return;
       }
-      handleClose();
       Swal.fire({
         icon: "error",
         title: "Limit Exceeded",
@@ -629,24 +688,22 @@ const BenefitVoucher = ({
       return;
     }
 
-    try {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
 
+    try {
       // --- 2. Basic Form Data Check ---
       if (!rows || rows.length === 0) {
-        handleClose();
         throw new Error("Form data is empty. Please fill in the form.");
       }
 
       // --- 3. Validate and Aggregate Selected Packages (Rows 1-5) ---
       const selectedPackagesDetails = [];
-      const packageRows = rows.filter((row) => row.id >= 1 && row.id <= 5); // Get all potential package rows
+      const packageRows = rows.filter((row) => row.id >= 1 && row.id <= 5);
 
       for (const packageRow of packageRows) {
-        // Check if a package is actually selected in this row (column2 has a value)
         if (packageRow.column2) {
-          // Validate subscription type for this selected package
           if (!packageRow.column6 || packageRow.column6 === "Select Type") {
-            handleClose();
             const packageName =
               packageRow.dropdown && packageRow.dropdown !== "Select Package"
                 ? `for Package: ${packageRow.dropdown}`
@@ -656,34 +713,47 @@ const BenefitVoucher = ({
             );
           }
 
-          const contractDurationMatch = packageRow.dropdown.match(/\d+/);
-          if (!contractDurationMatch) {
-            handleClose();
+          const packageID =
+            packageRow.packageID ||
+            dropdownOptions.find(
+              (option) => option.PackageName === packageRow.dropdown
+            )?.PackageID;
+
+          if (!packageID) {
+            throw new Error(
+              `Could not resolve Package ID for ${
+                packageRow.dropdown || `row ${packageRow.id}`
+              }.`
+            );
+          }
+
+          const contractDuration = resolvePackageDuration(
+            packageRow.dropdown,
+            packageID
+          );
+          if (!contractDuration) {
             throw new Error(
               `Invalid package format for ${
                 packageRow.dropdown || `row ${packageRow.id}`
               }. Could not extract contract duration.`
             );
           }
-          const contractDuration = parseInt(contractDurationMatch[0], 10);
-          const monthlyPrice = parseFloat(packageRow.column2); // Base monthly price from column2
+          const monthlyPrice = parseFloat(packageRow.column2);
 
           selectedPackagesDetails.push({
-            id: packageRow.id, // Keep the row ID to link with devices
-            PackageID: packageRow.packageID,
-            BaseMonthlyPrice: monthlyPrice, // Store original monthly price
+            id: packageRow.id,
+            PackageID: packageID,
+            BaseMonthlyPrice: monthlyPrice,
             SubscriptionStatus: packageRow.column6,
             ContractDuration: contractDuration,
-            DisplayName: packageRow.dropdown, // For better error messages/display
-            DeviceAssigned: null, // Placeholder for device assignment
-            AdjustedMonthlyPrice: monthlyPrice, // Will be updated if a device is linked
+            DisplayName: packageRow.dropdown,
+            DeviceAssigned: null,
+            AdjustedMonthlyPrice: monthlyPrice,
           });
         }
       }
 
-      // Ensure at least one package was selected
       if (selectedPackagesDetails.length === 0) {
-        handleClose();
         throw new Error(
           "Please select at least one package from the first five rows."
         );
@@ -691,31 +761,22 @@ const BenefitVoucher = ({
 
       // --- 4. Validate and Aggregate Device Details (Rows 6-8) ---
       const selectedDevicesDetails = [];
-      // deviceNameRef.current is likely an array-like object where index 6, 7, 8 refer to rows.
-      // Ensure all refs are properly initialized and accessible.
-      const deviceRefs = [
-        deviceNameRef.current[6],
-        deviceNameRef.current[7],
-        deviceNameRef.current[8],
-      ];
-      const devicePriceRefs = [
-        devicePriceRef.current[6],
-        devicePriceRef.current[7],
-        devicePriceRef.current[8],
-      ];
 
       for (let i = 0; i < 3; i++) {
-        const deviceIdx = 6 + i; // Corresponds to row IDs 6, 7, 8
-        const currentDeviceNameInput = deviceRefs[i];
-        const currentDevicePriceInput = devicePriceRefs[i];
+        const deviceIdx = 6 + i;
+        const deviceRow = rows.find((row) => row.id === deviceIdx);
+        const deviceName =
+          deviceNameRef.current[deviceIdx]?.value ||
+          deviceRow?.column3 ||
+          "";
+        let devicePrice = parseFloat(
+          devicePriceRef.current[deviceIdx]?.value ??
+            deviceRow?.column2 ??
+            devicePrices[deviceIdx]
+        );
 
-        const deviceName = currentDeviceNameInput?.value || "";
-        let devicePrice = parseFloat(currentDevicePriceInput?.value);
-
-        // Only add device if a name or a non-zero price is provided
         if (deviceName || (!isNaN(devicePrice) && devicePrice > 0)) {
           if (isNaN(devicePrice) || devicePrice <= 0) {
-            handleClose();
             throw new Error(
               `Device price for ${
                 deviceName || `device in row ${deviceIdx}`
@@ -723,38 +784,37 @@ const BenefitVoucher = ({
             );
           }
           selectedDevicesDetails.push({
-            id: deviceIdx, // Row ID of the device
+            id: deviceIdx,
             DeviceName: deviceName,
             DevicePrice: devicePrice,
-            // Upfront payment might be handled globally or per device, clarify if per device
             UpfrontPayment:
-              parseFloat(upfrontPaymentRef.current[deviceIdx]?.value) || 0, // Assuming upfront for each device is in its row's ref
+              parseFloat(upfrontPaymentRef.current[deviceIdx]?.value) || 0,
           });
         }
       }
 
       // --- 5. Assign Devices to Packages and Adjust Prices ---
-      selectedPackagesDetails.forEach((packageDet, index) => {
-        // Assign device if available at the corresponding index (0-indexed for devices, 0-indexed for packages)
-        if (selectedDevicesDetails[index]) {
-          const device = selectedDevicesDetails[index];
-          const monthlyDeviceCost =
-            device.DevicePrice / packageDet.ContractDuration;
+      selectedPackagesDetails.forEach((packageDet) => {
+        const device = selectedDevicesDetails.find(
+          (item) => item.id === packageDet.id + 5
+        );
+        if (!device) return;
 
-          packageDet.DeviceAssigned = {
-            DeviceName: device.DeviceName,
-            DevicePrice: device.DevicePrice,
-            UpfrontPayment: device.UpfrontPayment,
-            MonthlyDeviceCost: monthlyDeviceCost,
-          };
-          packageDet.AdjustedMonthlyPrice += monthlyDeviceCost;
-        }
+        const monthlyDeviceCost =
+          device.DevicePrice / packageDet.ContractDuration;
+
+        packageDet.DeviceAssigned = {
+          DeviceName: device.DeviceName,
+          DevicePrice: device.DevicePrice,
+          UpfrontPayment: device.UpfrontPayment,
+          MonthlyDeviceCost: monthlyDeviceCost,
+        };
+        packageDet.AdjustedMonthlyPrice += monthlyDeviceCost;
       });
 
       // --- 6. Extract Other Global Details ---
       const employeeCode = rows.find((row) => row.id === 10)?.column2;
       if (!employeeCode) {
-        handleClose();
         throw new Error(
           "Employee code is missing. Please enter an employee code."
         );
@@ -762,25 +822,22 @@ const BenefitVoucher = ({
 
       let msisdn = "";
       if (role === 1) {
-        // Admin role check for MSISDN
         msisdn =
           rows.find((row) => row.id === 11)?.column2 ||
           rows.find((row) => row.id === 11)?.column3;
         if (!msisdn) {
-          handleClose();
           throw new Error("MSISDN is missing. Admin must fill this field.");
         }
       }
 
-      const updatedRows = calculateMUL(rows); // `rows` should contain the latest user inputs
+      const updatedRows = calculateMUL(rows);
       const currentAllowance = parseFloat(
         updatedRows.find((row) => row.id === 12)?.column2 || 0
       );
       const newAllowance = parseFloat(
         updatedRows.find((row) => row.id === 14)?.column2 || 0
-      ); // Row 14 for New Allowance
+      );
 
-      // Calculate total monthly payment across all selected packages + currentAllowance - newAllowance
       const totalPackagesMonthlyCost = selectedPackagesDetails.reduce(
         (sum, pkg) => sum + pkg.AdjustedMonthlyPrice,
         0
@@ -790,94 +847,92 @@ const BenefitVoucher = ({
         0
       );
 
-      // Packages alone cannot exceed allowance — top-up only covers device excess
       if (userData.available - packageOnlyMonthlyCost < 0) {
+        throw new Error(
+          `The total monthly package cost exceeds the allowed limit (${userData.staffWithAirtimeAllocation[0].AirtimeAllocation.toFixed(
+            2
+          )}). Top-up cannot cover package overage.`
+        );
+      }
+
+      if (userData.available - totalPackagesMonthlyCost < 0 && !topUpConfirmed) {
+        const result = await Swal.fire({
+          icon: "warning",
+          title: "Top-up Confirmation Required",
+          html: `Device costs exceed your available allowance.<br/><br/>Total top-up required: <strong>${formatCurrency(
+            topUpAmount
+          )}</strong>`,
+          showCancelButton: true,
+          confirmButtonColor: "#0096D6",
+          cancelButtonColor: "#6c757d",
+          confirmButtonText: "Confirm & Submit",
+          cancelButtonText: "Cancel",
+        });
+        if (result.isConfirmed) {
+          setAcceptsTopUp(true);
+          setIsSubmitting(false);
+          return handleSave({ topUpConfirmed: true });
+        }
+        return;
+      }
+
+      const monthlyPayment = currentAllowance - newAllowance;
+      const limitCheckForDb =
+        withinLimit || (topUpEligible && topUpConfirmed)
+          ? "Within Limit"
+          : "Exceeding Limit";
+      const submittedTopUpAmount =
+        topUpEligible && topUpConfirmed ? topUpAmount : 0;
+
+      const contractData = {
+        EmployeeCode: employeeCode,
+        MonthlyPayment: monthlyPayment,
+        LimitCheck: limitCheckForDb,
+        ApprovalStatus: "Pending",
+        ContractStartDate: new Date().toISOString().split("T")[0],
+        ContractEndDate: "",
+        MSISDN: msisdn,
+        TopUpAmount: submittedTopUpAmount,
+        Packages: selectedPackagesDetails.map((pkg) => ({
+          PackageID: pkg.PackageID,
+          BaseMonthlyPrice: pkg.BaseMonthlyPrice,
+          AdjustedMonthlyPrice: pkg.AdjustedMonthlyPrice,
+          SubscriptionStatus: pkg.SubscriptionStatus,
+          ContractDuration: pkg.ContractDuration,
+          DeviceAssigned: pkg.DeviceAssigned,
+          DisplayName: pkg.DisplayName,
+        })),
+      };
+
+      const response = await axiosInstance.post(
+        `/contracts/createInitialContract`,
+        contractData
+      );
+      if (response.status === 201 || response.status === 200) {
         handleClose();
         Swal.fire({
-          icon: "error",
-          title: "Cost Limit Exceeded",
-          text: `The total monthly package cost exceeds the allowed limit (${userData.staffWithAirtimeAllocation[0].AirtimeAllocation.toFixed(
-            2
-          )}). Top-up cannot cover package overage.`,
+          icon: "success",
+          title: "Contract Application Submitted!",
+          text: "Your application has been successfully received.",
         }).then((result) => {
           if (result.isConfirmed) {
             window.location.reload();
           }
         });
-        return;
       }
-
-      // Device excess is allowed only when the user confirms top-up
-      if (
-        userData.available - totalPackagesMonthlyCost < 0 &&
-        !acceptsTopUp
-      ) {
-        Swal.fire({
-          icon: "warning",
-          title: "Top-up Confirmation Required",
-          text: "Device costs exceed your available allowance. Confirm that you can top up before submitting.",
-        });
-        return;
-      }
-      const monthlyPayment = currentAllowance - newAllowance;
-
-      // contracts.LimitCheck ENUM: "Within Limit" | "Exceeding Limit"
-      const limitCheckForDb =
-        withinLimit || (topUpEligible && acceptsTopUp)
-          ? "Within Limit"
-          : "Exceeding Limit";
-
-      // --- 8. Construct Final `contractData` Payload ---
-      const contractData = {
-        EmployeeCode: employeeCode,
-        MonthlyPayment: monthlyPayment, // Overall calculated payment (from allowances)
-        LimitCheck: limitCheckForDb,
-        ApprovalStatus: "Pending",
-        ContractStartDate: new Date().toISOString().split("T")[0],
-        ContractEndDate: "", // Needs calculation based on max duration of selected packages or a specific field
-        MSISDN: msisdn, // Included MSISDN field
-
-        // Array of all selected packages with their adjusted prices and linked device details
-        Packages: selectedPackagesDetails.map((pkg) => ({
-          PackageID: pkg.PackageID,
-          BaseMonthlyPrice: pkg.BaseMonthlyPrice, // Original price of package
-          AdjustedMonthlyPrice: pkg.AdjustedMonthlyPrice, // Price after device cost
-          SubscriptionStatus: pkg.SubscriptionStatus,
-          ContractDuration: pkg.ContractDuration,
-          DeviceAssigned: pkg.DeviceAssigned, // Null if no device, or object with device details
-          DisplayName: pkg.DisplayName,
-        })),
-      };
-
-
-      // --- 9. API Interaction Logic (Remains largely the same, but ensure contractData matches backend) ---
-      
-        // User creating contract logic
-        const response = await axiosInstance.post(
-          `/contracts/createInitialContract`,
-          contractData
-        );
-        if (response.status === 201 || response.status === 200) {
-          handleClose();
-          Swal.fire({
-            icon: "success",
-            title: "Contract Application Submitted!",
-            text: "Your application has been successfully received.",
-          }).then((result) => {
-            if (result.isConfirmed) {
-              window.location.reload();
-            }
-          });
-        }
-      
     } catch (error) {
-      handleClose();
       console.error("Error saving contract:", error);
+      const apiMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Error saving contract. Please try again.";
       Swal.fire({
         icon: "error",
         title: "Saving Error",
-        text: error.message || "Error saving contract. Please try again.",
+        text: apiMessage,
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -961,7 +1016,7 @@ const BenefitVoucher = ({
             column2: userData.staffWithAirtimeAllocation[0].EmployeeCode,
           };
         case 11:
-          return userData.ServicePlan === "Postpaid"
+          return userData.ServicePlan === "PostPaid"
             ? {
                 ...row,
                 column2:
@@ -1388,18 +1443,19 @@ const BenefitVoucher = ({
             <Button
               onClick={handleSave}
               className="download-btn"
+              disabled={isSubmitting || isUserDataLoading}
               style={{
                 fontSize: "14px",
-                backgroundColor: "#0096D6",
+                backgroundColor: isSubmitting ? "#6c757d" : "#0096D6",
                 color: "#fff",
                 padding: "8px 24px",
                 borderRadius: "5px",
-                cursor: "pointer",
+                cursor: isSubmitting ? "not-allowed" : "pointer",
                 borderColor: "#1A69AC",
                 border: "1px solid",
               }}
             >
-              Submit
+              {isSubmitting ? "Submitting..." : "Submit"}
             </Button>
           </div>
 

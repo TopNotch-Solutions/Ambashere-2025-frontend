@@ -145,6 +145,14 @@ const AirtimeBenefitSimulator = ({ embedded = false, onApplySimulation }) => {
     return monthlyDevicePayment + additionalDevicePayment;
   };
 
+  const getPackageDuration = (contract) => {
+    const selectedPkg = packages.find(
+      (pkg) => pkg.PackageID === contract.selectedPackage
+    );
+    const durationMatch = selectedPkg?.PackageName?.match(/\((\d+)\)/);
+    return durationMatch ? parseInt(durationMatch[1], 10) : 0;
+  };
+
   const getContractMonthlyPayment = (contract) =>
     getPackageMonthlyCost(contract) + getDeviceMonthlyCost(contract);
 
@@ -190,10 +198,16 @@ const AirtimeBenefitSimulator = ({ embedded = false, onApplySimulation }) => {
       const monthly = packageCost + deviceCost;
       const packageWithinLimit = isPackageWithinLimit(packageCost, remaining);
 
-      // Top-up only when package itself is within limit but device pushes over
+      // Top-up only when package itself is within limit but device pushes over.
+      // Total top-up = monthly excess × package duration.
       let topUp = 0;
       if (packageWithinLimit && allowsDevice && monthly > remaining) {
-        topUp = monthly - remaining;
+        const monthlyExcess = monthly - remaining;
+        const duration = getPackageDuration(contract);
+        topUp =
+          duration > 0
+            ? parseFloat((monthlyExcess * duration).toFixed(2))
+            : monthlyExcess;
       }
 
       remaining = Math.max(0, remaining - monthly);
@@ -380,9 +394,9 @@ const AirtimeBenefitSimulator = ({ embedded = false, onApplySimulation }) => {
         html: `
           <p style="text-align:left;margin:0 0 12px;">
             Your selected packages are within limit, but device costs exceed
-            your available allowance by
-            <strong>${formatCurrency(totalTopUp)}</strong>. Top-up can cover
-            this device excess.
+            your available allowance. Total top-up required
+            (monthly excess × package duration):
+            <strong>${formatCurrency(totalTopUp)}</strong>.
           </p>
           <p style="text-align:left;margin:0;font-weight:600;">
             I confirm that I can top up the excess amount
@@ -737,11 +751,11 @@ const AirtimeBenefitSimulator = ({ embedded = false, onApplySimulation }) => {
                       <div className="col-md-6">
                         <TextField
                           name={`Topup-${index}`}
-                          label="Top Up (device excess only)"
+                          label="Top Up (amount × duration)"
                           value={formatCurrency(calc.topUp || 0)}
                           fullWidth
                           margin="normal"
-                          helperText="Top-up only covers device cost that exceeds the remaining limit"
+                          helperText="Monthly device excess × package duration"
                           sx={{
                             "& .MuiInputBase-input": {
                               color: "#d32f2f",

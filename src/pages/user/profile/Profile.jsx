@@ -494,16 +494,6 @@ function UserProfileCard() {
                     </InputGroup>
                   </div>
                 </div>
-
-                {/* Temporary User Notice */}
-                <div className="row d-flex justify-content-center mb-3">
-                  <div className="col-11">
-                    <div className="alert alert-info" role="alert">
-                      <strong>Temporary Staff Notice:</strong> Your profile information is managed by HR. 
-                      Contact HR at hr@mtc.com.na for updates to employment details, department, or position.
-                    </div>
-                  </div>
-                </div>
               </>
             )}
 
