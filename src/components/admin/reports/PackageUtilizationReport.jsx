@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Box, Typography, useTheme, CircularProgress, Alert } from "@mui/material";
 import { tokens } from "../../../theme";
 import { DataGrid } from "@mui/x-data-grid";
+import { dataGridTableSx } from "./reportTableStyles";
 import axiosInstance from "../../../utils/axiosInstance";
 
 const PackageUtilizationReport = () => {
@@ -73,7 +74,7 @@ const PackageUtilizationReport = () => {
         <Typography variant="h6" color={colors.grey[100]} sx={{ mb: 2 }}>
           Package Performance
         </Typography>
-        <Box height={400} sx={{ "& .MuiDataGrid-root": { border: "none" } }}>
+        <Box height={400} sx={dataGridTableSx}>
           <DataGrid
             rows={data.packagePerformance}
             columns={packagePerformanceColumns}
@@ -90,7 +91,7 @@ const PackageUtilizationReport = () => {
         <Typography variant="h6" color={colors.grey[100]} sx={{ mb: 2 }}>
           Active vs Inactive Packages
         </Typography>
-        <Box height={300} sx={{ "& .MuiDataGrid-root": { border: "none" } }}>
+        <Box height={300} sx={dataGridTableSx}>
           <DataGrid
             rows={data.activeVsInactive}
             columns={activeVsInactiveColumns}
@@ -107,7 +108,7 @@ const PackageUtilizationReport = () => {
         <Typography variant="h6" color={colors.grey[100]} sx={{ mb: 2 }}>
           Monthly Package Usage (Last 6 Months)
         </Typography>
-        <Box height={400} sx={{ "& .MuiDataGrid-root": { border: "none" } }}>
+        <Box height={400} sx={dataGridTableSx}>
           <DataGrid
             rows={data.monthlyPackageUsage}
             columns={monthlyUsageColumns}

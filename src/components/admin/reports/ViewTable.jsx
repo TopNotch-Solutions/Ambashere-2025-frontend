@@ -3,6 +3,7 @@ import { Box, Typography, useTheme } from "@mui/material";
 import axios from "axios";
 import { tokens } from "../../../theme";
 import { DataGrid } from "@mui/x-data-grid";
+import { dataGridTableSx } from "./reportTableStyles";
 import DownloadButton from "./DownloadButton";
 
 const ViewTable = ({ selectedRow }) => {
@@ -48,26 +49,9 @@ const ViewTable = ({ selectedRow }) => {
         </div>
         <Box
           sx={{
-            "& .MuiDataGrid-root": {
-              border: "none",
-            },
-            "& .MuiDataGrid-cell": {
-              borderBottom: "none",
-            },
+            ...dataGridTableSx,
             "& .name-column--cell": {
               color: colors.greenAccent[300],
-            },
-            "& .MuiDataGrid-columnHeaders": {
-              backgroundColor: "#1674BB",
-              borderBottom: "none",
-              color: "white",
-            },
-            "& .MuiDataGrid-virtualScroller": {
-              //   backgroundColor: colors.primary[400],
-            },
-            "& .MuiDataGrid-footerContainer": {
-              borderTop: "none",
-              //   backgroundColor: colors.grey[900],
             },
             "& .MuiCheckbox-root": {
               color: `${colors.greenAccent[200]} !important`,

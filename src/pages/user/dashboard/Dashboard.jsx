@@ -164,10 +164,10 @@ const UserDashboard = () => {
   const airtimeColumns = [
     { field: "MSISDN", headerName: "MSISDN", width: 170 },
     { field: "PackageName", headerName: "Package Name", width: 180 },
-    { field: "MonthlyPayment", headerName: "Monthly Payment", width: 180 },
     { field: "PackageMonthlyPayment", headerName: "Package Monthly Payment", width: 180 },
     { field: "DeviceName", headerName: "Equipment Name", width: 180 },
     { field: "DevicePrice", headerName: "Equipment Price", width: 180 },
+    { field: "PayoutBalance", headerName: "Payout Amount", width: 180 },
     { field: "TotalMonthlyPayment", headerName: "Total Monthly Payment", width: 180 },
     { field: "ContractStartDate", headerName: "Contract Start Date", width: 200 },
     { field: "ContractEndDate", headerName: "Contract End Date", width: 200 },
@@ -189,12 +189,12 @@ const UserDashboard = () => {
     id: `airtime-${airtime?.id ?? airtime?.ContractNumber ?? index + 1}`,
     MSISDN: airtime?.msisdn || airtime?.MSISDN || airtime?.staff_msisdn || "",
     PackageName: airtime?.package || airtime?.PackageName || "-",
-    MonthlyPayment: formatMoney(airtime?.MonthlyPayment ?? airtime?.monthly_payment),
     PackageMonthlyPayment: formatMoney(airtime?.PackageMonthlyPayment ?? airtime?.serviceplan_monthly_price),
     DeviceName: airtime?.device || airtime?.DeviceName || "-",
     DevicePrice: formatMoney(
-      airtime?.DevicePrice ?? airtime?.device_initial_cost ?? airtime?.device_payout_balance
+      airtime?.DevicePrice ?? airtime?.device_initial_cost
     ),
+    PayoutBalance: formatMoney(airtime?.device_payout_balance ?? 0),
     ContractStartDate: (() => {
       const status = String(airtime?.subscription_status || airtime?.SubscriptionStatus || "")
         .trim()
@@ -210,7 +210,11 @@ const UserDashboard = () => {
     })(),
     ContractEndDate: formatDate(airtime?.contract_end_date ?? airtime?.ContractEndDate),
     Status: airtime?.subscription_status || airtime?.SubscriptionStatus || "-",
-    TotalMonthlyPayment: formatMoney(airtime?.TotalMonthlyPayment ?? airtime?.device_monthly_price + airtime?.serviceplan_monthly_price),
+    TotalMonthlyPayment: formatMoney(
+      airtime?.TotalMonthlyPayment ??
+        (Number(airtime?.device_monthly_price) || 0) +
+          (Number(airtime?.serviceplan_monthly_price) || 0)
+    ),
   }));
 
   const handsetColumns = [
@@ -458,7 +462,7 @@ const UserDashboard = () => {
                               color: colors.greenAccent[300],
                             },
                             "& .MuiDataGrid-columnHeaders": {
-                              backgroundColor: colors.grey[900],
+                              backgroundColor: "#1674BB", color: "white",
                               borderBottom: "none",
                             },
                             "& .MuiDataGrid-virtualScroller": {

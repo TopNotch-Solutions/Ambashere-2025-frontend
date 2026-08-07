@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Box, Typography, CircularProgress, Alert, Grid, Card, CardContent, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, Badge } from "@mui/material";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import axiosInstance from "../../../utils/axiosInstance";
+import { tableHeadSx } from "./reportTableStyles";
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
@@ -228,7 +229,7 @@ const ComplianceReport = () => {
               </Typography>
               <TableContainer component={Paper}>
                 <Table>
-                  <TableHead>
+                  <TableHead sx={tableHeadSx}>
                     <TableRow>
                       <TableCell>Contract #</TableCell>
                       <TableCell>Employee Name</TableCell>

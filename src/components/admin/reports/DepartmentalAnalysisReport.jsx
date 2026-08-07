@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Box, Typography, useTheme, CircularProgress, Alert } from "@mui/material";
 import { tokens } from "../../../theme";
 import { DataGrid } from "@mui/x-data-grid";
+import { dataGridTableSx } from "./reportTableStyles";
 import axiosInstance from "../../../utils/axiosInstance";
 
 const DepartmentalAnalysisReport = () => {
@@ -100,7 +101,7 @@ const DepartmentalAnalysisReport = () => {
         <Typography variant="h6" color={colors.grey[100]} sx={{ mb: 2 }}>
           Department Utilization Breakdown
         </Typography>
-        <Box height={400} sx={{ "& .MuiDataGrid-root": { border: "none" } }}>
+        <Box height={400} sx={dataGridTableSx}>
           <DataGrid
             rows={data.byDepartment}
             columns={departmentColumns}
@@ -117,7 +118,7 @@ const DepartmentalAnalysisReport = () => {
         <Typography variant="h6" color={colors.grey[100]} sx={{ mb: 2 }}>
           Peak Usage Periods (Last 12 Months)
         </Typography>
-        <Box height={300} sx={{ "& .MuiDataGrid-root": { border: "none" } }}>
+        <Box height={300} sx={dataGridTableSx}>
           <DataGrid
             rows={data.peakPeriods}
             columns={[

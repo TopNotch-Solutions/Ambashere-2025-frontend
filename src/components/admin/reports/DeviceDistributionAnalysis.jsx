@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Box, Typography, useTheme, CircularProgress, Alert } from "@mui/material";
 import { tokens } from "../../../theme";
 import { DataGrid } from "@mui/x-data-grid";
+import { dataGridTableSx } from "./reportTableStyles";
 import axiosInstance from "../../../utils/axiosInstance";
 
 const DeviceDistributionAnalysis = () => {
@@ -71,7 +72,7 @@ const DeviceDistributionAnalysis = () => {
         <Typography variant="h6" color={colors.grey[100]} sx={{ mb: 2 }}>
           Device Distribution by Model
         </Typography>
-        <Box height={400} sx={{ "& .MuiDataGrid-root": { border: "none" } }}>
+        <Box height={400} sx={dataGridTableSx}>
           <DataGrid
             rows={data.deviceDistribution}
             columns={deviceDistributionColumns}
@@ -88,7 +89,7 @@ const DeviceDistributionAnalysis = () => {
         <Typography variant="h6" color={colors.grey[100]} sx={{ mb: 2 }}>
           Device Allocation Trends (Last 12 Months)
         </Typography>
-        <Box height={400} sx={{ "& .MuiDataGrid-root": { border: "none" } }}>
+        <Box height={400} sx={dataGridTableSx}>
           <DataGrid
             rows={data.allocationTrends}
             columns={allocationTrendsColumns}
@@ -105,7 +106,7 @@ const DeviceDistributionAnalysis = () => {
         <Typography variant="h6" color={colors.grey[100]} sx={{ mb: 2 }}>
           Device Usage by Department
         </Typography>
-        <Box height={400} sx={{ "& .MuiDataGrid-root": { border: "none" } }}>
+        <Box height={400} sx={dataGridTableSx}>
           <DataGrid
             rows={data.departmentDeviceUsage}
             columns={departmentUsageColumns}

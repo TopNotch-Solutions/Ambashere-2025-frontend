@@ -20,6 +20,7 @@ import Button from "react-bootstrap/Button";
 import * as XLSX from "xlsx/xlsx.mjs";
 import { tokens } from "../../../theme";
 import { DataGrid } from "@mui/x-data-grid";
+import { dataGridTableSx } from "./reportTableStyles";
 import axiosInstance from "../../../utils/axiosInstance";
 
 const formatCurrency = (amount) =>
@@ -343,8 +344,12 @@ const LimitViolationsReport = () => {
       <Box
         height="65vh"
         sx={{
-          "& .MuiDataGrid-root": { border: "none" },
-          "& .MuiDataGrid-cell": { alignItems: "flex-start", py: 1 },
+          ...dataGridTableSx,
+          "& .MuiDataGrid-cell": {
+            ...dataGridTableSx["& .MuiDataGrid-cell"],
+            alignItems: "flex-start",
+            py: 1,
+          },
         }}
       >
         <DataGrid

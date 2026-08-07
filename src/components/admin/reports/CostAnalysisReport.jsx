@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Box, Typography, CircularProgress, Alert, Grid, Card, CardContent, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from "@mui/material";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import axiosInstance from "../../../utils/axiosInstance";
+import { tableHeadSx } from "./reportTableStyles";
 
 const CostAnalysisReport = () => {
   const [data, setData] = useState(null);
@@ -166,7 +167,7 @@ const CostAnalysisReport = () => {
               </Typography>
               <TableContainer component={Paper}>
                 <Table>
-                  <TableHead>
+                  <TableHead sx={tableHeadSx}>
                     <TableRow>
                       <TableCell>Department</TableCell>
                       <TableCell align="right">Total Cost</TableCell>

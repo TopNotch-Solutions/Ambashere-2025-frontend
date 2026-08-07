@@ -221,7 +221,7 @@ const PaymentApproval = () => {
               borderBottom: `1px solid ${colors.grey[800]} !important`,
             },
             "& .MuiDataGrid-columnHeaders": {
-              backgroundColor: colors.grey[900],
+              backgroundColor: "#1674BB", color: "white",
               borderBottom: "none",
             },
             "& .MuiDataGrid-virtualScroller": {

@@ -548,7 +548,7 @@ const AdminHandsets = () => {
               color: colors.greenAccent[300],
             },
             "& .MuiDataGrid-columnHeaders": {
-              backgroundColor: colors.grey[900],
+              backgroundColor: "#1674BB", color: "white",
               borderBottom: "none",
             },
             "& .MuiDataGrid-virtualScroller": {

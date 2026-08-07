@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Box, Typography, useTheme, CircularProgress, Alert, TextField, Button } from "@mui/material";
 import { tokens } from "../../../theme";
 import { DataGrid } from "@mui/x-data-grid";
+import { dataGridTableSx } from "./reportTableStyles";
 import axiosInstance from "../../../utils/axiosInstance";
 
 const QuarterlyFinancialSummary = () => {
@@ -167,7 +168,7 @@ const QuarterlyFinancialSummary = () => {
         <Typography variant="h6" color={colors.grey[100]} sx={{ mb: 2 }}>
           Monthly Breakdown
         </Typography>
-        <Box height={400} sx={{ "& .MuiDataGrid-root": { border: "none" } }}>
+        <Box height={400} sx={dataGridTableSx}>
           <DataGrid
             rows={data.monthlyBreakdown}
             columns={monthlyBreakdownColumns}

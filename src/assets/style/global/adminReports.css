@@ -18,14 +18,33 @@
   border-bottom: none !important;
 }
 
-.admin-reports-page .reports-unified-tables .MuiDataGrid-columnHeaders {
+.admin-reports-page .reports-unified-tables .MuiDataGrid-columnHeaders,
+.admin-reports-page .reports-unified-tables .MuiDataGrid-columnHeader,
+.admin-reports-page .reports-unified-tables .MuiDataGrid-filler,
+.admin-reports-page .reports-unified-tables .MuiDataGrid-scrollbarFiller {
   background-color: #1674bb !important;
   color: #ffffff !important;
   border-bottom: none !important;
 }
 
+.admin-reports-page .reports-unified-tables .MuiDataGrid-columnHeaderTitle,
+.admin-reports-page .reports-unified-tables .MuiDataGrid-columnHeaderTitleContainer,
+.admin-reports-page .reports-unified-tables .MuiDataGrid-iconButtonContainer .MuiSvgIcon-root,
+.admin-reports-page .reports-unified-tables .MuiDataGrid-sortIcon,
+.admin-reports-page .reports-unified-tables .MuiDataGrid-menuIconButton {
+  color: #ffffff !important;
+}
+
 .admin-reports-page .reports-unified-tables .MuiDataGrid-footerContainer {
   border-top: none !important;
+}
+
+/* Keep MUI Table headers consistent with DataGrid (#1674BB) */
+.admin-reports-page .reports-unified-tables .MuiTableHead-root .MuiTableCell-head {
+  background-color: #1674bb !important;
+  color: #ffffff !important;
+  border-bottom: none !important;
+  font-weight: 600;
 }
 
 .admin-reports-page .reports-unified-tables .download-btn,

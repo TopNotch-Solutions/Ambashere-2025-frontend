@@ -5,6 +5,7 @@ import { tokens } from "../../../theme";
 import { useTheme } from "@emotion/react";
 import ViewReports from "../../../components/admin/reports/ViewReports";
 import ViewButton from "../../../components/admin/reports/ViewButton";
+import { dataGridTableSx } from "../../../components/admin/reports/reportTableStyles";
 import "../../../assets/style/global/handsetBenefitSimulator.css";
 import "../../../assets/style/global/benefits.css";
 import "../../../assets/style/global/adminReports.css";
@@ -98,26 +99,9 @@ const AdminReports = () => {
               className="handset-form-card shadow-sm benefits-table-card"
               sx={{
                 width: "100%",
-                "& .MuiDataGrid-root": {
-                  border: "none",
-                },
-                "& .MuiDataGrid-cell": {
-                  borderBottom: "none",
-                },
+                ...dataGridTableSx,
                 "& .name-column--cell": {
                   color: colors.greenAccent[300],
-                },
-                "& .MuiDataGrid-columnHeaders": {
-                  backgroundColor: "#1674BB",
-                  borderBottom: "none",
-                  color: "white",
-                },
-                "& .MuiDataGrid-virtualScroller": {
-                  //   backgroundColor: colors.primary[400],
-                },
-                "& .MuiDataGrid-footerContainer": {
-                  borderTop: "none",
-                  //   backgroundColor: colors.grey[900],
                 },
                 "& .MuiCheckbox-root": {
                   color: `${colors.greenAccent[200]} !important`,

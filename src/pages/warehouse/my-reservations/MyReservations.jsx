@@ -273,7 +273,7 @@ const MyReservations = () => {
         <Box m="20px 0 0 0" height="55vh" sx={{
           "& .MuiDataGrid-root": { border: "none" },
           "& .MuiDataGrid-cell": { borderBottom: "none" },
-          "& .MuiDataGrid-columnHeaders": { backgroundColor: colors.grey[900], borderBottom: "none" },
+          "& .MuiDataGrid-columnHeaders": { backgroundColor: "#1674BB", color: "white", borderBottom: "none" },
           "& .MuiDataGrid-virtualScroller": { backgroundColor: colors.primary[400] },
           "& .MuiDataGrid-footerContainer": { backgroundColor: colors.grey[900], borderTop: "none" },
           "& .MuiDataGrid-toolbarContainer .MuiButton-text": { color: `${colors.grey[100]} !important` },
@@ -289,7 +289,7 @@ const MyReservations = () => {
                 borderBottom: `1px solid ${colors.grey[800]} !important`,
               },
               "& .MuiDataGrid-columnHeaders": {
-                backgroundColor: colors.grey[900],
+                backgroundColor: "#1674BB", color: "white",
                 borderBottom: "none",
               },
               "& .MuiDataGrid-virtualScroller": {

@@ -155,7 +155,7 @@ const PendingApprovals = () => {
           sx={{
             "& .MuiDataGrid-root": { border: "none" },
             "& .MuiDataGrid-cell": { borderBottom: "none" },
-            "& .MuiDataGrid-columnHeaders": { backgroundColor: colors.grey[900], borderBottom: "none" },
+            "& .MuiDataGrid-columnHeaders": { backgroundColor: "#1674BB", color: "white", borderBottom: "none" },
             "& .MuiDataGrid-virtualScroller": { backgroundColor: colors.primary[400] },
             "& .MuiDataGrid-footerContainer": { borderTop: "none", backgroundColor: colors.grey[900] },
             "& .renewal-due": { 

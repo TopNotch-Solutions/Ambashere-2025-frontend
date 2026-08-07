@@ -1,0 +1,23 @@
+/* App-wide consistent table heading color (#1674BB) */
+
+.MuiDataGrid-columnHeaders,
+.MuiDataGrid-columnHeader,
+.MuiDataGrid-filler,
+.MuiDataGrid-scrollbarFiller {
+  background-color: #1674bb !important;
+  color: #ffffff !important;
+}
+
+.MuiDataGrid-columnHeaderTitle,
+.MuiDataGrid-columnHeaderTitleContainer,
+.MuiDataGrid-sortIcon,
+.MuiDataGrid-menuIconButton,
+.MuiDataGrid-iconButtonContainer .MuiSvgIcon-root {
+  color: #ffffff !important;
+}
+
+.MuiTableHead-root .MuiTableCell-head {
+  background-color: #1674bb !important;
+  color: #ffffff !important;
+  font-weight: 600;
+}

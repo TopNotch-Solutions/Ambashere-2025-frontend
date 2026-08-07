@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Box, useTheme } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
+import { dataGridTableSx } from "./reportTableStyles";
 import { tokens } from "../../../theme";
 import axiosInstance from "../../../utils/axiosInstance";
 import ExportButton from "../ExportButton";
@@ -52,26 +53,9 @@ const EmployeeReport = () => {
       </div>
       <Box
         sx={{
-          "& .MuiDataGrid-root": {
-            border: "none",
-          },
-          "& .MuiDataGrid-cell": {
-            borderBottom: "none",
-          },
+          ...dataGridTableSx,
           "& .name-column--cell": {
             color: colors.greenAccent[300],
-          },
-          "& .MuiDataGrid-columnHeaders": {
-            backgroundColor: "#1674BB",
-            borderBottom: "none",
-            color: "white",
-          },
-          "& .MuiDataGrid-virtualScroller": {
-            //   backgroundColor: colors.primary[400],
-          },
-          "& .MuiDataGrid-footerContainer": {
-            borderTop: "none",
-            //   backgroundColor: colors.grey[900],
           },
           "& .MuiCheckbox-root": {
             color: `${colors.greenAccent[200]} !important`,

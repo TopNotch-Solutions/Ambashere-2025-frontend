@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Box, Typography, useTheme, CircularProgress, Alert } from "@mui/material";
 import { tokens } from "../../../theme";
 import { DataGrid } from "@mui/x-data-grid";
+import { dataGridTableSx } from "./reportTableStyles";
 import axiosInstance from "../../../utils/axiosInstance";
 
 const TrendAnalysisReport = () => {
@@ -72,7 +73,7 @@ const TrendAnalysisReport = () => {
         <Typography variant="h6" color={colors.grey[100]} sx={{ mb: 2 }}>
           Monthly Trends (Last 12 Months)
         </Typography>
-        <Box height={400} sx={{ "& .MuiDataGrid-root": { border: "none" } }}>
+        <Box height={400} sx={dataGridTableSx}>
           <DataGrid
             rows={data.monthlyTrends}
             columns={monthlyTrendsColumns}
@@ -89,7 +90,7 @@ const TrendAnalysisReport = () => {
         <Typography variant="h6" color={colors.grey[100]} sx={{ mb: 2 }}>
           Yearly Comparison
         </Typography>
-        <Box height={400} sx={{ "& .MuiDataGrid-root": { border: "none" } }}>
+        <Box height={400} sx={dataGridTableSx}>
           <DataGrid
             rows={data.yearlyComparison}
             columns={yearlyComparisonColumns}
@@ -106,7 +107,7 @@ const TrendAnalysisReport = () => {
         <Typography variant="h6" color={colors.grey[100]} sx={{ mb: 2 }}>
           Seasonal Patterns (Last 2 Years)
         </Typography>
-        <Box height={400} sx={{ "& .MuiDataGrid-root": { border: "none" } }}>
+        <Box height={400} sx={dataGridTableSx}>
           <DataGrid
             rows={data.seasonalPatterns}
             columns={seasonalPatternsColumns}

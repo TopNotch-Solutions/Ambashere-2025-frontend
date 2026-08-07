@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Box, Typography, CircularProgress, Alert, Grid, Card, CardContent, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from "@mui/material";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from "recharts";
 import axiosInstance from "../../../utils/axiosInstance";
+import { tableHeadSx } from "./reportTableStyles";
 
 const DeviceAllocationReport = () => {
   const [data, setData] = useState(null);
@@ -149,7 +150,7 @@ const DeviceAllocationReport = () => {
               </Typography>
               <TableContainer component={Paper}>
                 <Table>
-                  <TableHead>
+                  <TableHead sx={tableHeadSx}>
                     <TableRow>
                       <TableCell>Device Name</TableCell>
                       <TableCell align="right">Allocations</TableCell>
@@ -189,7 +190,7 @@ const DeviceAllocationReport = () => {
               </Typography>
               <TableContainer component={Paper}>
                 <Table>
-                  <TableHead>
+                  <TableHead sx={tableHeadSx}>
                     <TableRow>
                       <TableCell>Department</TableCell>
                       <TableCell align="right">Device Count</TableCell>
