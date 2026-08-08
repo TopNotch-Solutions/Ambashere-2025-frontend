@@ -64,12 +64,36 @@ const Login = () => {
   const [loginError, setLoginError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [csrfToken, setCsrfToken] = useState("");
+  const [csrfError, setCsrfError] = useState("");
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
   const togglePassword = () => {
     setPasswordShown(!passwordShown);
   };
+
+  const fetchCsrfToken = async () => {
+    try {
+      setCsrfError("");
+      const response = await axiosInstance.get("/auth/csrf-token", {
+        customName: "frontend-app",
+      });
+      const token = response.data?.csrfToken || "";
+      setCsrfToken(token);
+      return token;
+    } catch (error) {
+      console.error("Failed to fetch CSRF token:", error);
+      setCsrfToken("");
+      setCsrfError("Unable to initialize secure login. Please refresh the page.");
+      return "";
+    }
+  };
+
+  useEffect(() => {
+    fetchCsrfToken();
+  }, []);
+
   useEffect(() => {
     const cooldownStart = localStorage.getItem("cooldownStart");
     if (cooldownStart) {
@@ -112,6 +136,11 @@ const Login = () => {
       setPasswordError("Password is required");
       valid = false;
     }
+
+    if (!csrfToken) {
+      setCsrfError("Secure login token missing. Please refresh the page.");
+      valid = false;
+    }
     return valid;
   };
 
@@ -122,6 +151,7 @@ const Login = () => {
     setUsernameError("");
     setPasswordError("");
     setLoginError("");
+    setCsrfError("");
 
     if (!validateForm()) return;
 
@@ -144,14 +174,25 @@ const Login = () => {
 
     try {
       setIsSubmitting(true);
+      let activeCsrfToken = csrfToken;
+      if (!activeCsrfToken) {
+        activeCsrfToken = await fetchCsrfToken();
+      }
+      if (!activeCsrfToken) {
+        setLoginError("Secure login token missing. Please refresh the page.");
+        return;
+      }
+
         const response = await axiosInstance.post(
           "/auth/login",
           {
             Username: username,
             Password: password,
+            _csrf: activeCsrfToken,
           },
           {
             customName: "frontend-app",
+            csrfToken: activeCsrfToken,
           }
         );
 
@@ -202,7 +243,16 @@ const Login = () => {
         }, 0);
       } catch (error) {
         console.error("Login error:", error.response?.data || error.message);
-        setLoginError("Password or Username is wrong");
+        if (error.response?.status === 403) {
+          setLoginError(
+            error.response?.data?.message ||
+              "Security validation failed. Please refresh and try again."
+          );
+          await fetchCsrfToken();
+        } else {
+          setLoginError("Password or Username is wrong");
+          await fetchCsrfToken();
+        }
       } finally {
         setIsSubmitting(false);
       }
@@ -278,6 +328,8 @@ const Login = () => {
                   Enter your username and password to continue.
                 </p>
 
+                <input type="hidden" name="_csrf" value={csrfToken} />
+
                 <div className="form-group pb-3">
                   <label htmlFor="username" className="pb-2">
                     Username
@@ -329,16 +381,16 @@ const Login = () => {
                   </span>
                 </div>
 
-                {loginError && (
+                {(loginError || csrfError) && (
                   <div className="alert alert-danger" role="alert">
-                    {loginError}
+                    {loginError || csrfError}
                   </div>
                 )}
 
                 <button
                   type="submit"
                   className="submission"
-                  disabled={isCooldown || isSubmitting}
+                  disabled={isCooldown || isSubmitting || !csrfToken}
                 >
                   {isSubmitting ? (
                     <>

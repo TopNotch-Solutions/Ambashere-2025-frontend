@@ -6,6 +6,7 @@ const axiosInstance = axios.create({
     process.env.REACT_APP_API_URL || 'https://ambaspherebackend.mtc.com.na'
   ),
   headers: { 'Content-Type': 'application/json' },
+  withCredentials: true,
 });
 
 axiosInstance.interceptors.request.use(
@@ -20,6 +21,10 @@ axiosInstance.interceptors.request.use(
     const token = localStorage.getItem('accessToken');
     if (token) {
       config.headers['Authorization'] = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+    }
+
+    if (config.csrfToken) {
+      config.headers['X-CSRF-Token'] = config.csrfToken;
     }
     
     return config;
