@@ -355,7 +355,7 @@ const UserDashboard = () => {
                             className="col-md-3 col-lg-5 rounded-3 mb-2 mb-md-0 shadow p-4 align-items-center me-3"
                             style={{ backgroundColor: "#0096D6", color: "white", borderRadius: "10px" }}
                           >
-                            <Typography>SUL Balance</Typography>
+                            <Typography>Subscriber Usage Limit(SUL Balance)</Typography>
                             {isLoadingAirtime ? (
                               <Box display="flex" alignItems="center" justifyContent="center" mt={1}>
                                 <CircularProgress size={20} sx={{ color: "white" }} />
