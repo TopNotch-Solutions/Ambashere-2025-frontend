@@ -563,6 +563,30 @@ const BenefitAdminVoucher = ({ open, handleClose,userData, role }) => {
       // Assign device if available at the corresponding index (0-indexed for devices, 0-indexed for packages)
       if (selectedDevicesDetails[index]) {
         const device = selectedDevicesDetails[index];
+
+        const packageOption = dropdownOptions.find(
+          (option) =>
+            option.PackageID === packageDet.PackageID ||
+            option.PackageName === packageDet.DisplayName
+        );
+        const hasDeviceLimit =
+          packageOption?.HasDeviceLimit === true ||
+          packageOption?.HasDeviceLimit === 1 ||
+          packageOption?.HasDeviceLimit === "1" ||
+          packageOption?.HasDeviceLimit === "true";
+        const deviceLimit = parseFloat(packageOption?.DeviceLimit);
+        if (
+          hasDeviceLimit &&
+          !Number.isNaN(deviceLimit) &&
+          deviceLimit > 0 &&
+          device.DevicePrice > deviceLimit
+        ) {
+          handleClose();
+          throw new Error(
+            `Device "${device.DeviceName || "selected"}" (N$${device.DevicePrice.toLocaleString()}) exceeds the device limit of N$${deviceLimit.toLocaleString()} for package "${packageDet.DisplayName}".`
+          );
+        }
+
         const monthlyDeviceCost = device.DevicePrice / packageDet.ContractDuration;
 
         packageDet.DeviceAssigned = {

@@ -93,6 +93,12 @@ const AdminPackages = () => {
         currentStatus === "1" ||
         currentStatus === "true";
 
+      const hasDeviceLimit =
+        packageData.HasDeviceLimit === true ||
+        packageData.HasDeviceLimit === 1 ||
+        packageData.HasDeviceLimit === "1" ||
+        packageData.HasDeviceLimit === "true";
+
       const updatePayload = {
         PackageName: packageData.PackageName,
         PaymentPeriod: parseInt(paymentPeriod, 10),
@@ -106,6 +112,10 @@ const AdminPackages = () => {
               packageData.AllowsDevice === 1 ||
               packageData.AllowsDevice === "1" ||
               packageData.AllowsDevice === "true",
+        HasDeviceLimit: hasDeviceLimit,
+        DeviceLimit: hasDeviceLimit
+          ? parseFloat(packageData.DeviceLimit) || null
+          : null,
       };
 
       const response = await axiosInstance.put(
@@ -165,6 +175,26 @@ const AdminPackages = () => {
             }}
           >
             {allowsDevice ? "Yes" : "No"}
+          </span>
+        );
+      },
+    },
+    {
+      field: "DeviceLimit",
+      headerName: "Device Limit",
+      width: 140,
+      renderCell: (params) => {
+        const hasLimit =
+          params.row.HasDeviceLimit === true ||
+          params.row.HasDeviceLimit === 1 ||
+          params.row.HasDeviceLimit === "1" ||
+          params.row.HasDeviceLimit === "true";
+        if (!hasLimit || params.value === null || params.value === undefined) {
+          return <span style={{ color: "#757575" }}>No limit</span>;
+        }
+        return (
+          <span style={{ fontWeight: "bold" }}>
+            N$ {parseFloat(params.value).toLocaleString()}
           </span>
         );
       },

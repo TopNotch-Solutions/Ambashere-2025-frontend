@@ -185,6 +185,28 @@ const AirtimeBenefitSimulator = ({ embedded = false, onApplySimulation }) => {
     );
   };
 
+  const packageHasDeviceLimit = (pkg) => {
+    if (!pkg) return false;
+    return (
+      pkg.HasDeviceLimit === true ||
+      pkg.HasDeviceLimit === 1 ||
+      pkg.HasDeviceLimit === "1" ||
+      pkg.HasDeviceLimit === "true"
+    );
+  };
+
+  const getPackageDeviceLimit = (pkg) => {
+    if (!packageHasDeviceLimit(pkg)) return null;
+    const limit = parseFloat(pkg.DeviceLimit);
+    return Number.isNaN(limit) || limit <= 0 ? null : limit;
+  };
+
+  const isDeviceWithinPackageLimit = (pkg, devicePrice) => {
+    const limit = getPackageDeviceLimit(pkg);
+    if (limit === null) return true;
+    return (parseFloat(devicePrice) || 0) <= limit;
+  };
+
   const contractCalculations = useMemo(() => {
     let remaining = limitBudget;
 
@@ -327,7 +349,28 @@ const AirtimeBenefitSimulator = ({ embedded = false, onApplySimulation }) => {
           return prevData;
         }
         const selectedDevice = devices.find((d) => d.device_name === value);
-        updatedContract.devicePrice = selectedDevice?.amount ?? 0;
+        const devicePrice = selectedDevice?.amount ?? 0;
+        const selectedPkg = packages.find(
+          (pkg) => pkg.PackageID === updatedContract.selectedPackage
+        );
+        if (
+          value &&
+          selectedPkg &&
+          !isDeviceWithinPackageLimit(selectedPkg, devicePrice)
+        ) {
+          const limit = getPackageDeviceLimit(selectedPkg);
+          updatedContract.deviceName = "";
+          updatedContract.devicePrice = "";
+          updatedContract.packageError = `Device price exceeds this package's device limit of ${formatCurrency(
+            limit
+          )}. Choose a cheaper device.`;
+          updatedData[index] = updatedContract;
+          return updatedData;
+        }
+        updatedContract.devicePrice = devicePrice;
+        if (updatedContract.packageError?.includes("device limit")) {
+          updatedContract.packageError = "";
+        }
       }
 
       if (field === "additionalDeviceName") {
@@ -338,8 +381,27 @@ const AirtimeBenefitSimulator = ({ embedded = false, onApplySimulation }) => {
         const selectedAdditionalDevice = devices.find(
           (d) => d.device_name === value
         );
-        updatedContract.additionalDevicePrice =
-          selectedAdditionalDevice?.amount ?? 0;
+        const devicePrice = selectedAdditionalDevice?.amount ?? 0;
+        const selectedPkg = packages.find(
+          (pkg) => pkg.PackageID === updatedContract.selectedPackage
+        );
+        if (
+          value &&
+          selectedPkg &&
+          !isDeviceWithinPackageLimit(selectedPkg, devicePrice)
+        ) {
+          updatedContract.additionalDeviceName = "";
+          updatedContract.additionalDevicePrice = "";
+          updatedContract.packageError = `Additional device price exceeds this package's device limit of ${formatCurrency(
+            getPackageDeviceLimit(selectedPkg)
+          )}. Choose a cheaper device.`;
+          updatedData[index] = updatedContract;
+          return updatedData;
+        }
+        updatedContract.additionalDevicePrice = devicePrice;
+        if (updatedContract.packageError?.includes("device limit")) {
+          updatedContract.packageError = "";
+        }
       }
 
       updatedData[index] = updatedContract;
@@ -542,6 +604,17 @@ const AirtimeBenefitSimulator = ({ embedded = false, onApplySimulation }) => {
                 const canSelectDevice = !!calc.canSelectDevice;
                 const packageBlocksDevice =
                   !!contract.selectedPackage && calc.allowsDevice === false;
+                const selectedPkg = packages.find(
+                  (pkg) => pkg.PackageID === contract.selectedPackage
+                );
+                const deviceLimit = getPackageDeviceLimit(selectedPkg);
+                const devicesForPackage =
+                  deviceLimit === null
+                    ? sortedDevices
+                    : sortedDevices.filter(
+                        (device) =>
+                          (parseFloat(device.amount) || 0) <= deviceLimit
+                      );
 
                 return (
                 <div key={index} className="contract-section">
@@ -606,10 +679,13 @@ const AirtimeBenefitSimulator = ({ embedded = false, onApplySimulation }) => {
                   <div className="row">
                     <div className="col-md-6">
                       <Autocomplete
-                        options={sortedDevices}
+                        options={devicesForPackage}
                         getOptionLabel={(option) => option?.device_name || ""}
+                        getOptionDisabled={(option) =>
+                          !isDeviceWithinPackageLimit(selectedPkg, option?.amount)
+                        }
                         value={
-                          sortedDevices.find(
+                          devicesForPackage.find(
                             (device) => device.device_name === contract.deviceName
                           ) || null
                         }
@@ -633,9 +709,13 @@ const AirtimeBenefitSimulator = ({ embedded = false, onApplySimulation }) => {
                             helperText={
                               packageBlocksDevice
                                 ? "This package does not allow a device"
-                                : canSelectDevice
-                                  ? "Device selection allowed — package is within limit"
-                                  : "Select a package within limit before choosing a device"
+                                : deviceLimit !== null
+                                  ? `Device price cannot exceed ${formatCurrency(
+                                      deviceLimit
+                                    )} for this package`
+                                  : canSelectDevice
+                                    ? "Device selection allowed — package is within limit"
+                                    : "Select a package within limit before choosing a device"
                             }
                           />
                         )}
@@ -689,10 +769,10 @@ const AirtimeBenefitSimulator = ({ embedded = false, onApplySimulation }) => {
                         </div>
                         <div className="col-md-6">
                           <Autocomplete
-                            options={sortedDevices}
+                            options={devicesForPackage}
                             getOptionLabel={(option) => option?.device_name || ""}
                             value={
-                              sortedDevices.find(
+                              devicesForPackage.find(
                                 (device) =>
                                   device.device_name ===
                                   contract.additionalDeviceName
@@ -715,6 +795,13 @@ const AirtimeBenefitSimulator = ({ embedded = false, onApplySimulation }) => {
                                 label="Additional Device Name"
                                 margin="normal"
                                 fullWidth
+                                helperText={
+                                  deviceLimit !== null
+                                    ? `Device price cannot exceed ${formatCurrency(
+                                        deviceLimit
+                                      )} for this package`
+                                    : undefined
+                                }
                               />
                             )}
                           />

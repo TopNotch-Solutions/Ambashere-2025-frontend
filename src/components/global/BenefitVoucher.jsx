@@ -800,6 +800,28 @@ const BenefitVoucher = ({
         );
         if (!device) return;
 
+        const packageOption = dropdownOptions.find(
+          (option) =>
+            option.PackageID === packageDet.PackageID ||
+            option.PackageName === packageDet.DisplayName
+        );
+        const hasDeviceLimit =
+          packageOption?.HasDeviceLimit === true ||
+          packageOption?.HasDeviceLimit === 1 ||
+          packageOption?.HasDeviceLimit === "1" ||
+          packageOption?.HasDeviceLimit === "true";
+        const deviceLimit = parseFloat(packageOption?.DeviceLimit);
+        if (
+          hasDeviceLimit &&
+          !Number.isNaN(deviceLimit) &&
+          deviceLimit > 0 &&
+          device.DevicePrice > deviceLimit
+        ) {
+          throw new Error(
+            `Device "${device.DeviceName || "selected"}" (N$${device.DevicePrice.toLocaleString()}) exceeds the device limit of N$${deviceLimit.toLocaleString()} for package "${packageDet.DisplayName}".`
+          );
+        }
+
         const monthlyDeviceCost =
           device.DevicePrice / packageDet.ContractDuration;
 

@@ -34,6 +34,17 @@ const normalizeAllowsDevice = (value) => {
   return value === true || value === 1 || value === "1" || value === "true";
 };
 
+const normalizeHasDeviceLimit = (value) => {
+  if (value === undefined || value === null || value === "") return false;
+  return value === true || value === 1 || value === "1" || value === "true";
+};
+
+const normalizeDeviceLimit = (value) => {
+  if (value === null || value === undefined || value === "") return "";
+  const parsed = parseFloat(String(value).replace(/[^\d.-]/g, ""));
+  return Number.isNaN(parsed) ? "" : parsed;
+};
+
 const AddPackage = ({ open, handleClose, mode = "", packageData = {} }) => {
   const [errors, setErrors] = useState({});
 
@@ -44,6 +55,8 @@ const AddPackage = ({ open, handleClose, mode = "", packageData = {} }) => {
     MonthlyPrice: "",
     IsActive: true,
     AllowsDevice: true,
+    HasDeviceLimit: false,
+    DeviceLimit: "",
   });
 
   useEffect(() => {
@@ -55,6 +68,8 @@ const AddPackage = ({ open, handleClose, mode = "", packageData = {} }) => {
         MonthlyPrice: normalizeMonthlyPrice(packageData?.MonthlyPrice),
         IsActive: normalizeIsActive(packageData?.IsActive),
         AllowsDevice: normalizeAllowsDevice(packageData?.AllowsDevice),
+        HasDeviceLimit: normalizeHasDeviceLimit(packageData?.HasDeviceLimit),
+        DeviceLimit: normalizeDeviceLimit(packageData?.DeviceLimit),
       });
     } else if (mode === "add") {
       setFormValues({
@@ -64,6 +79,8 @@ const AddPackage = ({ open, handleClose, mode = "", packageData = {} }) => {
         MonthlyPrice: "",
         IsActive: true,
         AllowsDevice: true,
+        HasDeviceLimit: false,
+        DeviceLimit: "",
       });
     }
     setErrors({});
@@ -71,6 +88,7 @@ const AddPackage = ({ open, handleClose, mode = "", packageData = {} }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    if (!name) return;
 
     setFormValues((prevValues) => {
       const newValues = { ...prevValues, [name]: value };
@@ -82,12 +100,24 @@ const AddPackage = ({ open, handleClose, mode = "", packageData = {} }) => {
         }
       }
 
-      if (name === "IsActive") {
-        newValues.IsActive = value === true || value === "true";
+      return newValues;
+    });
+  };
+
+  const handleSelectChange = (name) => (e) => {
+    const rawValue = e.target.value;
+    const boolValue = rawValue === true || rawValue === "true";
+
+    setFormValues((prevValues) => {
+      const newValues = { ...prevValues, [name]: boolValue };
+
+      if (name === "AllowsDevice" && !boolValue) {
+        newValues.HasDeviceLimit = false;
+        newValues.DeviceLimit = "";
       }
 
-      if (name === "AllowsDevice") {
-        newValues.AllowsDevice = value === true || value === "true";
+      if (name === "HasDeviceLimit" && !boolValue) {
+        newValues.DeviceLimit = "";
       }
 
       return newValues;
@@ -117,6 +147,14 @@ const AddPackage = ({ open, handleClose, mode = "", packageData = {} }) => {
       ) {
         validationErrors.MonthlyPrice = "This field is required";
       }
+
+      if (formValues.AllowsDevice && formValues.HasDeviceLimit) {
+        const limit = normalizeDeviceLimit(formValues.DeviceLimit);
+        if (limit === "" || limit <= 0) {
+          validationErrors.DeviceLimit =
+            "Enter a positive device limit amount";
+        }
+      }
     }
 
     if ((mode === "edit" || mode === "remove") && !formValues.PackageID) {
@@ -128,12 +166,20 @@ const AddPackage = ({ open, handleClose, mode = "", packageData = {} }) => {
       return;
     }
 
+    const hasDeviceLimit =
+      formValues.AllowsDevice &&
+      normalizeHasDeviceLimit(formValues.HasDeviceLimit);
+
     const payload = {
       PackageName: formValues.PackageName?.trim(),
       PaymentPeriod: normalizePaymentPeriod(formValues.PaymentPeriod),
       MonthlyPrice: normalizeMonthlyPrice(formValues.MonthlyPrice),
       IsActive: normalizeIsActive(formValues.IsActive),
       AllowsDevice: normalizeAllowsDevice(formValues.AllowsDevice),
+      HasDeviceLimit: hasDeviceLimit,
+      DeviceLimit: hasDeviceLimit
+        ? normalizeDeviceLimit(formValues.DeviceLimit)
+        : null,
     };
 
     try {
@@ -319,7 +365,7 @@ const AddPackage = ({ open, handleClose, mode = "", packageData = {} }) => {
                   name="IsActive"
                   value={formValues.IsActive ? "true" : "false"}
                   label="Status"
-                  onChange={handleChange}
+                  onChange={handleSelectChange("IsActive")}
                   disabled={mode === "remove"}
                 >
                   <MenuItem value="true">Active</MenuItem>
@@ -342,7 +388,7 @@ const AddPackage = ({ open, handleClose, mode = "", packageData = {} }) => {
                   name="AllowsDevice"
                   value={formValues.AllowsDevice ? "true" : "false"}
                   label="Allows Device"
-                  onChange={handleChange}
+                  onChange={handleSelectChange("AllowsDevice")}
                   disabled={mode === "remove"}
                 >
                   <MenuItem value="true">Yes</MenuItem>
@@ -358,6 +404,61 @@ const AddPackage = ({ open, handleClose, mode = "", packageData = {} }) => {
               </FormControl>
             </div>
           </div>
+
+          {formValues.AllowsDevice && (
+            <div className="row">
+              <div className="col">
+                <FormControl
+                  fullWidth
+                  margin="normal"
+                  error={!!errors.HasDeviceLimit}
+                  disabled={mode === "remove"}
+                >
+                  <InputLabel>Has Device Limit</InputLabel>
+                  <Select
+                    name="HasDeviceLimit"
+                    value={formValues.HasDeviceLimit ? "true" : "false"}
+                    label="Has Device Limit"
+                    onChange={handleSelectChange("HasDeviceLimit")}
+                    disabled={mode === "remove"}
+                  >
+                    <MenuItem value="false">No</MenuItem>
+                    <MenuItem value="true">Yes</MenuItem>
+                  </Select>
+                  {errors.HasDeviceLimit ? (
+                    <FormHelperText>{errors.HasDeviceLimit}</FormHelperText>
+                  ) : (
+                    <FormHelperText>
+                      If Yes, devices on this package cannot exceed the limit
+                      amount
+                    </FormHelperText>
+                  )}
+                </FormControl>
+              </div>
+              <div className="col">
+                <TextField
+                  name="DeviceLimit"
+                  label="Device Limit Amount"
+                  value={
+                    formValues.HasDeviceLimit
+                      ? formValues.DeviceLimit
+                      : "No limit"
+                  }
+                  onChange={handleChange}
+                  fullWidth
+                  margin="normal"
+                  error={!!errors.DeviceLimit}
+                  helperText={
+                    errors.DeviceLimit ||
+                    (formValues.HasDeviceLimit
+                      ? "Maximum device price allowed for this package (e.g. 12000)"
+                      : "No maximum device price for this package")
+                  }
+                  disabled={mode === "remove" || !formValues.HasDeviceLimit}
+                />
+              </div>
+            </div>
+          )}
 
           <Box mt={2}>
             <Button
