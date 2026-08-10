@@ -122,15 +122,6 @@ const UserDashboard = () => {
     }
     if (
       normalized === "completed" ||
-      normalized === "active" ||
-      normalized === "ongoing" ||
-      normalized === "renewed" ||
-      normalized === "approved" ||
-      normalized === "done"
-    ) {
-      return { background: "#DCFCE7", color: "#166534", border: "#22C55E" };
-    }
-    if (
       normalized === "expired" ||
       normalized === "rejected" ||
       normalized === "inactive" ||
@@ -139,8 +130,23 @@ const UserDashboard = () => {
     ) {
       return { background: "#FEE2E2", color: "#991B1B", border: "#EF4444" };
     }
+    if (
+      normalized === "active" ||
+      normalized === "ongoing" ||
+      normalized === "renewed" ||
+      normalized === "approved" ||
+      normalized === "done"
+    ) {
+      return { background: "#DCFCE7", color: "#166534", border: "#22C55E" };
+    }
 
     return { background: "#F3F4F6", color: "#374151", border: "#9CA3AF" };
+  };
+
+  const formatStatusLabel = (status) => {
+    const normalized = String(status || "").trim().toLowerCase();
+    if (normalized === "completed") return "Expired";
+    return status || "-";
   };
 
   const renderStatusCell = (params) => {
@@ -156,7 +162,7 @@ const UserDashboard = () => {
           borderColor: style.border,
         }}
       >
-        {status}
+        {formatStatusLabel(status)}
       </span>
     );
   };
@@ -301,7 +307,7 @@ const UserDashboard = () => {
             <div className="d-flex flex-row justify-content-between p-4 mt-2">
               <div>
                 <Typography variant="h3" className="dashboard-section-title">
-                  {showAirtime ? "Airtime Benefits" : "Handset Benefits"}
+                  {showAirtime ? "Staff Airtime Benefits" : "Staff Handset Benefits"}
                 </Typography>
               </div>
 
@@ -311,7 +317,7 @@ const UserDashboard = () => {
                     onClick={() => setShowAirtime(!showAirtime)}
                     className="dashboard-primary-btn"
                   >
-                    {!showAirtime ? "Show Airtime" : "Show Handset"}
+                    {!showAirtime ? "Show Staff Airtime" : "Show Staff Handset"}
                   </Button>
                 )}
               </div>
@@ -414,7 +420,7 @@ const UserDashboard = () => {
                             className="col-md-3 col-lg-5 rounded-3 shadow p-4 align-items-center"
                             style={{ backgroundColor: "#0096D6", color: "white", borderRadius: "10px" }}
                           >
-                            <Typography>New Handset Date</Typography>
+                            <Typography>New Staff Handset Date</Typography>
                             <p className="mt-1 text-center">
                               {handsetData?.handsets?.length > 0
                                 ? handsetData?.handsets[0]?.RenewalDate === null

@@ -51,15 +51,6 @@ const UserBenefits = () => {
     }
     if (
       normalized === "completed" ||
-      normalized === "active" ||
-      normalized === "ongoing" ||
-      normalized === "renewed" ||
-      normalized === "approved" ||
-      normalized === "done"
-    ) {
-      return { background: "#DCFCE7", color: "#166534", border: "#22C55E" };
-    }
-    if (
       normalized === "expired" ||
       normalized === "rejected" ||
       normalized === "inactive" ||
@@ -68,8 +59,23 @@ const UserBenefits = () => {
     ) {
       return { background: "#FEE2E2", color: "#991B1B", border: "#EF4444" };
     }
+    if (
+      normalized === "active" ||
+      normalized === "ongoing" ||
+      normalized === "renewed" ||
+      normalized === "approved" ||
+      normalized === "done"
+    ) {
+      return { background: "#DCFCE7", color: "#166534", border: "#22C55E" };
+    }
 
     return { background: "#F3F4F6", color: "#374151", border: "#9CA3AF" };
+  };
+
+  const formatStatusLabel = (status) => {
+    const normalized = String(status || "").trim().toLowerCase();
+    if (normalized === "completed") return "Expired";
+    return status || "-";
   };
 
   const hasDeviceName = (item) => {
@@ -198,7 +204,7 @@ const UserBenefits = () => {
               borderColor: style.border,
             }}
           >
-            {status}
+            {formatStatusLabel(status)}
           </span>
         );
       },
@@ -300,7 +306,7 @@ const UserBenefits = () => {
     <div className="container-main m-3 handset-simulator-page benefits-page">
       <div className="handset-hero mb-4 d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3">
         <div>
-          <h2 className="handset-title">My Benefits</h2>
+          <h2 className="handset-title">My Staff Benefits</h2>
           <p className="handset-subtitle mb-0">
             View and manage your airtime benefits, monitor active
             contracts, and simulate new contract applications.
@@ -311,7 +317,7 @@ const UserBenefits = () => {
             className="benefits-cta-btn"
             onClick={() => setShowSimulator((prev) => !prev)}
           >
-            {showSimulator ? "Back to My Benefits" : "Simulate Airtime Benefit"}
+            {showSimulator ? "Back to My Staff Benefits" : "Simulate Staff Airtime Benefit"}
           </Button>
         )}
       </div>

@@ -179,6 +179,44 @@ const UserHandsets = () => {
     });
   };
 
+  const getStatusStyle = (status) => {
+    const normalized = String(status || "").trim().toLowerCase();
+
+    if (normalized === "pending") {
+      return { background: "#FEF3C7", color: "#92400E", border: "#F59E0B" };
+    }
+    if (normalized === "in progress") {
+      return { background: "#DBEAFE", color: "#1E40AF", border: "#3B82F6" };
+    }
+    if (
+      normalized === "completed" ||
+      normalized === "expired" ||
+      normalized === "rejected" ||
+      normalized === "inactive" ||
+      normalized === "cancelled" ||
+      normalized === "canceled"
+    ) {
+      return { background: "#FEE2E2", color: "#991B1B", border: "#EF4444" };
+    }
+    if (
+      normalized === "active" ||
+      normalized === "ongoing" ||
+      normalized === "renewed" ||
+      normalized === "approved" ||
+      normalized === "done"
+    ) {
+      return { background: "#DCFCE7", color: "#166534", border: "#22C55E" };
+    }
+
+    return { background: "#F3F4F6", color: "#374151", border: "#9CA3AF" };
+  };
+
+  const formatStatusLabel = (status) => {
+    const normalized = String(status || "").trim().toLowerCase();
+    if (normalized === "completed") return "Expired";
+    return status || "-";
+  };
+
   const columns = [
     // { field: "id", headerName: "#", width: 60 },
     { field: "EmployeeCode", headerName: "Employee Code", width: 130 },
@@ -189,7 +227,28 @@ const UserHandsets = () => {
     // { field: "RequestDate", headerName: "Requested Date", width: 180 },
     { field: "AllocationDate", headerName: "Collected Date", width: 180 },
     { field: "NewAllocationDate", headerName: "New Renewal Date", width: 180 },
-    { field: "Status", headerName: "Status", width: 100 },
+    {
+      field: "Status",
+      headerName: "Status",
+      width: 140,
+      renderCell: (params) => {
+        const status = params.value || "-";
+        const style = getStatusStyle(status);
+
+        return (
+          <span
+            className="benefit-status-badge"
+            style={{
+              backgroundColor: style.background,
+              color: style.color,
+              borderColor: style.border,
+            }}
+          >
+            {formatStatusLabel(status)}
+          </span>
+        );
+      },
+    },
     // { field: "RenewalVerified", headerName: "Renewal Verified", width: 140 },
     // { field: "IMEINumber", headerName: "IMEI Number", width: 150 },
     // {
@@ -284,7 +343,7 @@ const UserHandsets = () => {
     <div className="container-main m-3 handset-simulator-page benefits-page">
       <div className="handset-hero mb-4 d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3">
         <div>
-          <h2 className="handset-title">My Handsets</h2>
+          <h2 className="handset-title">My Staff Handsets</h2>
           <p className="handset-subtitle mb-0">
             Keep track of your handset benefits, active handset details, and
             renewal timeline.
@@ -294,7 +353,7 @@ const UserHandsets = () => {
           className="benefits-cta-btn"
           onClick={() => setShowSimulator((prev) => !prev)}
         >
-          {showSimulator ? "Back to My Handsets" : "Simulate Handset"}
+          {showSimulator ? "Back to My Staff Handsets" : "Simulate Staff Handset"}
         </Button>
       </div>
       {showSimulator ? (
@@ -309,7 +368,7 @@ const UserHandsets = () => {
                   <div className="col-sm-4">
                     <div className="benefit-metric">
                       <div>
-                        <h5>Active Handset</h5>
+                        <h5>Active Staff Handset</h5>
                         <h3>{dataAllocation[0].HandsetName}</h3>
                       </div>
                       <div className="benefit-metric-icon">
@@ -321,7 +380,7 @@ const UserHandsets = () => {
                   <div className="col-sm-4">
                     <div className="benefit-metric">
                       <div>
-                        <h5>Handset Price</h5>
+                        <h5>Staff Handset Price</h5>
                         <h3>{formatMoney(dataAllocation[0].HandsetPrice)}</h3>
                       </div>
                       <div className="benefit-metric-icon">
@@ -333,7 +392,7 @@ const UserHandsets = () => {
                   <div className="col-sm-4">
                     <div className="benefit-metric">
                       <div>
-                        <h5>New Handset Due</h5>
+                        <h5>New Staff Handset Due</h5>
                         <h3>
                           {formatDate(dataAllocation[0]?.RenewalDate) ||
                             "Pending"}
