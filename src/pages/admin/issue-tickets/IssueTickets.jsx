@@ -7,12 +7,14 @@ import {
   MenuItem,
   Select,
   Typography,
+  Tooltip,
   useMediaQuery,
   useTheme,
   CircularProgress,
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import Swal from "sweetalert2";
+import { useSelector } from "react-redux";
 import axiosInstance from "../../../utils/axiosInstance";
 import { tokens } from "../../../theme";
 import formatDate from "../../../components/global/dateFormatter";
@@ -25,6 +27,19 @@ const NEXT_STATUS = {
 };
 
 const TICKETS_PER_PAGE = 40;
+
+const normalizeCode = (code) =>
+  String(code || "")
+    .trim()
+    .replace(/[-\s]/g, "")
+    .toUpperCase();
+
+const formatDurationMinutes = (minutes) => {
+  if (minutes == null || Number.isNaN(minutes)) return "—";
+  if (minutes < 60) return `${minutes} min`;
+  if (minutes < 1440) return `${(minutes / 60).toFixed(1)} hrs`;
+  return `${(minutes / 1440).toFixed(1)} days`;
+};
 
 const STATUS_COLORS = {
   pending: { bg: "#FEF3C7", color: "#92400E" },
@@ -54,6 +69,8 @@ const IssueTickets = () => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
   const isSmallScreen = useMediaQuery(theme.breakpoints.down("md"));
+  const currentUser = useSelector((state) => state.auth.user);
+  const currentAdminCode = normalizeCode(currentUser?.EmployeeCode);
 
   const [tickets, setTickets] = useState([]);
   const [analytics, setAnalytics] = useState(null);
@@ -116,12 +133,19 @@ const IssueTickets = () => {
 
     const result = await Swal.fire({
       icon: "question",
-      title: `Mark as "${nextStatus}"?`,
+      title:
+        currentStatus === "pending"
+          ? "Assign ticket to you?"
+          : `Mark as "${nextStatus}"?`,
       html: `
         <p style="margin: 0 0 12px 0; color: #475569; text-align: left;">
           Ticket <strong>${row.ticketNumber}</strong> will move from
           <strong>${currentStatus}</strong> to <strong>${nextStatus}</strong>.
-          The employee will receive a system notification and email.
+          ${
+            currentStatus === "pending"
+              ? "You will be assigned as the handler and only you can complete this ticket."
+              : "The employee will receive a system notification and email."
+          }
         </p>
       `,
       input: "textarea",
@@ -135,7 +159,8 @@ const IssueTickets = () => {
       showCancelButton: true,
       confirmButtonColor: "#0096D6",
       cancelButtonColor: "#6c757d",
-      confirmButtonText: "Update & notify",
+      confirmButtonText:
+        currentStatus === "pending" ? "Assign & start" : "Update & notify",
       cancelButtonText: "Cancel",
       reverseButtons: true,
     });
@@ -186,6 +211,10 @@ const IssueTickets = () => {
         reason: item.reason || "-",
         message: item.message || "-",
         status: item.status || "-",
+        assignedAdminCode: item.assignedAdminCode || null,
+        assignedAdminName: item.assignedAdminName || "-",
+        inProgressAt: item.inProgressAt ? formatDate(item.inProgressAt) : "-",
+        completedAt: item.completedAt ? formatDate(item.completedAt) : "-",
         createdAt: formatDate(item.createdAt),
       })),
     [tickets]
@@ -216,48 +245,76 @@ const IssueTickets = () => {
         );
       },
     },
-    { field: "createdAt", headerName: "Submitted", width: 140 },
+    { field: "createdAt", headerName: "Submitted", width: 130 },
+    { field: "assignedAdminName", headerName: "Assigned To", width: 140 },
+    { field: "inProgressAt", headerName: "Started", width: 130 },
+    { field: "completedAt", headerName: "Completed", width: 130 },
     {
       field: "actions",
-      headerName: "Update Status",
-      width: 180,
+      headerName: "Actions",
+      width: 200,
       sortable: false,
       filterable: false,
       renderCell: (params) => {
         const status = String(params.row.status || "").trim().toLowerCase();
         const nextStatus = NEXT_STATUS[status];
         const isCompleted = status === "completed" || !nextStatus;
+        const assignedCode = normalizeCode(params.row.assignedAdminCode);
+        const isAssignedToOther =
+          status === "in progress" &&
+          assignedCode &&
+          assignedCode !== currentAdminCode;
+        const isDisabled =
+          isCompleted || isAssignedToOther || updatingId === params.row.id;
 
-        return (
+        const buttonLabel = (() => {
+          if (updatingId === params.row.id) return "Updating...";
+          if (isCompleted) return "Completed";
+          if (isAssignedToOther) return "Assigned elsewhere";
+          if (status === "pending") return "Assign & start";
+          return "Mark completed";
+        })();
+
+        const button = (
           <Button
             size="small"
             variant="contained"
-            disabled={isCompleted || updatingId === params.row.id}
+            disabled={isDisabled}
             onClick={() => handleAdvanceStatus(params.row)}
             sx={{
               backgroundColor: isCompleted
                 ? "#9CA3AF"
-                : nextStatus === "in progress"
-                  ? "#F59E0B"
-                  : "#16A34A",
+                : isAssignedToOther
+                  ? "#9CA3AF"
+                  : status === "pending"
+                    ? "#F59E0B"
+                    : "#16A34A",
               textTransform: "none",
               color: "#fff",
               "&:hover": {
-                backgroundColor: isCompleted
-                  ? "#9CA3AF"
-                  : nextStatus === "in progress"
+                backgroundColor: isDisabled
+                  ? undefined
+                  : status === "pending"
                     ? "#D97706"
                     : "#15803D",
               },
             }}
           >
-            {updatingId === params.row.id
-              ? "Updating..."
-              : isCompleted
-                ? "Completed"
-                : `Mark ${nextStatus}`}
+            {buttonLabel}
           </Button>
         );
+
+        if (isAssignedToOther) {
+          return (
+            <Tooltip
+              title={`Assigned to ${params.row.assignedAdminName}. Only they can complete this ticket.`}
+            >
+              <span>{button}</span>
+            </Tooltip>
+          );
+        }
+
+        return button;
       },
     },
   ];
@@ -268,8 +325,8 @@ const IssueTickets = () => {
         <div>
           <h2 className="handset-title">Issue Tickets</h2>
           <p className="handset-subtitle mb-0">
-            Review employee support requests, track ticket status, and advance
-            issues from pending through to completed.
+            Review employee support requests, assign tickets to yourself when
+            starting work, and track pickup and resolution times in analytics.
           </p>
         </div>
       </div>
@@ -294,7 +351,58 @@ const IssueTickets = () => {
         <Box gridColumn={isSmallScreen ? "span 12" : "span 3"}>
           <StatCard title="Completed" value={analytics?.completed} subtitle="Resolved" />
         </Box>
+        <Box gridColumn={isSmallScreen ? "span 12" : "span 3"}>
+          <StatCard
+            title="Avg Pickup Time"
+            value={formatDurationMinutes(analytics?.avgPickupMinutes)}
+            subtitle="Pending → in progress"
+          />
+        </Box>
+        <Box gridColumn={isSmallScreen ? "span 12" : "span 3"}>
+          <StatCard
+            title="Avg Resolution Time"
+            value={formatDurationMinutes(analytics?.avgResolutionMinutes)}
+            subtitle="In progress → completed"
+          />
+        </Box>
+        <Box gridColumn={isSmallScreen ? "span 12" : "span 3"}>
+          <StatCard
+            title="Avg Total Time"
+            value={formatDurationMinutes(analytics?.avgTotalMinutes)}
+            subtitle="Submitted → completed"
+          />
+        </Box>
       </Box>
+
+      {analytics?.byAssignee?.length > 0 && (
+        <Box
+          className="shadow admin-dashboard-card handset-form-card mb-4"
+          sx={{ p: 2 }}
+        >
+          <h6 className="summary-title mb-3">Performance by Assignee</h6>
+          <div className="row g-2">
+            {analytics.byAssignee.map((item) => (
+              <div
+                className="col-12 col-md-6 col-lg-4"
+                key={item.assignedAdminCode}
+              >
+                <div className="support-reason-stat">
+                  <span className="support-reason-stat-label">
+                    {item.assignedAdminName}
+                  </span>
+                  <span className="support-reason-stat-count">
+                    {item.ticketCount} assigned · {item.completedCount} completed
+                  </span>
+                  <Typography variant="caption" sx={{ color: "#64748b" }}>
+                    Avg resolution:{" "}
+                    {formatDurationMinutes(item.avgResolutionMinutes)}
+                  </Typography>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Box>
+      )}
 
       {analytics?.byReason?.length > 0 && (
         <Box
