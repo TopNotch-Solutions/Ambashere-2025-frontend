@@ -52,6 +52,7 @@ const Sidebar = ({ openSidebarToggle, OpenSidebar }) => {
       "/admin/Contracts": "5",
       "/admin/Reports": "6",
       "/admin/Calendar": "7",
+      "/admin/IssueTickets": "9",
       "/admin/Profile": "8",
 
       "/user/Dashboard": "1",
@@ -149,6 +150,12 @@ const Sidebar = ({ openSidebarToggle, OpenSidebar }) => {
           icon: <BarChartIcon />,
           label: "Reports",
           key: "6",
+        },
+        {
+          to: "admin/IssueTickets",
+          icon: <HeadsetMicIcon />,
+          label: "Issue Tickets",
+          key: "9",
         },
         {
           to: "admin/Calendar",

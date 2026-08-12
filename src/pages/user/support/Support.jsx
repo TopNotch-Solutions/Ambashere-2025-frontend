@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   TextField,
   FormControl,
@@ -8,6 +8,8 @@ import {
   FormHelperText,
   Alert,
   CircularProgress,
+  Pagination,
+  Typography,
 } from "@mui/material";
 import { useSelector } from "react-redux";
 import axiosInstance from "../../../utils/axiosInstance";
@@ -20,8 +22,15 @@ import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
 import ReportProblemOutlinedIcon from "@mui/icons-material/ReportProblemOutlined";
 import LightbulbOutlinedIcon from "@mui/icons-material/LightbulbOutlined";
 import SendIcon from "@mui/icons-material/Send";
+import formatDate from "../../../components/global/dateFormatter";
 import "../../../assets/style/global/handsetBenefitSimulator.css";
 import "../../../assets/style/global/support.css";
+
+const STATUS_COLORS = {
+  pending: { bg: "#FEF3C7", color: "#92400E", label: "Pending" },
+  "in progress": { bg: "#DBEAFE", color: "#1E40AF", label: "In Progress" },
+  completed: { bg: "#D1FAE5", color: "#065F46", label: "Completed" },
+};
 
 const tempSupportTopics = [
   {
@@ -71,6 +80,21 @@ const regularSupportTopics = [
   },
 ];
 
+const StatusBadge = ({ status }) => {
+  const key = String(status || "").toLowerCase();
+  const style = STATUS_COLORS[key] || { bg: "#F3F4F6", color: "#374151", label: status };
+  return (
+    <span
+      className="support-ticket-status-badge"
+      style={{ backgroundColor: style.bg, color: style.color }}
+    >
+      {style.label || status}
+    </span>
+  );
+};
+
+const TICKETS_PER_PAGE = 20;
+
 const Support = () => {
   const currentUser = useSelector((state) => state.auth.user);
   const isTemporary = currentUser?.EmploymentCategory === "Temporary";
@@ -84,6 +108,13 @@ const Support = () => {
   const [errors, setErrors] = useState({});
   const [responseMessage, setResponseMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [tickets, setTickets] = useState([]);
+  const [ticketsLoading, setTicketsLoading] = useState(true);
+  const [ticketPage, setTicketPage] = useState(1);
+  const [ticketPagination, setTicketPagination] = useState({
+    total: 0,
+    totalPages: 1,
+  });
 
   const tempSupportOptions = [
     { value: "Airtime Issues", label: "Airtime Issues" },
@@ -102,6 +133,29 @@ const Support = () => {
 
   const supportTopics = isTemporary ? tempSupportTopics : regularSupportTopics;
   const supportOptions = isTemporary ? tempSupportOptions : regularSupportOptions;
+
+  const fetchTickets = useCallback(async (pageNum = 1) => {
+    try {
+      setTicketsLoading(true);
+      const response = await axiosInstance.get("/support-tickets/mine", {
+        params: { page: pageNum, limit: TICKETS_PER_PAGE },
+      });
+      setTickets(response.data.tickets || []);
+      setTicketPagination(
+        response.data.pagination || { total: 0, totalPages: 1 }
+      );
+    } catch (error) {
+      console.error("Error fetching support tickets:", error);
+      setTickets([]);
+      setTicketPagination({ total: 0, totalPages: 1 });
+    } finally {
+      setTicketsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchTickets(ticketPage);
+  }, [ticketPage, fetchTickets]);
 
   const handleInputChange = (e) => {
     setFormData({
@@ -133,31 +187,36 @@ const Support = () => {
 
     try {
       setIsSubmitting(true);
-      const response = await axiosInstance.post("/email", formData);
+      const response = await axiosInstance.post("/support-tickets", formData);
       if (response.data.success) {
         Swal.fire({
           icon: "success",
-          title: "Success",
-          text: "Email sent successfully!",
-        }).then((result) => {
-          if (result.isConfirmed) {
-            window.location.reload();
-          }
+          title: "Ticket Submitted",
+          text: `Your support ticket ${response.data.ticket?.ticketNumber || ""} has been submitted. You will receive a confirmation email and notification.`,
         });
+        setFormData({
+          email: currentUser?.Email || "",
+          subject: "",
+          message: "",
+        });
+        setTicketPage(1);
+        await fetchTickets(1);
       } else {
         Swal.fire({
           icon: "error",
           title: "Failed",
-          text: "Failed to send email. Please try again!",
+          text: "Failed to submit ticket. Please try again!",
         });
       }
     } catch (error) {
       Swal.fire({
         icon: "error",
         title: "Error",
-        text: "Error sending email. Please try again!",
+        text:
+          error.response?.data?.message ||
+          "Error submitting ticket. Please try again!",
       });
-      setResponseMessage("Error sending email.");
+      setResponseMessage("Error submitting ticket.");
     } finally {
       setIsSubmitting(false);
     }
@@ -195,7 +254,8 @@ const Support = () => {
             </div>
             <div className="support-routing-note">
               Your message will be sent to the Ambasphere administrative and
-              support teams on your behalf.
+              support teams on your behalf. A ticket will be created and you
+              will receive email and system notifications.
             </div>
 
             {responseMessage && (
@@ -247,9 +307,74 @@ const Support = () => {
               ) : (
                 <SendIcon fontSize="small" />
               )}
-              {isSubmitting ? "Sending..." : "Send Request"}
+              {isSubmitting ? "Submitting..." : "Submit Ticket"}
             </button>
           </form>
+
+          <div className="handset-form-card shadow-sm support-ticket-log mt-4">
+            <div className="form-header mb-3">
+              <h5 className="mb-1">My Ticket Log</h5>
+              <p className="mb-0">
+                Track the status of support requests you have submitted.
+              </p>
+            </div>
+
+            {ticketsLoading ? (
+              <div className="support-ticket-log-loading">
+                <CircularProgress size={28} sx={{ color: "#0096D6" }} />
+              </div>
+            ) : tickets.length === 0 ? (
+              <p className="support-ticket-log-empty mb-0">
+                You have not submitted any support tickets yet.
+              </p>
+            ) : (
+              <>
+                <div className="table-responsive">
+                  <table className="table support-ticket-table mb-0">
+                    <thead>
+                      <tr>
+                        <th>Ticket #</th>
+                        <th>Reason</th>
+                        <th>Message</th>
+                        <th>Status</th>
+                        <th>Submitted</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {tickets.map((ticket) => (
+                        <tr key={ticket.id}>
+                          <td className="fw-semibold">{ticket.ticketNumber}</td>
+                          <td>{ticket.reason}</td>
+                          <td className="support-ticket-message-cell">
+                            {ticket.message}
+                          </td>
+                          <td>
+                            <StatusBadge status={ticket.status} />
+                          </td>
+                          <td>{formatDate(ticket.createdAt)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {ticketPagination.totalPages > 1 && (
+                  <div className="support-ticket-pagination">
+                    <Typography variant="body2" className="support-ticket-pagination-label">
+                      Showing page {ticketPage} of {ticketPagination.totalPages} (
+                      {ticketPagination.total} tickets)
+                    </Typography>
+                    <Pagination
+                      count={ticketPagination.totalPages}
+                      page={ticketPage}
+                      onChange={(_, value) => setTicketPage(value)}
+                      color="primary"
+                      shape="rounded"
+                    />
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
 
         <div className="col-12 col-xl-4">
