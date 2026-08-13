@@ -12,8 +12,10 @@ import { FaMoneyBillTrendUp } from "react-icons/fa6";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import PhoneIphoneIcon from "@mui/icons-material/PhoneIphone";
 import PostAddIcon from "@mui/icons-material/PostAdd";
+import SupportAgentIcon from "@mui/icons-material/SupportAgent";
 import ShareIcon from "@mui/icons-material/Share";
 import { useSelector, useDispatch } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import Tooltip from "@mui/material/Tooltip";
 import RemoveCircleIcon from "@mui/icons-material/RemoveCircle";
 import axiosInstance from "../../../utils/axiosInstance";
@@ -41,6 +43,7 @@ const UserHandsets = () => {
   const { role } = useSelector((state) => state.auth);
   const currentUser = useSelector((state) => state.auth.user);
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -361,7 +364,7 @@ const UserHandsets = () => {
       ) : (
         <div className="row d-flex flex-column flex-md-row justify-content-around m-auto">
           {/* Learn More */}
-          {dataAllocation.length > 0 ? (
+          {!isLoading && dataAllocation.length > 0 ? (
             <Box className="col-12 col-lg-12">
               <div className="handset-summary-card shadow-sm benefits-stats-card">
                 <div className="row g-3">
@@ -406,11 +409,29 @@ const UserHandsets = () => {
                 </div>
               </div>
             </Box>
-          ) : (
-            <h3 className="text-center mt-5 text-danger">
-              Your Handset Information will be shown here once you get one
-            </h3>
-          )}
+          ) : !isLoading && dataAllocation.length === 0 ? (
+            <Box className="col-12">
+              <div className="handset-form-card shadow-sm handset-empty-state">
+                <div className="handset-empty-state-icon" aria-hidden="true">
+                  <PhoneIphoneIcon />
+                </div>
+                <h5 className="mb-2">No staff handset on record</h5>
+                <p className="mb-3">
+                  We could not find a staff handset linked to your profile. If
+                  you have been issued a company handset and it is not showing
+                  here, please log a support request so the Ambasphere team can
+                  review and update your records.
+                </p>
+                <Button
+                  className="benefits-cta-btn"
+                  startIcon={<SupportAgentIcon />}
+                  onClick={() => navigate("/user/Support")}
+                >
+                  Log a Support Request
+                </Button>
+              </div>
+            </Box>
+          ) : null}
           <div style={{ height: "100%" }}>
             <HandsetVoucher
               style={{ height: "100%" }}
@@ -427,6 +448,7 @@ const UserHandsets = () => {
             />
           </div>
           {/* Plan Table */}
+          {(isLoading || dataAllocation.length > 0) && (
           <div className="col-12 ml-1 d-flex flex-column">
             <div className="m-1 m-sm-3">
               <Box
@@ -534,6 +556,7 @@ const UserHandsets = () => {
               </Box>
             </div>
           </div>
+          )}
         </div>
       )}
     </div>

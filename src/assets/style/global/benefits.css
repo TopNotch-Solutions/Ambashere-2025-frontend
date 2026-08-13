@@ -83,6 +83,43 @@
   white-space: nowrap;
 }
 
+.handset-empty-state {
+  text-align: center;
+  padding: 2rem 1.5rem;
+  margin-top: 0.5rem;
+}
+
+.handset-empty-state-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  margin-bottom: 0.85rem;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(26, 105, 172, 0.12), rgba(0, 170, 233, 0.18));
+  border: 1px solid rgba(26, 105, 172, 0.16);
+  color: #1a69ac;
+}
+
+.handset-empty-state-icon svg {
+  font-size: 1.8rem;
+}
+
+.handset-empty-state h5 {
+  color: #22354d;
+  font-weight: 700;
+}
+
+.handset-empty-state p {
+  max-width: 640px;
+  margin-left: auto;
+  margin-right: auto;
+  color: #5f738b;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
 .current-handsets-grid {
   min-height: 350px;
 }
