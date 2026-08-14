@@ -241,8 +241,8 @@ const AdminHandsetContracts = () => {
           <h2 className="handset-title">New Handset Contracts</h2>
           <p className="handset-subtitle mb-0">
             Track staff handset requests, compare yearly volume, and advance
-            applications through pending and in progress. Completed requests
-            leave this list for processing elsewhere.
+            applications through pending, in progress, and completed. Completed
+            records stay here for audit.
           </p>
         </div>
       </div>
@@ -299,9 +299,10 @@ const AdminHandsetContracts = () => {
                 label="Filter by status"
                 onChange={(event) => setStatusFilter(event.target.value)}
               >
-                <MenuItem value="all">All open</MenuItem>
+                <MenuItem value="all">All</MenuItem>
                 <MenuItem value="pending">Pending</MenuItem>
                 <MenuItem value="in progress">In progress</MenuItem>
+                <MenuItem value="completed">Completed</MenuItem>
               </Select>
             </FormControl>
           </Box>
