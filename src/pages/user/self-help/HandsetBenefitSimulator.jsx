@@ -3,10 +3,14 @@ import {
   Autocomplete,
   TextField,
   Alert,
+  Button,
 } from "@mui/material";
+import PostAddIcon from "@mui/icons-material/PostAdd";
 import axiosInstance from "../../../utils/axiosInstance.jsx";
 import { useSelector } from "react-redux";
+import Swal from "sweetalert2";
 import "../../../assets/style/global/handsetBenefitSimulator.css";
+import "../../../assets/style/global/benefits.css";
 
 const HandsetBenfitSimulator = ({ embedded = false }) => {
   const [deviceName, setDeviceName] = useState("");
@@ -16,6 +20,11 @@ const HandsetBenfitSimulator = ({ embedded = false }) => {
   const [devices, setDevices] = useState([]);
   const [isLoadingDevices, setIsLoadingDevices] = useState(false);
   const [devicesError, setDevicesError] = useState("");
+  const [eligibility, setEligibility] = useState({
+    canApply: false,
+    reason: "",
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const currentUser = useSelector((state) => state.auth.user);
   const employeeCode = currentUser?.EmployeeCode;
   const sortedDevices = useMemo(
@@ -43,7 +52,15 @@ const HandsetBenfitSimulator = ({ embedded = false }) => {
         const response = await axiosInstance.get(
           "/pricelist/device-price-list"
         );
-        const list = response?.data?.data || [];
+        const list = (response?.data?.data || []).filter((device) => {
+          const group = String(device.device_group || "")
+            .trim()
+            .toLowerCase();
+          if (group !== "cell phones") return false;
+
+          const name = String(device.device_name || "");
+          return !/tab|tablet|ipad|watch/i.test(name);
+        });
         setDevices(list);
       } catch (error) {
         console.error("Failed to load device price list", error);
@@ -89,6 +106,29 @@ const HandsetBenfitSimulator = ({ embedded = false }) => {
     fetchHandsetAllocation();
   }, [employeeCode]);
 
+  useEffect(() => {
+    const fetchEligibility = async () => {
+      if (!employeeCode) return;
+      try {
+        const response = await axiosInstance.get(
+          `/handsets/submissions/eligibility/${employeeCode}`
+        );
+        setEligibility({
+          canApply: Boolean(response?.data?.canApply),
+          reason: response?.data?.reason || "",
+        });
+      } catch (error) {
+        console.error("Failed to load handset eligibility", error);
+        setEligibility({
+          canApply: false,
+          reason: "Unable to confirm whether you can apply for a staff handset.",
+        });
+      }
+    };
+
+    fetchEligibility();
+  }, [employeeCode]);
+
   // Calculate and set topUpPayment on any input change
   useEffect(() => {
     const calculateTopUpPayment = () => {
@@ -98,6 +138,78 @@ const HandsetBenfitSimulator = ({ embedded = false }) => {
     };
     calculateTopUpPayment();
   }, [devicePrice, handsetAllocation]);
+
+  const handleSubmitApplication = async () => {
+    if (!deviceName) {
+      Swal.fire({
+        icon: "info",
+        title: "Select a device",
+        text: "Please choose a cell phone before submitting your request.",
+      });
+      return;
+    }
+
+    if (!eligibility.canApply) {
+      Swal.fire({
+        icon: "warning",
+        title: "Not eligible",
+        text: eligibility.reason || "You cannot apply for a staff handset at this time.",
+      });
+      return;
+    }
+
+    const result = await Swal.fire({
+      icon: "question",
+      title: "Submit staff handset request?",
+      html: `
+        <p style="text-align:left;margin:0 0 8px;">Please confirm the details below:</p>
+        <p style="text-align:left;margin:0;"><strong>Employee:</strong> ${currentUser?.FullName || "-"} (${employeeCode || "-"})</p>
+        <p style="text-align:left;margin:0;"><strong>Device:</strong> ${deviceName}</p>
+        <p style="text-align:left;margin:0;"><strong>Device price:</strong> ${formatCurrency(devicePrice)}</p>
+        <p style="text-align:left;margin:0;"><strong>Excess payment:</strong> ${formatCurrency(topupPayment)}</p>
+      `,
+      showCancelButton: true,
+      confirmButtonColor: "#0096D6",
+      cancelButtonColor: "#6c757d",
+      confirmButtonText: "Yes, submit",
+      cancelButtonText: "Cancel",
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      setIsSubmitting(true);
+      await axiosInstance.post("/handsets/submissions", {
+        EmployeeCode: employeeCode,
+        employee_name: currentUser?.FullName,
+        device: deviceName,
+        device_price: Number(devicePrice) || 0,
+        excess_payment: Number(topupPayment) || 0,
+      });
+
+      setEligibility({
+        canApply: false,
+        reason:
+          "You already have a staff handset request that is pending or in progress. You cannot submit another until it is completed.",
+      });
+
+      Swal.fire({
+        icon: "success",
+        title: "Request submitted",
+        text: "Your staff handset request has been submitted and is pending review.",
+      });
+    } catch (error) {
+      Swal.fire({
+        icon: "error",
+        title: "Submission failed",
+        text:
+          error.response?.data?.message ||
+          "Could not submit your staff handset request. Please try again.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className={embedded ? "row g-4" : "container-main m-3 handset-simulator-page"}>
@@ -116,16 +228,39 @@ const HandsetBenfitSimulator = ({ embedded = false }) => {
       <div className="row g-4 w-100 m-0">
         <div className="col-12 col-xl-8">
           <form className="handset-form-card shadow-sm">
-            <div className="form-header">
-              <h5 className="mb-1">Calculate your handset contribution</h5>
-              <p className="mb-0">
-                Values update automatically based on the selected device list.
-              </p>
+            <div className="form-header d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between gap-3">
+              <div>
+                <h5 className="mb-1">Calculate your handset contribution</h5>
+                <p className="mb-0">
+                  Values update automatically based on the selected device list.
+                </p>
+              </div>
+              <Button
+                className="benefits-cta-btn flex-shrink-0"
+                onClick={handleSubmitApplication}
+                disabled={
+                  isSubmitting ||
+                  !deviceName ||
+                  !eligibility.canApply ||
+                  isLoadingDevices
+                }
+                endIcon={<PostAddIcon />}
+              >
+                {isSubmitting ? "Submitting..." : "Submit Handset Request"}
+              </Button>
             </div>
 
             {devicesError && (
               <Alert severity="error" className="mb-3">
                 {devicesError}
+              </Alert>
+            )}
+            {eligibility.reason && (
+              <Alert
+                severity={eligibility.canApply ? "info" : "warning"}
+                className="mb-3"
+              >
+                {eligibility.reason}
               </Alert>
             )}
 
@@ -236,6 +371,15 @@ const HandsetBenfitSimulator = ({ embedded = false }) => {
               <span>Excess payment</span>
               <strong>{formatCurrency(topupPayment)}</strong>
             </div>
+          </div>
+
+          <div className="handset-summary-card shadow-sm mt-3">
+            <h6 className="summary-title">Tip</h6>
+            <p className="simulator-tip mb-0">
+              A staff handset is available after two years and applies to
+              cell phones only. Tablets, watches, and similar devices are not
+              covered under this benefit.
+            </p>
           </div>
         </div>
       </div>

@@ -72,7 +72,7 @@
 }
 .sidebar-list-item {
   padding: 20px;
-  font-size: 18px;
+  font-size: 15;
 }
 .sidebar-list-item:hover,
 .sidebar-list-item > a:hover {
@@ -94,7 +94,7 @@
   cursor: pointer;
   color: white;
   padding: 20px;
-  font-size: 18px;
+  font-size: 13px;
 }
 ul a {
   text-decoration: none;

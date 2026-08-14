@@ -48,6 +48,7 @@ const Sidebar = ({ openSidebarToggle, OpenSidebar }) => {
       "/admin/Employees": "2",
       "/admin/Handsets": "3",
       "/admin/AirtimeContracts": "3b",
+      "/admin/HandsetContracts": "3c",
       "/admin/Packages": "4",
       "/admin/Contracts": "5",
       "/admin/Reports": "6",
@@ -122,16 +123,16 @@ const Sidebar = ({ openSidebarToggle, OpenSidebar }) => {
           key: "2",
         },
         {
-          to: "admin/Handsets",
-          icon: <DevicesIcon />,
-          label: "Staff Handset",
-          key: "3",
-        },
-        {
           to: "admin/AirtimeContracts",
           icon: <AssignmentIcon />,
-          label: "Airtime Contracts",
+          label: "New Airtime Contracts",
           key: "3b",
+        },
+        {
+          to: "admin/HandsetContracts",
+          icon: <DevicesOtherIcon />,
+          label: "New Handset Contracts",
+          key: "3c",
         },
         {
           to: "admin/Packages",
@@ -144,6 +145,12 @@ const Sidebar = ({ openSidebarToggle, OpenSidebar }) => {
           icon: <CardGiftcardIcon />,
           label: "Allocations",
           key: "5",
+        },
+        {
+          to: "admin/Handsets",
+          icon: <DevicesIcon />,
+          label: "Staff Handset",
+          key: "3",
         },
         {
           to: "admin/Reports",

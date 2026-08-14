@@ -20,7 +20,10 @@ const MONTHS = [
   "Dec",
 ];
 
-const AirtimeSubmissionsYoYChart = () => {
+const AirtimeSubmissionsYoYChart = ({
+  endpoint = "/contracts/submissions/perMonth",
+  titlePrefix = "Submissions",
+}) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
   const currentYear = moment().year();
@@ -32,9 +35,7 @@ const AirtimeSubmissionsYoYChart = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await axiosInstance.get(
-          "/contracts/submissions/perMonth"
-        );
+        const response = await axiosInstance.get(endpoint);
         setRawData(Array.isArray(response.data) ? response.data : []);
       } catch (error) {
         console.error("Error fetching submissions per month:", error);
@@ -45,7 +46,7 @@ const AirtimeSubmissionsYoYChart = () => {
     };
 
     fetchData();
-  }, []);
+  }, [endpoint]);
 
   const chartData = useMemo(() => {
     const buildSeries = (year) =>
@@ -79,7 +80,7 @@ const AirtimeSubmissionsYoYChart = () => {
   return (
     <div className="p-3" style={{ height: "100%", width: "100%" }}>
       <h6 className="summary-title mb-2">
-        Submissions: {currentYear} vs {previousYear}
+        {titlePrefix}: {currentYear} vs {previousYear}
       </h6>
       <div style={{ height: "280px", width: "100%" }}>
         <ResponsiveLine

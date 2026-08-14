@@ -17,6 +17,7 @@ import AdminPackages from "../pages/admin/packages/Packages.jsx";
 import AdminUploadPage from "../pages/admin/upload/UploadVoucher.jsx";
 import AdminHandsets from "../pages/admin/handsets/Handsets.jsx";
 import AdminAirtimeContracts from "../pages/admin/airtime-contracts/AirtimeContracts.jsx";
+import AdminHandsetContracts from "../pages/admin/handset-contracts/HandsetContracts.jsx";
 import IssueTickets from "../pages/admin/issue-tickets/IssueTickets.jsx";
 import StaffDetails from "../pages/admin/staff/StaffDetails.jsx";
 import Personal from "../pages/admin/staff/Personal.jsx";
@@ -93,6 +94,11 @@ const routes = [
   {
     path: "/admin/AirtimeContracts",
     element: <AdminAirtimeContracts />,
+    roles: [1, 2, 4, 5, 6, 7],
+  },
+  {
+    path: "/admin/HandsetContracts",
+    element: <AdminHandsetContracts />,
     roles: [1, 2, 4, 5, 6, 7],
   },
   {
