@@ -4,6 +4,7 @@ import {
   TextField,
   Alert,
   Button,
+  CircularProgress,
 } from "@mui/material";
 import PostAddIcon from "@mui/icons-material/PostAdd";
 import axiosInstance from "../../../utils/axiosInstance.jsx";
@@ -12,7 +13,7 @@ import Swal from "sweetalert2";
 import "../../../assets/style/global/handsetBenefitSimulator.css";
 import "../../../assets/style/global/benefits.css";
 
-const HandsetBenfitSimulator = ({ embedded = false }) => {
+const HandsetBenfitSimulator = ({ embedded = false, onSubmitted }) => {
   const [deviceName, setDeviceName] = useState("");
   const [devicePrice, setDevicePrice] = useState("");
   const [topupPayment, setTopupPayment] = useState(0); // Initial topupPayment
@@ -197,6 +198,10 @@ const HandsetBenfitSimulator = ({ embedded = false }) => {
         icon: "success",
         title: "Request submitted",
         text: "Your staff handset request has been submitted and is pending review.",
+      }).then(() => {
+        if (typeof onSubmitted === "function") {
+          onSubmitted();
+        }
       });
     } catch (error) {
       Swal.fire({
@@ -244,9 +249,13 @@ const HandsetBenfitSimulator = ({ embedded = false }) => {
                   !eligibility.canApply ||
                   isLoadingDevices
                 }
-                endIcon={<PostAddIcon />}
+                endIcon={isSubmitting ? undefined : <PostAddIcon />}
               >
-                {isSubmitting ? "Submitting..." : "Submit Handset Request"}
+                {isSubmitting ? (
+                  <CircularProgress size={18} sx={{ color: "white" }} />
+                ) : (
+                  "Submit Handset Request"
+                )}
               </Button>
             </div>
 

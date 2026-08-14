@@ -689,6 +689,21 @@ const BenefitVoucher = ({
     }
 
     if (isSubmitting) return;
+
+    if (!topUpConfirmed) {
+      const confirmResult = await Swal.fire({
+        icon: "question",
+        title: "Submit airtime contract?",
+        text: "Please confirm that you want to submit this airtime contract application.",
+        showCancelButton: true,
+        confirmButtonColor: "#0096D6",
+        cancelButtonColor: "#6c757d",
+        confirmButtonText: "Yes, submit",
+        cancelButtonText: "Cancel",
+      });
+      if (!confirmResult.isConfirmed) return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -1477,7 +1492,11 @@ const BenefitVoucher = ({
                 border: "1px solid",
               }}
             >
-              {isSubmitting ? "Submitting..." : "Submit"}
+              {isSubmitting ? (
+                <CircularProgress size={18} sx={{ color: "white" }} />
+              ) : (
+                "Submit"
+              )}
             </Button>
           </div>
 

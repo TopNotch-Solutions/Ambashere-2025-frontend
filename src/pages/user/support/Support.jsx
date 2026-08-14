@@ -185,6 +185,18 @@ const Support = () => {
       return;
     }
 
+    const confirmResult = await Swal.fire({
+      icon: "question",
+      title: "Submit support ticket?",
+      text: "Please confirm that you want to submit this support request.",
+      showCancelButton: true,
+      confirmButtonColor: "#0096D6",
+      cancelButtonColor: "#6c757d",
+      confirmButtonText: "Yes, submit",
+      cancelButtonText: "Cancel",
+    });
+    if (!confirmResult.isConfirmed) return;
+
     try {
       setIsSubmitting(true);
       const response = await axiosInstance.post("/support-tickets", formData);
@@ -305,9 +317,11 @@ const Support = () => {
               {isSubmitting ? (
                 <CircularProgress size={16} sx={{ color: "white" }} />
               ) : (
-                <SendIcon fontSize="small" />
+                <>
+                  <SendIcon fontSize="small" />
+                  Submit Ticket
+                </>
               )}
-              {isSubmitting ? "Submitting..." : "Submit Ticket"}
             </button>
           </form>
 

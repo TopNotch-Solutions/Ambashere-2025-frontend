@@ -185,11 +185,13 @@ const AdminHandsetContracts = () => {
               },
             }}
           >
-            {updatingId === params.row.id
-              ? "Updating..."
-              : isCompleted
-                ? "Completed"
-                : `Mark ${nextStatus}`}
+            {updatingId === params.row.id ? (
+              <CircularProgress size={16} sx={{ color: "#fff" }} />
+            ) : isCompleted ? (
+              "Completed"
+            ) : (
+              `Mark ${nextStatus}`
+            )}
           </Button>
         );
       },

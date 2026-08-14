@@ -46,6 +46,7 @@ const UserHandsets = () => {
   const navigate = useNavigate();
   useEffect(() => {
     const fetchData = async () => {
+      if (!currentUser?.EmployeeCode) return;
       try {
         setIsLoading(true);
         const response = await axiosInstance.get(
@@ -59,8 +60,10 @@ const UserHandsets = () => {
       }
     };
 
-    fetchData();
-  }, [dispatch]);
+    if (!showSimulator) {
+      fetchData();
+    }
+  }, [dispatch, currentUser?.EmployeeCode, showSimulator]);
 
   const handleOpen = async () => {
     try {
@@ -360,7 +363,10 @@ const UserHandsets = () => {
         </Button>
       </div>
       {showSimulator ? (
-        <HandsetBenfitSimulator embedded />
+        <HandsetBenfitSimulator
+          embedded
+          onSubmitted={() => setShowSimulator(false)}
+        />
       ) : (
         <div className="row d-flex flex-column flex-md-row justify-content-around m-auto">
           {/* Learn More */}
@@ -418,7 +424,7 @@ const UserHandsets = () => {
                 <h5 className="mb-2">No staff handset on record</h5>
                 <p className="mb-3">
                   We could not find a staff handset linked to your profile. If
-                  you have been issued a company handset and it is not showing
+                  you have been issued a handset and it is not showing
                   here, please log a support request so the Ambasphere team can
                   review and update your records.
                 </p>

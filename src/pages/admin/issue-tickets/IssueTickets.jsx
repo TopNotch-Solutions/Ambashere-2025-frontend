@@ -268,7 +268,9 @@ const IssueTickets = () => {
           isCompleted || isAssignedToOther || updatingId === params.row.id;
 
         const buttonLabel = (() => {
-          if (updatingId === params.row.id) return "Updating...";
+          if (updatingId === params.row.id) {
+            return <CircularProgress size={16} sx={{ color: "#fff" }} />;
+          }
           if (isCompleted) return "Completed";
           if (isAssignedToOther) return "Assigned elsewhere";
           if (status === "pending") return "Assign & start";
