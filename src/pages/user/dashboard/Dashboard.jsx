@@ -238,7 +238,7 @@ const UserDashboard = () => {
     },
   ];
   const handsetRows = (handsetData?.handsets || []).map((handset, index) => ({
-    id: index + 1,
+    id: handset?.id ?? `handset-${index + 1}`,
     FixedAssetCode: handset?.FixedAssetCode,
     HandsetAllocation: formatMoney(handset?.HandsetAllocation),
     HandsetPrice: formatMoney(handset?.HandsetPrice),

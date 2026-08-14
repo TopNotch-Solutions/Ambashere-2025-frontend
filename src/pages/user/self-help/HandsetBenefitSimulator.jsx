@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   Autocomplete,
   TextField,
-  Alert,
   Button,
   CircularProgress,
 } from "@mui/material";
@@ -260,17 +259,20 @@ const HandsetBenfitSimulator = ({ embedded = false, onSubmitted }) => {
             </div>
 
             {devicesError && (
-              <Alert severity="error" className="mb-3">
+              <p className="simulator-notice simulator-notice-error mb-3">
                 {devicesError}
-              </Alert>
+              </p>
             )}
             {eligibility.reason && (
-              <Alert
-                severity={eligibility.canApply ? "info" : "warning"}
-                className="mb-3"
+              <p
+                className={`simulator-notice mb-3 ${
+                  eligibility.canApply
+                    ? "simulator-notice-info"
+                    : "simulator-notice-muted"
+                }`}
               >
                 {eligibility.reason}
-              </Alert>
+              </p>
             )}
 
             <div className="row">
