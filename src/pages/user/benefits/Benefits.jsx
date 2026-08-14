@@ -119,12 +119,6 @@ const UserBenefits = () => {
     }
   }, [currentUser?.EmployeeCode]);
 
-  useEffect(() => {
-    if (!canSimulateAirtimeBenefit && showSimulator) {
-      setShowSimulator(false);
-    }
-  }, [canSimulateAirtimeBenefit, showSimulator]);
-
   const handleContractDelection = async (id) => {
   Swal.fire({
     icon: "warning", // Corrected 'waring' to 'warning'
@@ -312,14 +306,12 @@ const UserBenefits = () => {
             contracts, and simulate new contract applications.
           </p>
         </div>
-        {(canSimulateAirtimeBenefit || showSimulator) && (
-          <Button
-            className="benefits-cta-btn"
-            onClick={() => setShowSimulator((prev) => !prev)}
-          >
-            {showSimulator ? "Back to My Staff Benefits" : "Simulate Staff Airtime Benefit"}
-          </Button>
-        )}
+        <Button
+          className="benefits-cta-btn"
+          onClick={() => setShowSimulator((prev) => !prev)}
+        >
+          {showSimulator ? "Back to My Staff Benefits" : "Simulate Staff Airtime Benefit"}
+        </Button>
       </div>
 
       <BenefitVoucher
@@ -334,7 +326,9 @@ const UserBenefits = () => {
       {showSimulator ? (
         <AirtimeBenefitSimulator
           embedded
-          onApplySimulation={handleApplySimulation}
+          onApplySimulation={
+            canSimulateAirtimeBenefit ? handleApplySimulation : undefined
+          }
         />
       ) : (
         <div className="row d-flex flex-column flex-md-row justify-content-around m-auto">

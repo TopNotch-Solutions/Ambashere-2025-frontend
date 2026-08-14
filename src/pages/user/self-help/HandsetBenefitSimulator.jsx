@@ -239,23 +239,20 @@ const HandsetBenfitSimulator = ({ embedded = false, onSubmitted }) => {
                   Values update automatically based on the selected device list.
                 </p>
               </div>
-              <Button
-                className="benefits-cta-btn flex-shrink-0"
-                onClick={handleSubmitApplication}
-                disabled={
-                  isSubmitting ||
-                  !deviceName ||
-                  !eligibility.canApply ||
-                  isLoadingDevices
-                }
-                endIcon={isSubmitting ? undefined : <PostAddIcon />}
-              >
-                {isSubmitting ? (
-                  <CircularProgress size={18} sx={{ color: "white" }} />
-                ) : (
-                  "Submit Handset Request"
-                )}
-              </Button>
+              {eligibility.canApply && deviceName && (
+                <Button
+                  className="benefits-cta-btn flex-shrink-0"
+                  onClick={handleSubmitApplication}
+                  disabled={isSubmitting || isLoadingDevices}
+                  endIcon={isSubmitting ? undefined : <PostAddIcon />}
+                >
+                  {isSubmitting ? (
+                    <CircularProgress size={18} sx={{ color: "white" }} />
+                  ) : (
+                    "Submit Handset Request"
+                  )}
+                </Button>
+              )}
             </div>
 
             {devicesError && (

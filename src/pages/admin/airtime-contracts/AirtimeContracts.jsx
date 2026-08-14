@@ -12,6 +12,7 @@ import {
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import Swal from "sweetalert2";
+import { useSelector } from "react-redux";
 import InfoBox from "../../../components/admin/charts/InfoBox";
 import AirtimeSubmissionsYoYChart from "../../../components/admin/charts/AirtimeSubmissionsYoYChart";
 import axiosInstance from "../../../utils/axiosInstance";
@@ -26,10 +27,18 @@ const NEXT_STATUS = {
   "in progress": "completed",
 };
 
+const normalizeCode = (code) =>
+  String(code || "")
+    .trim()
+    .replace(/[-\s]/g, "")
+    .toUpperCase();
+
 const AdminAirtimeContracts = () => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
   const isSmallScreen = useMediaQuery(theme.breakpoints.down("md"));
+  const currentUser = useSelector((state) => state.auth.user);
+  const currentAdminCode = normalizeCode(currentUser?.EmployeeCode);
 
   const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -70,12 +79,19 @@ const AdminAirtimeContracts = () => {
 
     const result = await Swal.fire({
       icon: "question",
-      title: "Update status?",
-      text: `Change status from "${currentStatus}" to "${nextStatus}"?`,
+      title:
+        currentStatus === "pending"
+          ? "Assign this contract to you?"
+          : "Mark as completed?",
+      text:
+        currentStatus === "pending"
+          ? `This will move the contract to in progress and assign it to you. Only you will be able to mark it as completed.`
+          : `Change status from "${currentStatus}" to "${nextStatus}"?`,
       showCancelButton: true,
       confirmButtonColor: "#0096D6",
       cancelButtonColor: "#6c757d",
-      confirmButtonText: "Yes, update",
+      confirmButtonText:
+        currentStatus === "pending" ? "Assign & start" : "Mark completed",
     });
 
     if (!result.isConfirmed) return;
@@ -135,6 +151,8 @@ const AdminAirtimeContracts = () => {
       contract_submitted_date: formatDate(item.contract_submitted_date),
       transaction_type: item.transaction_type || "-",
       subscription_status: item.subscription_status || "-",
+      assignedAdminCode: item.assignedAdminCode || null,
+      assignedAdminName: item.assignedAdminName || "-",
     }));
   }, [submissions, statusFilter]);
 
@@ -182,9 +200,14 @@ const AdminAirtimeContracts = () => {
       width: 130,
     },
     {
+      field: "assignedAdminName",
+      headerName: "Attended By",
+      width: 160,
+    },
+    {
       field: "actions",
       headerName: "Update Status",
-      width: 180,
+      width: 200,
       sortable: false,
       filterable: false,
       renderCell: (params) => {
@@ -193,30 +216,39 @@ const AdminAirtimeContracts = () => {
           .toLowerCase();
         const nextStatus = NEXT_STATUS[status];
         const isCompleted = status === "completed" || !nextStatus;
+        const assignedCode = normalizeCode(params.row.assignedAdminCode);
+        const isAssignedToOther =
+          status === "in progress" &&
+          assignedCode &&
+          assignedCode !== currentAdminCode;
+        const isDisabled =
+          isCompleted || isAssignedToOther || updatingId === params.row.id;
 
         return (
           <Button
             size="small"
             variant="contained"
-            disabled={isCompleted || updatingId === params.row.id}
+            disabled={isDisabled}
             onClick={() => handleAdvanceStatus(params.row)}
             sx={{
               backgroundColor: isCompleted
                 ? "#9CA3AF"
-                : nextStatus === "in progress"
-                  ? "#F59E0B"
-                  : "#16A34A",
+                : isAssignedToOther
+                  ? "#9CA3AF"
+                  : nextStatus === "in progress"
+                    ? "#F59E0B"
+                    : "#16A34A",
               textTransform: "none",
               color: "#fff",
               "&:hover": {
-                backgroundColor: isCompleted
+                backgroundColor: isCompleted || isAssignedToOther
                   ? "#9CA3AF"
                   : nextStatus === "in progress"
                     ? "#D97706"
                     : "#15803D",
               },
               "&.Mui-disabled": {
-                backgroundColor: isCompleted ? "#D1D5DB" : undefined,
+                backgroundColor: isCompleted || isAssignedToOther ? "#D1D5DB" : undefined,
                 color: "#fff",
               },
             }}
@@ -225,8 +257,12 @@ const AdminAirtimeContracts = () => {
               <CircularProgress size={16} sx={{ color: "#fff" }} />
             ) : isCompleted ? (
               "Completed"
+            ) : isAssignedToOther ? (
+              "Assigned elsewhere"
+            ) : status === "pending" ? (
+              "Assign & start"
             ) : (
-              `Mark ${nextStatus}`
+              "Mark completed"
             )}
           </Button>
         );
