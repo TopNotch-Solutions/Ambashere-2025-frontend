@@ -173,6 +173,11 @@ const UserDashboard = () => {
     { field: "PackageMonthlyPayment", headerName: "Package Monthly Payment", width: 180 },
     { field: "DeviceName", headerName: "Equipment Name", width: 180 },
     { field: "DevicePrice", headerName: "Equipment Price", width: 180 },
+    {
+      field: "DeviceMonthlyPrice",
+      headerName: "Equipment Monthly Price",
+      width: 190,
+    },
     { field: "PayoutBalance", headerName: "Payout Amount", width: 180 },
     { field: "TotalMonthlyPayment", headerName: "Total Monthly Payment", width: 180 },
     { field: "ContractStartDate", headerName: "Contract Start Date", width: 200 },
@@ -199,6 +204,9 @@ const UserDashboard = () => {
     DeviceName: airtime?.device || airtime?.DeviceName || "-",
     DevicePrice: formatMoney(
       airtime?.DevicePrice ?? airtime?.device_initial_cost
+    ),
+    DeviceMonthlyPrice: formatMoney(
+      airtime?.device_monthly_price ?? airtime?.DeviceMonthlyPrice
     ),
     PayoutBalance: formatMoney(airtime?.device_payout_balance ?? 0),
     ContractStartDate: (() => {
