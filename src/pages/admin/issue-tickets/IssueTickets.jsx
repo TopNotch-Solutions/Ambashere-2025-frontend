@@ -33,9 +33,9 @@ import "../../../assets/style/global/handsetBenefitSimulator.css";
 import "../../../assets/style/global/adminDashboard.css";
 import "../../../assets/style/global/support.css";
 
-const NEXT_STATUS = {
-  pending: "in progress",
-  "in progress": "completed",
+const ALLOWED_NEXT_STATUSES = {
+  pending: ["in progress", "completed"],
+  "in progress": ["completed"],
 };
 
 const TICKETS_PER_PAGE = 40;
@@ -155,11 +155,12 @@ const IssueTickets = () => {
     fetchTickets();
   }, [fetchTickets]);
 
-  const handleAdvanceStatus = async (row) => {
+  const handleAdvanceStatus = async (row, targetStatus) => {
     const currentStatus = String(row.status || "").trim().toLowerCase();
-    const nextStatus = NEXT_STATUS[currentStatus];
+    const allowedStatuses = ALLOWED_NEXT_STATUSES[currentStatus] || [];
+    const nextStatus = targetStatus || allowedStatuses[0];
 
-    if (!nextStatus) {
+    if (!nextStatus || !allowedStatuses.includes(nextStatus)) {
       Swal.fire({
         icon: "info",
         title: "No further update",
@@ -168,10 +169,14 @@ const IssueTickets = () => {
       return;
     }
 
+    const isDirectComplete =
+      currentStatus === "pending" && nextStatus === "completed";
+
     const result = await Swal.fire({
       icon: "question",
-      title:
-        currentStatus === "pending"
+      title: isDirectComplete
+        ? "Mark ticket as completed?"
+        : currentStatus === "pending"
           ? "Assign ticket to you?"
           : `Mark as "${nextStatus}"?`,
       html: `
@@ -179,9 +184,11 @@ const IssueTickets = () => {
           Ticket <strong>${row.ticketNumber}</strong> will move from
           <strong>${currentStatus}</strong> to <strong>${nextStatus}</strong>.
           ${
-            currentStatus === "pending"
-              ? "You will be assigned as the handler and only you can complete this ticket."
-              : "The employee will receive a system notification and email."
+            isDirectComplete
+              ? "The ticket will be resolved immediately and the employee will receive a system notification and email."
+              : currentStatus === "pending"
+                ? "You will be assigned as the handler and only you can complete this ticket."
+                : "The employee will receive a system notification and email."
           }
         </p>
       `,
@@ -196,8 +203,11 @@ const IssueTickets = () => {
       showCancelButton: true,
       confirmButtonColor: "#0096D6",
       cancelButtonColor: "#6c757d",
-      confirmButtonText:
-        currentStatus === "pending" ? "Assign & start" : "Update & notify",
+      confirmButtonText: isDirectComplete
+        ? "Mark completed"
+        : currentStatus === "pending"
+          ? "Assign & start"
+          : "Update & notify",
       cancelButtonText: "Cancel",
       reverseButtons: true,
     });
@@ -263,68 +273,83 @@ const IssueTickets = () => {
     if (!row) return null;
 
     const status = String(row.status || "").trim().toLowerCase();
-    const nextStatus = NEXT_STATUS[status];
-    const isCompleted = status === "completed" || !nextStatus;
+    const allowedStatuses = ALLOWED_NEXT_STATUSES[status] || [];
+    const isCompleted = status === "completed" || allowedStatuses.length === 0;
     const assignedCode = normalizeCode(row.assignedAdminCode);
     const isAssignedToOther =
       status === "in progress" &&
       assignedCode &&
       assignedCode !== currentAdminCode;
-    const isDisabled =
-      isCompleted || isAssignedToOther || updatingId === row.id;
+    const isUpdating = updatingId === row.id;
 
-    const buttonLabel = (() => {
-      if (updatingId === row.id) {
-        return <CircularProgress size={16} sx={{ color: "#fff" }} />;
-      }
-      if (isCompleted) return "Completed";
-      if (isAssignedToOther) return "Assigned elsewhere";
-      if (status === "pending") return "Assign & start";
-      return "Mark completed";
-    })();
-
-    const button = (
+    const renderActionButton = (label, nextStatus, color, hoverColor) => (
       <Button
         size="small"
         variant="contained"
-        disabled={isDisabled}
-        onClick={() => handleAdvanceStatus(row)}
+        disabled={isUpdating || isAssignedToOther}
+        onClick={() => handleAdvanceStatus(row, nextStatus)}
         className="support-ticket-view-btn"
         sx={{
-          backgroundColor: isCompleted
-            ? "#9CA3AF"
-            : isAssignedToOther
-              ? "#9CA3AF"
-              : status === "pending"
-                ? "#F59E0B"
-                : "#16A34A",
+          backgroundColor: color,
           textTransform: "none",
           color: "#fff",
-          px: 2,
+          px: 1.5,
+          minWidth: 0,
           "&:hover": {
-            backgroundColor: isDisabled
-              ? undefined
-              : status === "pending"
-                ? "#D97706"
-                : "#15803D",
+            backgroundColor: isUpdating || isAssignedToOther ? undefined : hoverColor,
           },
         }}
       >
-        {buttonLabel}
+        {isUpdating ? (
+          <CircularProgress size={16} sx={{ color: "#fff" }} />
+        ) : (
+          label
+        )}
       </Button>
     );
+
+    if (isCompleted) {
+      return (
+        <Button
+          size="small"
+          variant="contained"
+          disabled
+          className="support-ticket-view-btn"
+          sx={{
+            backgroundColor: "#9CA3AF",
+            textTransform: "none",
+            color: "#fff",
+            px: 1.5,
+            minWidth: 0,
+          }}
+        >
+          Completed
+        </Button>
+      );
+    }
 
     if (isAssignedToOther) {
       return (
         <Tooltip
           title={`Assigned to ${row.assignedAdminName}. Only they can complete this ticket.`}
         >
-          <span>{button}</span>
+          <span>
+            {renderActionButton("Assigned elsewhere", null, "#9CA3AF", "#9CA3AF")}
+          </span>
         </Tooltip>
       );
     }
 
-    return button;
+    if (status === "pending") {
+      return (
+        <Box display="flex" alignItems="center" gap={0.75} flexWrap="wrap">
+          {renderActionButton("Assign & start", "in progress", "#F59E0B", "#D97706")}
+          {renderActionButton("Mark completed", "completed", "#16A34A", "#15803D")}
+        </Box>
+      );
+    }
+
+    return renderActionButton("Mark completed", "completed", "#16A34A", "#15803D");
   };
 
   const rows = useMemo(
@@ -378,7 +403,7 @@ const IssueTickets = () => {
     {
       field: "actions",
       headerName: "Actions",
-      width: 240,
+      width: 340,
       sortable: false,
       filterable: false,
       renderCell: (params) => (
