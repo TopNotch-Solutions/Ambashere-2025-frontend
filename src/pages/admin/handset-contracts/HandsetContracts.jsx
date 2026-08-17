@@ -1,26 +1,38 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Box,
-  Button,
   FormControl,
+  IconButton,
+  InputBase,
   InputLabel,
   MenuItem,
   Select,
+  Tooltip,
   useMediaQuery,
   useTheme,
   CircularProgress,
 } from "@mui/material";
+import SearchIcon from "@mui/icons-material/Search";
+import PhoneIphoneOutlinedIcon from "@mui/icons-material/PhoneIphoneOutlined";
 import { DataGrid } from "@mui/x-data-grid";
 import Swal from "sweetalert2";
+import { confirmAdminAction } from "../../../utils/adminConfirm";
 import { useSelector } from "react-redux";
 import InfoBox from "../../../components/admin/charts/InfoBox";
 import AirtimeSubmissionsYoYChart from "../../../components/admin/charts/AirtimeSubmissionsYoYChart";
+import SubmissionViewDialog from "../../../components/admin/SubmissionViewDialog";
 import axiosInstance from "../../../utils/axiosInstance";
 import { tokens } from "../../../theme";
 import { formatMoney } from "../../../utils/formatMoney";
 import formatDate from "../../../components/global/dateFormatter";
+import { renderStatusCell, StatusBadge } from "../../../utils/statusBadge";
+import {
+  renderContractStatusActionButton,
+  renderContractViewButton,
+} from "../../../utils/contractSubmissionActions";
 import "../../../assets/style/global/handsetBenefitSimulator.css";
 import "../../../assets/style/global/adminDashboard.css";
+import "../../../assets/style/global/support.css";
 
 const NEXT_STATUS = {
   pending: "in progress",
@@ -33,6 +45,19 @@ const normalizeCode = (code) =>
     .replace(/[-\s]/g, "")
     .toUpperCase();
 
+const mapHandsetSubmissionRow = (item, index) => ({
+  id: item.id ?? `submission-${index}`,
+  employeeCode: item.employeeCode || "-",
+  fullName: item.FullName || item.employee_name || "-",
+  device: item.device || "-",
+  device_price: formatMoney(item.device_price),
+  excess_payment: formatMoney(item.excess_payment),
+  contract_submitted_date: formatDate(item.contract_submitted_date),
+  subscription_status: item.subscription_status || "-",
+  assignedAdminCode: item.assignedAdminCode || null,
+  assignedAdminName: item.assignedAdminName || "-",
+});
+
 const AdminHandsetContracts = () => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
@@ -44,6 +69,8 @@ const AdminHandsetContracts = () => {
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState(null);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [searchText, setSearchText] = useState("");
+  const [viewSubmission, setViewSubmission] = useState(null);
 
   const fetchActiveSubmissions = useCallback(async () => {
     try {
@@ -62,6 +89,13 @@ const AdminHandsetContracts = () => {
     fetchActiveSubmissions();
   }, [fetchActiveSubmissions]);
 
+  useEffect(() => {
+    if (!viewSubmission) return;
+    const index = submissions.findIndex((item) => item.id === viewSubmission.id);
+    if (index === -1) return;
+    setViewSubmission(mapHandsetSubmissionRow(submissions[index], index));
+  }, [submissions, viewSubmission?.id]);
+
   const handleAdvanceStatus = async (row) => {
     const currentStatus = String(row.subscription_status || "")
       .trim()
@@ -77,24 +111,20 @@ const AdminHandsetContracts = () => {
       return;
     }
 
-    const result = await Swal.fire({
-      icon: "question",
+    const confirmed = await confirmAdminAction({
       title:
         currentStatus === "pending"
           ? "Assign this contract to you?"
           : "Mark as completed?",
       text:
         currentStatus === "pending"
-          ? `This will move the contract to in progress and assign it to you. Only you will be able to mark it as completed.`
+          ? "This will move the contract to in progress and assign it to you. Only you will be able to mark it as completed."
           : `Change status from "${currentStatus}" to "${nextStatus}"?`,
-      showCancelButton: true,
-      confirmButtonColor: "#0096D6",
-      cancelButtonColor: "#6c757d",
       confirmButtonText:
         currentStatus === "pending" ? "Assign & start" : "Mark completed",
     });
 
-    if (!result.isConfirmed) return;
+    if (!confirmed) return;
 
     try {
       setUpdatingId(row.id);
@@ -122,8 +152,15 @@ const AdminHandsetContracts = () => {
     }
   };
 
+  const statusActionProps = {
+    currentAdminCode,
+    updatingId,
+    onAdvance: handleAdvanceStatus,
+    normalizeCode,
+  };
+
   const rows = useMemo(() => {
-    const filtered =
+    let filtered =
       statusFilter === "all"
         ? submissions
         : submissions.filter(
@@ -133,19 +170,22 @@ const AdminHandsetContracts = () => {
                 .toLowerCase() === statusFilter
           );
 
-    return filtered.map((item, index) => ({
-      id: item.id ?? `submission-${index}`,
-      employeeCode: item.employeeCode || "-",
-      fullName: item.FullName || item.employee_name || "-",
-      device: item.device || "-",
-      device_price: formatMoney(item.device_price),
-      excess_payment: formatMoney(item.excess_payment),
-      contract_submitted_date: formatDate(item.contract_submitted_date),
-      subscription_status: item.subscription_status || "-",
-      assignedAdminCode: item.assignedAdminCode || null,
-      assignedAdminName: item.assignedAdminName || "-",
-    }));
-  }, [submissions, statusFilter]);
+    const query = searchText.trim().toLowerCase();
+    if (query) {
+      filtered = filtered.filter((item) =>
+        [
+          item.employeeCode,
+          item.FullName,
+          item.employee_name,
+          item.device,
+          item.subscription_status,
+          item.assignedAdminName,
+        ].some((field) => String(field ?? "").toLowerCase().includes(query))
+      );
+    }
+
+    return filtered.map(mapHandsetSubmissionRow);
+  }, [submissions, statusFilter, searchText]);
 
   const columns = [
     { field: "employeeCode", headerName: "Employee Code", width: 140 },
@@ -162,6 +202,7 @@ const AdminHandsetContracts = () => {
       field: "subscription_status",
       headerName: "Status",
       width: 140,
+      renderCell: renderStatusCell,
     },
     {
       field: "assignedAdminName",
@@ -170,67 +211,24 @@ const AdminHandsetContracts = () => {
     },
     {
       field: "actions",
-      headerName: "Update Status",
-      width: 200,
+      headerName: "Actions",
+      width: 240,
       sortable: false,
       filterable: false,
-      renderCell: (params) => {
-        const status = String(params.row.subscription_status || "")
-          .trim()
-          .toLowerCase();
-        const nextStatus = NEXT_STATUS[status];
-        const isCompleted = status === "completed" || !nextStatus;
-        const assignedCode = normalizeCode(params.row.assignedAdminCode);
-        const isAssignedToOther =
-          status === "in progress" &&
-          assignedCode &&
-          assignedCode !== currentAdminCode;
-        const isDisabled =
-          isCompleted || isAssignedToOther || updatingId === params.row.id;
-
-        return (
-          <Button
-            size="small"
-            variant="contained"
-            disabled={isDisabled}
-            onClick={() => handleAdvanceStatus(params.row)}
-            sx={{
-              backgroundColor: isCompleted
-                ? "#9CA3AF"
-                : isAssignedToOther
-                  ? "#9CA3AF"
-                  : nextStatus === "in progress"
-                    ? "#F59E0B"
-                    : "#16A34A",
-              textTransform: "none",
-              color: "#fff",
-              "&:hover": {
-                backgroundColor: isCompleted || isAssignedToOther
-                  ? "#9CA3AF"
-                  : nextStatus === "in progress"
-                    ? "#D97706"
-                    : "#15803D",
-              },
-              "&.Mui-disabled": {
-                backgroundColor: isCompleted || isAssignedToOther ? "#D1D5DB" : undefined,
-                color: "#fff",
-              },
-            }}
-          >
-            {updatingId === params.row.id ? (
-              <CircularProgress size={16} sx={{ color: "#fff" }} />
-            ) : isCompleted ? (
-              "Completed"
-            ) : isAssignedToOther ? (
-              "Assigned elsewhere"
-            ) : status === "pending" ? (
-              "Assign & start"
-            ) : (
-              "Mark completed"
-            )}
-          </Button>
-        );
-      },
+      renderCell: (params) => (
+        <Box display="flex" alignItems="center" gap={1}>
+          <Tooltip title="View contract details">
+            {renderContractViewButton({
+              row: params.row,
+              onView: setViewSubmission,
+            })}
+          </Tooltip>
+          {renderContractStatusActionButton({
+            row: params.row,
+            ...statusActionProps,
+          })}
+        </Box>
+      ),
     },
   ];
 
@@ -241,8 +239,8 @@ const AdminHandsetContracts = () => {
           <h2 className="handset-title">New Handset Contracts</h2>
           <p className="handset-subtitle mb-0">
             Track staff handset requests, compare yearly volume, and advance
-            applications through pending, in progress, and completed. Completed
-            records stay here for audit.
+            applications through pending and in progress. Completed requests
+            leave this list for processing elsewhere.
           </p>
         </div>
       </div>
@@ -289,22 +287,40 @@ const AdminHandsetContracts = () => {
             className="d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between gap-2 mb-3"
           >
             <h6 className="summary-title mb-0">Handset Submissions</h6>
-            <FormControl size="small" sx={{ minWidth: 200 }}>
-              <InputLabel id="handset-submission-status-filter-label">
-                Filter by status
-              </InputLabel>
-              <Select
-                labelId="handset-submission-status-filter-label"
-                value={statusFilter}
-                label="Filter by status"
-                onChange={(event) => setStatusFilter(event.target.value)}
+            <Box className="d-flex flex-column flex-sm-row align-items-stretch align-items-sm-center gap-2">
+              <Box
+                display="flex"
+                borderRadius="8px"
+                width={{ xs: "100%", sm: 260 }}
+                sx={{ backgroundColor: colors.primary[400] }}
               >
-                <MenuItem value="all">All</MenuItem>
-                <MenuItem value="pending">Pending</MenuItem>
-                <MenuItem value="in progress">In progress</MenuItem>
-                <MenuItem value="completed">Completed</MenuItem>
-              </Select>
-            </FormControl>
+                <InputBase
+                  sx={{ ml: 2, flex: 1 }}
+                  placeholder="Search submissions"
+                  value={searchText}
+                  onChange={(event) => setSearchText(event.target.value)}
+                />
+                <IconButton type="button" sx={{ p: 1 }}>
+                  <SearchIcon />
+                </IconButton>
+              </Box>
+              <FormControl size="small" sx={{ minWidth: 200 }}>
+                <InputLabel id="handset-submission-status-filter-label">
+                  Filter by status
+                </InputLabel>
+                <Select
+                  labelId="handset-submission-status-filter-label"
+                  value={statusFilter}
+                  label="Filter by status"
+                  onChange={(event) => setStatusFilter(event.target.value)}
+                >
+                  <MenuItem value="all">All</MenuItem>
+                  <MenuItem value="pending">Pending</MenuItem>
+                  <MenuItem value="in progress">In progress</MenuItem>
+                  <MenuItem value="completed">Completed</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
           </Box>
           {loading ? (
             <Box
@@ -345,6 +361,62 @@ const AdminHandsetContracts = () => {
           )}
         </Box>
       </Box>
+
+      <SubmissionViewDialog
+        open={Boolean(viewSubmission)}
+        onClose={() => setViewSubmission(null)}
+        headerLabel="Handset contract"
+        headerTitle={viewSubmission?.employeeCode}
+        profile={
+          viewSubmission
+            ? {
+                fullName: viewSubmission.fullName,
+                metaLines: [viewSubmission.employeeCode],
+              }
+            : null
+        }
+        metaCards={
+          viewSubmission
+            ? [
+                {
+                  label: "Status",
+                  value: <StatusBadge status={viewSubmission.subscription_status} />,
+                },
+                {
+                  label: "Attended by",
+                  value:
+                    viewSubmission.assignedAdminName !== "-"
+                      ? viewSubmission.assignedAdminName
+                      : "Unassigned",
+                },
+              ]
+            : []
+        }
+        sections={
+          viewSubmission
+            ? [
+                {
+                  title: "Device details",
+                  icon: PhoneIphoneOutlinedIcon,
+                  fields: [
+                    { label: "Device", value: viewSubmission.device },
+                    { label: "Device price", value: viewSubmission.device_price },
+                    { label: "Excess payment", value: viewSubmission.excess_payment },
+                  ],
+                },
+              ]
+            : []
+        }
+        timeline={
+          viewSubmission
+            ? [{ label: "Submitted", date: viewSubmission.contract_submitted_date }]
+            : []
+        }
+        actions={renderContractStatusActionButton({
+          row: viewSubmission,
+          ...statusActionProps,
+        })}
+      />
     </Box>
   );
 };

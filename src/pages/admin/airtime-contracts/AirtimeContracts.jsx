@@ -1,26 +1,38 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Box,
-  Button,
   FormControl,
+  IconButton,
+  InputBase,
   InputLabel,
   MenuItem,
   Select,
+  Tooltip,
   useMediaQuery,
   useTheme,
   CircularProgress,
 } from "@mui/material";
+import SearchIcon from "@mui/icons-material/Search";
+import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import { DataGrid } from "@mui/x-data-grid";
 import Swal from "sweetalert2";
+import { confirmAdminAction } from "../../../utils/adminConfirm";
 import { useSelector } from "react-redux";
 import InfoBox from "../../../components/admin/charts/InfoBox";
 import AirtimeSubmissionsYoYChart from "../../../components/admin/charts/AirtimeSubmissionsYoYChart";
+import SubmissionViewDialog from "../../../components/admin/SubmissionViewDialog";
 import axiosInstance from "../../../utils/axiosInstance";
 import { tokens } from "../../../theme";
 import { formatMoney } from "../../../utils/formatMoney";
 import formatDate from "../../../components/global/dateFormatter";
+import { renderStatusCell, StatusBadge } from "../../../utils/statusBadge";
+import {
+  renderContractStatusActionButton,
+  renderContractViewButton,
+} from "../../../utils/contractSubmissionActions";
 import "../../../assets/style/global/handsetBenefitSimulator.css";
 import "../../../assets/style/global/adminDashboard.css";
+import "../../../assets/style/global/support.css";
 
 const NEXT_STATUS = {
   pending: "in progress",
@@ -33,6 +45,28 @@ const normalizeCode = (code) =>
     .replace(/[-\s]/g, "")
     .toUpperCase();
 
+const mapAirtimeSubmissionRow = (item, index) => ({
+  id: item.id ?? `submission-${index}`,
+  employeeCode: item.employeeCode || "-",
+  fullName: item.FullName || "-",
+  package: item.package || "-",
+  msisdn: item.msisdn || "-",
+  device: item.device || "-",
+  package_price: formatMoney(item.package_price),
+  device_initail_cost: formatMoney(item.device_initail_cost),
+  contract_duration: item.contract_duration
+    ? String(Math.trunc(Number(item.contract_duration)))
+    : "-",
+  top_up_amount: formatMoney(item.top_up_amount),
+  device_monthly_price: formatMoney(item.device_monthly_price),
+  serviceplan_monthly_price: formatMoney(item.serviceplan_monthly_price),
+  contract_submitted_date: formatDate(item.contract_submitted_date),
+  transaction_type: item.transaction_type || "-",
+  subscription_status: item.subscription_status || "-",
+  assignedAdminCode: item.assignedAdminCode || null,
+  assignedAdminName: item.assignedAdminName || "-",
+});
+
 const AdminAirtimeContracts = () => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
@@ -44,6 +78,8 @@ const AdminAirtimeContracts = () => {
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState(null);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [searchText, setSearchText] = useState("");
+  const [viewSubmission, setViewSubmission] = useState(null);
 
   const fetchActiveSubmissions = useCallback(async () => {
     try {
@@ -62,6 +98,13 @@ const AdminAirtimeContracts = () => {
     fetchActiveSubmissions();
   }, [fetchActiveSubmissions]);
 
+  useEffect(() => {
+    if (!viewSubmission) return;
+    const index = submissions.findIndex((item) => item.id === viewSubmission.id);
+    if (index === -1) return;
+    setViewSubmission(mapAirtimeSubmissionRow(submissions[index], index));
+  }, [submissions, viewSubmission?.id]);
+
   const handleAdvanceStatus = async (row) => {
     const currentStatus = String(row.subscription_status || "")
       .trim()
@@ -77,24 +120,20 @@ const AdminAirtimeContracts = () => {
       return;
     }
 
-    const result = await Swal.fire({
-      icon: "question",
+    const confirmed = await confirmAdminAction({
       title:
         currentStatus === "pending"
           ? "Assign this contract to you?"
           : "Mark as completed?",
       text:
         currentStatus === "pending"
-          ? `This will move the contract to in progress and assign it to you. Only you will be able to mark it as completed.`
+          ? "This will move the contract to in progress and assign it to you. Only you will be able to mark it as completed."
           : `Change status from "${currentStatus}" to "${nextStatus}"?`,
-      showCancelButton: true,
-      confirmButtonColor: "#0096D6",
-      cancelButtonColor: "#6c757d",
       confirmButtonText:
         currentStatus === "pending" ? "Assign & start" : "Mark completed",
     });
 
-    if (!result.isConfirmed) return;
+    if (!confirmed) return;
 
     try {
       setUpdatingId(row.id);
@@ -122,8 +161,15 @@ const AdminAirtimeContracts = () => {
     }
   };
 
+  const statusActionProps = {
+    currentAdminCode,
+    updatingId,
+    onAdvance: handleAdvanceStatus,
+    normalizeCode,
+  };
+
   const rows = useMemo(() => {
-    const filtered =
+    let filtered =
       statusFilter === "all"
         ? submissions
         : submissions.filter(
@@ -133,28 +179,24 @@ const AdminAirtimeContracts = () => {
                 .toLowerCase() === statusFilter
           );
 
-    return filtered.map((item, index) => ({
-      id: item.id ?? `submission-${index}`,
-      employeeCode: item.employeeCode || "-",
-      fullName: item.FullName || "-",
-      package: item.package || "-",
-      msisdn: item.msisdn || "-",
-      device: item.device || "-",
-      package_price: formatMoney(item.package_price),
-      device_initail_cost: formatMoney(item.device_initail_cost),
-      contract_duration: item.contract_duration
-        ? String(Math.trunc(Number(item.contract_duration)))
-        : "-",
-      top_up_amount: formatMoney(item.top_up_amount),
-      device_monthly_price: formatMoney(item.device_monthly_price),
-      serviceplan_monthly_price: formatMoney(item.serviceplan_monthly_price),
-      contract_submitted_date: formatDate(item.contract_submitted_date),
-      transaction_type: item.transaction_type || "-",
-      subscription_status: item.subscription_status || "-",
-      assignedAdminCode: item.assignedAdminCode || null,
-      assignedAdminName: item.assignedAdminName || "-",
-    }));
-  }, [submissions, statusFilter]);
+    const query = searchText.trim().toLowerCase();
+    if (query) {
+      filtered = filtered.filter((item) =>
+        [
+          item.employeeCode,
+          item.FullName,
+          item.package,
+          item.msisdn,
+          item.device,
+          item.subscription_status,
+          item.assignedAdminName,
+          item.transaction_type,
+        ].some((field) => String(field ?? "").toLowerCase().includes(query))
+      );
+    }
+
+    return filtered.map(mapAirtimeSubmissionRow);
+  }, [submissions, statusFilter, searchText]);
 
   const columns = [
     { field: "employeeCode", headerName: "Employee Code", width: 130 },
@@ -198,6 +240,7 @@ const AdminAirtimeContracts = () => {
       field: "subscription_status",
       headerName: "Status",
       width: 130,
+      renderCell: renderStatusCell,
     },
     {
       field: "assignedAdminName",
@@ -206,67 +249,24 @@ const AdminAirtimeContracts = () => {
     },
     {
       field: "actions",
-      headerName: "Update Status",
-      width: 200,
+      headerName: "Actions",
+      width: 240,
       sortable: false,
       filterable: false,
-      renderCell: (params) => {
-        const status = String(params.row.subscription_status || "")
-          .trim()
-          .toLowerCase();
-        const nextStatus = NEXT_STATUS[status];
-        const isCompleted = status === "completed" || !nextStatus;
-        const assignedCode = normalizeCode(params.row.assignedAdminCode);
-        const isAssignedToOther =
-          status === "in progress" &&
-          assignedCode &&
-          assignedCode !== currentAdminCode;
-        const isDisabled =
-          isCompleted || isAssignedToOther || updatingId === params.row.id;
-
-        return (
-          <Button
-            size="small"
-            variant="contained"
-            disabled={isDisabled}
-            onClick={() => handleAdvanceStatus(params.row)}
-            sx={{
-              backgroundColor: isCompleted
-                ? "#9CA3AF"
-                : isAssignedToOther
-                  ? "#9CA3AF"
-                  : nextStatus === "in progress"
-                    ? "#F59E0B"
-                    : "#16A34A",
-              textTransform: "none",
-              color: "#fff",
-              "&:hover": {
-                backgroundColor: isCompleted || isAssignedToOther
-                  ? "#9CA3AF"
-                  : nextStatus === "in progress"
-                    ? "#D97706"
-                    : "#15803D",
-              },
-              "&.Mui-disabled": {
-                backgroundColor: isCompleted || isAssignedToOther ? "#D1D5DB" : undefined,
-                color: "#fff",
-              },
-            }}
-          >
-            {updatingId === params.row.id ? (
-              <CircularProgress size={16} sx={{ color: "#fff" }} />
-            ) : isCompleted ? (
-              "Completed"
-            ) : isAssignedToOther ? (
-              "Assigned elsewhere"
-            ) : status === "pending" ? (
-              "Assign & start"
-            ) : (
-              "Mark completed"
-            )}
-          </Button>
-        );
-      },
+      renderCell: (params) => (
+        <Box display="flex" alignItems="center" gap={1}>
+          <Tooltip title="View contract details">
+            {renderContractViewButton({
+              row: params.row,
+              onView: setViewSubmission,
+            })}
+          </Tooltip>
+          {renderContractStatusActionButton({
+            row: params.row,
+            ...statusActionProps,
+          })}
+        </Box>
+      ),
     },
   ];
 
@@ -322,22 +322,40 @@ const AdminAirtimeContracts = () => {
             className="d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between gap-2 mb-3"
           >
             <h6 className="summary-title mb-0">Airtime Submissions</h6>
-            <FormControl size="small" sx={{ minWidth: 200 }}>
-              <InputLabel id="submission-status-filter-label">
-                Filter by status
-              </InputLabel>
-              <Select
-                labelId="submission-status-filter-label"
-                value={statusFilter}
-                label="Filter by status"
-                onChange={(event) => setStatusFilter(event.target.value)}
+            <Box className="d-flex flex-column flex-sm-row align-items-stretch align-items-sm-center gap-2">
+              <Box
+                display="flex"
+                borderRadius="8px"
+                width={{ xs: "100%", sm: 260 }}
+                sx={{ backgroundColor: colors.primary[400] }}
               >
-                <MenuItem value="all">All</MenuItem>
-                <MenuItem value="pending">Pending</MenuItem>
-                <MenuItem value="in progress">In progress</MenuItem>
-                <MenuItem value="completed">Completed</MenuItem>
-              </Select>
-            </FormControl>
+                <InputBase
+                  sx={{ ml: 2, flex: 1 }}
+                  placeholder="Search submissions"
+                  value={searchText}
+                  onChange={(event) => setSearchText(event.target.value)}
+                />
+                <IconButton type="button" sx={{ p: 1 }}>
+                  <SearchIcon />
+                </IconButton>
+              </Box>
+              <FormControl size="small" sx={{ minWidth: 200 }}>
+                <InputLabel id="submission-status-filter-label">
+                  Filter by status
+                </InputLabel>
+                <Select
+                  labelId="submission-status-filter-label"
+                  value={statusFilter}
+                  label="Filter by status"
+                  onChange={(event) => setStatusFilter(event.target.value)}
+                >
+                  <MenuItem value="all">All</MenuItem>
+                  <MenuItem value="pending">Pending</MenuItem>
+                  <MenuItem value="in progress">In progress</MenuItem>
+                  <MenuItem value="completed">Completed</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
           </Box>
           {loading ? (
             <Box
@@ -378,6 +396,75 @@ const AdminAirtimeContracts = () => {
           )}
         </Box>
       </Box>
+
+      <SubmissionViewDialog
+        open={Boolean(viewSubmission)}
+        onClose={() => setViewSubmission(null)}
+        headerLabel="Airtime contract"
+        headerTitle={viewSubmission?.employeeCode}
+        profile={
+          viewSubmission
+            ? {
+                fullName: viewSubmission.fullName,
+                metaLines: [viewSubmission.employeeCode],
+              }
+            : null
+        }
+        metaCards={
+          viewSubmission
+            ? [
+                {
+                  label: "Status",
+                  value: <StatusBadge status={viewSubmission.subscription_status} />,
+                },
+                {
+                  label: "Attended by",
+                  value:
+                    viewSubmission.assignedAdminName !== "-"
+                      ? viewSubmission.assignedAdminName
+                      : "Unassigned",
+                },
+              ]
+            : []
+        }
+        sections={
+          viewSubmission
+            ? [
+                {
+                  title: "Contract details",
+                  icon: DescriptionOutlinedIcon,
+                  fields: [
+                    { label: "Package", value: viewSubmission.package },
+                    { label: "MSISDN", value: viewSubmission.msisdn },
+                    { label: "Device", value: viewSubmission.device },
+                    { label: "Transaction type", value: viewSubmission.transaction_type },
+                    { label: "Package price", value: viewSubmission.package_price },
+                    { label: "Device cost", value: viewSubmission.device_initail_cost },
+                    {
+                      label: "Contract duration",
+                      value:
+                        viewSubmission.contract_duration !== "-"
+                          ? `${viewSubmission.contract_duration} months`
+                          : "-",
+                    },
+                    { label: "Top-up", value: viewSubmission.top_up_amount },
+                    { label: "Plan monthly", value: viewSubmission.serviceplan_monthly_price },
+                    { label: "Device monthly", value: viewSubmission.device_monthly_price },
+                  ],
+                },
+              ]
+            : []
+        }
+        timeline={
+          viewSubmission
+            ? [{ label: "Submitted", date: viewSubmission.contract_submitted_date }]
+            : []
+        }
+        actions={renderContractStatusActionButton({
+          row: viewSubmission,
+          ...statusActionProps,
+        })}
+      />
     </Box>
   );
 };

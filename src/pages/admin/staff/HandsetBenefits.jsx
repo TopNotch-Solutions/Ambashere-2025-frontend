@@ -8,6 +8,7 @@ import { FaMoneyBillTrendUp } from "react-icons/fa6";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import PhoneIphoneIcon from "@mui/icons-material/PhoneIphone";
 import formatDate from "../../../components/global/dateFormatter";
+import { renderStatusCell } from "../../../utils/statusBadge";
 
 const HandsetBenefits = () => {
   const { employeeCode } = useParams();
@@ -52,7 +53,7 @@ const HandsetBenefits = () => {
     // { field: "RequestDate", headerName: "Requested Date", width: 180 },
     { field: "AllocationDate", headerName: "Collected Date", width: 180 },
     { field: "NewAllocationDate", headerName: "New Renewal Date", width: 180 },
-    { field: "Status", headerName: "Status", width: 100 ,},
+    { field: "Status", headerName: "Status", width: 130, renderCell: renderStatusCell },
   ];
 
   const rows = data?.map((handset, index) => ({

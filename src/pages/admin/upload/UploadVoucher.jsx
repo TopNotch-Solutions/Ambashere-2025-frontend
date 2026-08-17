@@ -6,6 +6,8 @@ import "../../../assets/style/admin/fileUpload.css";
 import { useTheme } from "@emotion/react";
 import CloseButton from "react-bootstrap/CloseButton";
 import axiosInstance from "../../../utils/axiosInstance";
+import Swal from "sweetalert2";
+import { confirmAdminAction } from "../../../utils/adminConfirm";
 import { Modal } from "@mui/material";
 
 const UploadVoucher = ({ open, handleClose }) => {
@@ -66,6 +68,15 @@ const UploadVoucher = ({ open, handleClose }) => {
       return;
     }
 
+    if (!selectedFile) return;
+
+    const confirmed = await confirmAdminAction({
+      title: "Upload this file?",
+      text: `"${selectedFile.name}" will be uploaded to the system.`,
+      confirmButtonText: "Upload",
+    });
+    if (!confirmed) return;
+
     try {
       setUploadStatus("uploading");
 
@@ -86,13 +97,30 @@ const UploadVoucher = ({ open, handleClose }) => {
 
       if (response.status === 200) {
         setUploadStatus("done");
+        Swal.fire({
+          icon: "success",
+          title: "Upload complete",
+          text: "The file was uploaded successfully.",
+          timer: 1800,
+          showConfirmButton: false,
+        });
       } else {
         console.error("Upload failed with status:", response.status);
         setUploadStatus("select");
+        Swal.fire({
+          icon: "error",
+          title: "Upload failed",
+          text: "The file could not be uploaded. Please try again.",
+        });
       }
     } catch (err) {
-      console.error("Upload failed:", err); // Log the error for debugging
+      console.error("Upload failed:", err);
       setUploadStatus("select");
+      Swal.fire({
+        icon: "error",
+        title: "Upload failed",
+        text: err.response?.data?.message || "The file could not be uploaded.",
+      });
     }
   };
 

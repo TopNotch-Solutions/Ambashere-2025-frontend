@@ -18,6 +18,8 @@ import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import { useSelector } from 'react-redux';
+import Swal from 'sweetalert2';
+import { confirmAdminAction } from '../../utils/adminConfirm';
 
 const ProbationVerificationModal = ({ 
   open, 
@@ -39,6 +41,20 @@ const ProbationVerificationModal = ({
 
     setLoading(true);
     setError('');
+
+    const isApprove = verificationDecision === 'approve';
+    const confirmed = await confirmAdminAction({
+      icon: isApprove ? "question" : "warning",
+      title: isApprove ? "Approve probation?" : "Reject handset request?",
+      text: isApprove
+        ? `Confirm probation is completed for ${handsetData?.EmployeeCode || "this employee"}?`
+        : `Reject this handset request for ${handsetData?.EmployeeCode || "this employee"}?`,
+      confirmButtonText: isApprove ? "Approve" : "Reject",
+    });
+    if (!confirmed) {
+      setLoading(false);
+      return;
+    }
 
     try {
       const verificationData = {

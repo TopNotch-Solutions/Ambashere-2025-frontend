@@ -1,51 +1,96 @@
-import { Box, IconButton, Button } from "@mui/material";
-import React, { useEffect, useState } from "react";
+import { Box, IconButton, Button, Typography } from "@mui/material";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { DataGrid, GridActionsCellItem } from "@mui/x-data-grid";
 import { tokens } from "../../../theme";
 import { useTheme } from "@emotion/react";
 import ExportButton from "../../../components/admin/ExportButton";
-import { useNavigate } from "react-router-dom";
 import SearchIcon from "@mui/icons-material/Search";
 import InputBase from "@mui/material/InputBase";
 import EditIcon from "@mui/icons-material/Edit";
 import RemoveCircleIcon from "@mui/icons-material/RemoveCircle";
 import AddCircleIcon from "@mui/icons-material/AddCircle";
-import ToggleOnIcon from "@mui/icons-material/ToggleOn";
-import ToggleOffIcon from "@mui/icons-material/ToggleOff";
 import axiosInstance from "../../../utils/axiosInstance";
 import AddPackage from "../../../components/admin/AddPackage";
 import { useSelector, useDispatch } from "react-redux";
+import { StatusBadge } from "../../../utils/statusBadge";
+import { confirmAdminAction } from "../../../utils/adminConfirm";
 import Swal from "sweetalert2";
 import "../../../assets/style/global/handsetBenefitSimulator.css";
 import "../../../assets/style/global/benefits.css";
 import "../../../assets/style/global/adminPackages.css";
 
+const isTruthy = (value) =>
+  value === true || value === 1 || value === "1" || value === "true";
+
+function buildPackageUpdatePayload(packageData, overrides = {}) {
+  const paymentPeriod = String(packageData.PaymentPeriod || "").replace(
+    /\s*months?/i,
+    ""
+  );
+  const monthlyPrice = parseFloat(
+    String(packageData.MonthlyPrice).replace(/[^\d.-]/g, "")
+  );
+  const hasDeviceLimit = isTruthy(packageData.HasDeviceLimit);
+
+  return {
+    PackageName: packageData.PackageName,
+    PaymentPeriod: parseInt(paymentPeriod, 10),
+    MonthlyPrice: monthlyPrice,
+    IsActive:
+      overrides.IsActive !== undefined
+        ? overrides.IsActive
+        : isTruthy(packageData.IsActive),
+    AllowsDevice:
+      packageData.AllowsDevice === undefined ||
+      packageData.AllowsDevice === null
+        ? true
+        : isTruthy(packageData.AllowsDevice),
+    HasDeviceLimit: hasDeviceLimit,
+    DeviceLimit: hasDeviceLimit
+      ? parseFloat(packageData.DeviceLimit) || null
+      : null,
+  };
+}
+
+function mapPackageToRow(pkg) {
+  return {
+    ...pkg,
+    id: pkg.PackageID,
+    PaymentPeriod: `${pkg.PaymentPeriod} months`,
+    MonthlyPrice: `N$ ${pkg.MonthlyPrice}`,
+  };
+}
+
 const AdminPackages = () => {
-  const navigate = useNavigate();
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
+  const dispatch = useDispatch();
+  const currentUser = useSelector((state) => state.auth.user);
+  const isAdmin = currentUser?.RoleID === 1;
 
   const [data, setData] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [currentPackage, setCurrentPackage] = useState(null);
   const [modalMode, setModalMode] = useState("");
-  const handleOpen = () => setModalOpen(true);
+  const [searchText, setSearchText] = useState("");
+  const [filteredRows, setFilteredRows] = useState([]);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [bulkProcessing, setBulkProcessing] = useState(false);
+
   const handleClose = () => setModalOpen(false);
-  const dispatch = useDispatch();
-  const currentUser = useSelector((state) => state.auth.user);
+
+  const fetchPackages = useCallback(async () => {
+    try {
+      const response = await axiosInstance.get(`/packages`);
+      setData(response.data);
+    } catch (error) {
+      throw error;
+    }
+  }, []);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await axiosInstance.get(`/packages`);
-        setData(response.data);
-      } catch (error) {
-        throw error;
-      }
-    };
-
-    fetchData();
-  }, [dispatch]);
+    fetchPackages();
+  }, [dispatch, fetchPackages]);
 
   const handleAddNewPackage = () => {
     setModalMode("add");
@@ -65,88 +110,129 @@ const AdminPackages = () => {
     setModalOpen(true);
   };
 
-  const handleToggleActive = async (packageId, currentStatus) => {
+  const getSelectedPackages = useCallback(() => {
+    const idSet = new Set(selectedIds.map(String));
+    return data.filter((pkg) => idSet.has(String(pkg.PackageID)));
+  }, [data, selectedIds]);
+
+  const refreshAfterBulk = async () => {
+    await fetchPackages();
+    setSelectedIds([]);
+  };
+
+  const runBulkStatusUpdate = async (isActive) => {
+    const selected = getSelectedPackages();
+    if (selected.length === 0) return;
+
+    const actionLabel = isActive ? "activate" : "deactivate";
+    const confirmed = await confirmAdminAction({
+      title: `${isActive ? "Activate" : "Deactivate"} selected packages?`,
+      text: `${selected.length} package(s) will be ${actionLabel}d.`,
+      confirmButtonText: isActive ? "Activate selected" : "Deactivate selected",
+    });
+    if (!confirmed) return;
+
+    setBulkProcessing(true);
+    const failures = [];
+
     try {
-      const packageData = data.find(
-        (pkg) => String(pkg.PackageID) === String(packageId)
-      );
-      if (!packageData) {
-        Swal.fire({
-          icon: "error",
-          title: "Error!",
-          text: "Package not found in current data.",
-          confirmButtonText: "OK",
-        });
-        return;
-      }
-
-      const paymentPeriod = String(packageData.PaymentPeriod || "").replace(
-        /\s*months?/i,
-        ""
-      );
-      const monthlyPrice = parseFloat(
-        String(packageData.MonthlyPrice).replace(/[^\d.-]/g, "")
-      );
-      const isCurrentlyActive =
-        currentStatus === true ||
-        currentStatus === 1 ||
-        currentStatus === "1" ||
-        currentStatus === "true";
-
-      const hasDeviceLimit =
-        packageData.HasDeviceLimit === true ||
-        packageData.HasDeviceLimit === 1 ||
-        packageData.HasDeviceLimit === "1" ||
-        packageData.HasDeviceLimit === "true";
-
-      const updatePayload = {
-        PackageName: packageData.PackageName,
-        PaymentPeriod: parseInt(paymentPeriod, 10),
-        MonthlyPrice: monthlyPrice,
-        IsActive: !isCurrentlyActive,
-        AllowsDevice:
-          packageData.AllowsDevice === undefined ||
-          packageData.AllowsDevice === null
-            ? true
-            : packageData.AllowsDevice === true ||
-              packageData.AllowsDevice === 1 ||
-              packageData.AllowsDevice === "1" ||
-              packageData.AllowsDevice === "true",
-        HasDeviceLimit: hasDeviceLimit,
-        DeviceLimit: hasDeviceLimit
-          ? parseFloat(packageData.DeviceLimit) || null
-          : null,
-      };
-
-      const response = await axiosInstance.put(
-        `/packages/updatePackage/${packageId}`,
-        updatePayload
+      await Promise.all(
+        selected.map(async (pkg) => {
+          try {
+            await axiosInstance.put(
+              `/packages/updatePackage/${pkg.PackageID}`,
+              buildPackageUpdatePayload(pkg, { IsActive: isActive })
+            );
+          } catch (error) {
+            failures.push({
+              name: pkg.PackageName,
+              message:
+                error.response?.data?.message ||
+                error.message ||
+                "Update failed",
+            });
+          }
+        })
       );
 
-      if (response.status === 200) {
+      await refreshAfterBulk();
+
+      if (failures.length === 0) {
         Swal.fire({
           icon: "success",
-          title: "Success!",
-          text: `Package "${packageData.PackageName}" has been ${
-            !isCurrentlyActive ? "activated" : "deactivated"
-          } successfully!`,
-          timer: 2000,
+          title: "Updated",
+          text: `${selected.length} package(s) ${actionLabel}d successfully.`,
+          timer: 1800,
           showConfirmButton: false,
         });
-
-        const refreshResponse = await axiosInstance.get(`/packages`);
-        setData(refreshResponse.data);
+      } else {
+        Swal.fire({
+          icon: "warning",
+          title: "Partially updated",
+          text: `${selected.length - failures.length} succeeded, ${failures.length} failed.`,
+        });
       }
-    } catch (error) {
-      console.error("Error toggling package status:", error);
-      Swal.fire({
-        icon: "error",
-        title: "Error!",
-        text: `Failed to update package status: ${
-          error.response?.data?.message || error.message
-        }`,
-        confirmButtonText: "OK",
-      });
+    } finally {
+      setBulkProcessing(false);
+    }
+  };
+
+  const handleBulkActivate = () => runBulkStatusUpdate(true);
+  const handleBulkDeactivate = () => runBulkStatusUpdate(false);
+
+  const handleBulkDelete = async () => {
+    const selected = getSelectedPackages();
+    if (selected.length === 0) return;
+
+    const confirmed = await confirmAdminAction({
+      icon: "warning",
+      title: "Delete selected packages?",
+      text: `${selected.length} package(s) will be permanently removed.`,
+      confirmButtonText: "Delete selected",
+    });
+    if (!confirmed) return;
+
+    setBulkProcessing(true);
+    const failures = [];
+
+    try {
+      await Promise.all(
+        selected.map(async (pkg) => {
+          try {
+            await axiosInstance.delete(
+              `/packages/removePackage/${pkg.PackageID}`
+            );
+          } catch (error) {
+            failures.push({
+              name: pkg.PackageName,
+              message:
+                error.response?.data?.message ||
+                error.message ||
+                "Delete failed",
+            });
+          }
+        })
+      );
+
+      await refreshAfterBulk();
+
+      if (failures.length === 0) {
+        Swal.fire({
+          icon: "success",
+          title: "Deleted",
+          text: `${selected.length} package(s) deleted successfully.`,
+          timer: 1800,
+          showConfirmButton: false,
+        });
+      } else {
+        Swal.fire({
+          icon: "warning",
+          title: "Partially deleted",
+          text: `${selected.length - failures.length} deleted, ${failures.length} failed.`,
+        });
+      }
+    } finally {
+      setBulkProcessing(false);
     }
   };
 
@@ -163,10 +249,7 @@ const AdminPackages = () => {
         const allowsDevice =
           params.value === undefined || params.value === null
             ? true
-            : params.value === true ||
-              params.value === 1 ||
-              params.value === "1" ||
-              params.value === "true";
+            : isTruthy(params.value);
         return (
           <span
             style={{
@@ -184,11 +267,7 @@ const AdminPackages = () => {
       headerName: "Device Limit",
       width: 140,
       renderCell: (params) => {
-        const hasLimit =
-          params.row.HasDeviceLimit === true ||
-          params.row.HasDeviceLimit === 1 ||
-          params.row.HasDeviceLimit === "1" ||
-          params.row.HasDeviceLimit === "true";
+        const hasLimit = isTruthy(params.row.HasDeviceLimit);
         if (!hasLimit || params.value === null || params.value === undefined) {
           return <span style={{ color: "#757575" }}>No limit</span>;
         }
@@ -199,115 +278,66 @@ const AdminPackages = () => {
         );
       },
     },
-    { 
-      field: "IsActive", 
-      headerName: "Status", 
+    {
+      field: "IsActive",
+      headerName: "Status",
       width: 120,
       renderCell: (params) => {
-        const isActive =
-          params.value === true ||
-          params.value === 1 ||
-          params.value === "1" ||
-          params.value === "true";
-        return (
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            {isActive ? (
-              <>
-                <ToggleOnIcon style={{ color: "#4caf50", fontSize: "24px" }} />
-                <span style={{ color: "#4caf50", fontWeight: "bold" }}>Active</span>
-              </>
-            ) : (
-              <>
-                <ToggleOffIcon style={{ color: "#f44336", fontSize: "24px" }} />
-                <span style={{ color: "#f44336", fontWeight: "bold" }}>Inactive</span>
-              </>
-            )}
-          </div>
-        );
-      }
+        const active = isTruthy(params.value);
+        return <StatusBadge status={active ? "Active" : "Inactive"} />;
+      },
     },
     {
       field: "actions",
       type: "actions",
       headerName: "Actions",
-      width: 250,
+      width: 150,
       cellClassName: "actions",
-      getActions: ({ row }) => {
-        const isActive =
-          row.IsActive === true ||
-          row.IsActive === 1 ||
-          row.IsActive === "1" ||
-          row.IsActive === "true";
-        return [
-          <GridActionsCellItem
-            icon={<EditIcon />}
-            label="Edit"
-            className="textPrimary"
-            onClick={() => handleEditClick(row)}
-            color="inherit"
-          />,
-          <GridActionsCellItem
-            icon={isActive ? <ToggleOffIcon /> : <ToggleOnIcon />}
-            label={isActive ? "Deactivate" : "Activate"}
-            className="textPrimary"
-            onClick={() => handleToggleActive(row.PackageID, row.IsActive)}
-            color="inherit"
-          />,
-          <GridActionsCellItem
-            icon={<RemoveCircleIcon />}
-            label="Remove"
-            className="textPrimary"
-            onClick={() => handleRemoveClick(row)}
-            color="inherit"
-          />,
-        ];
-      },
+      getActions: ({ row }) => [
+        <GridActionsCellItem
+          icon={<EditIcon />}
+          label="Edit"
+          className="textPrimary"
+          onClick={() => handleEditClick(row)}
+          color="inherit"
+        />,
+        <GridActionsCellItem
+          icon={<RemoveCircleIcon />}
+          label="Remove"
+          className="textPrimary"
+          onClick={() => handleRemoveClick(row)}
+          color="inherit"
+        />,
+      ],
     },
   ];
 
-  const rows = data.map((bundle) => ({
-    id: bundle.PackageID,
-    PackageID: bundle.PackageID,
-    PackageName: bundle.PackageName,
-    PaymentPeriod: bundle.PaymentPeriod + " months",
-    MonthlyPrice: "N$ " + bundle.MonthlyPrice,
-    IsActive: bundle.IsActive,
-  }));
-
-  const [searchText, setSearchText] = useState("");
-  const [filteredRows, setFilteredRows] = useState(rows);
+  const rows = useMemo(() => data.map(mapPackageToRow), [data]);
 
   const handleSearchChange = (event) => {
-    const searchText = event.target.value.toLowerCase();
-    setSearchText(searchText);
+    const nextSearch = event.target.value.toLowerCase();
+    setSearchText(nextSearch);
+    setSelectedIds([]);
 
     const filteredData =
-      searchText === ""
+      nextSearch === ""
         ? data
-        : data.filter(
-            (packages) =>
-              packages.PackageName.toLowerCase().includes(searchText) ||
-            packages.PackageName.toLowerCase().includes(searchText)
+        : data.filter((pkg) =>
+            pkg.PackageName.toLowerCase().includes(nextSearch)
           );
 
-    setFilteredRows(
-      filteredData.map((packages) => ({
-        ...packages,
-        id: packages.PackageID,
-        PaymentPeriod: packages.PaymentPeriod + " months",
-      }))
-    );
+    setFilteredRows(filteredData.map(mapPackageToRow));
   };
 
   useEffect(() => {
-    setFilteredRows(
-      data.map((packages) => ({
-        ...packages,
-        id: packages.PackageID,
-        PaymentPeriod: packages.PaymentPeriod + " months",
-      }))
-    );
-  }, [data]);
+    const filteredData =
+      searchText === ""
+        ? data
+        : data.filter((pkg) =>
+            pkg.PackageName.toLowerCase().includes(searchText)
+          );
+    setFilteredRows(filteredData.map(mapPackageToRow));
+  }, [data, searchText]);
 
   return (
     <Box m="2px" className="handset-simulator-page admin-packages-page">
@@ -336,7 +366,7 @@ const AdminPackages = () => {
               <SearchIcon />
             </IconButton>
           </Box>
-          {currentUser.RoleID === 1 ? (
+          {isAdmin ? (
             <div className="d-flex col-md-4 justify-content-between admin-packages-actions">
               <Button
                 className="benefits-cta-btn"
@@ -345,12 +375,84 @@ const AdminPackages = () => {
                 Add Package
                 <AddCircleIcon size={16} />
               </Button>
-              <ExportButton data={rows} fileName="Packages" className="benefits-cta-btn" />
+              <ExportButton
+                data={rows}
+                fileName="Packages"
+                className="benefits-cta-btn"
+              />
             </div>
           ) : (
             <p></p>
           )}
         </div>
+
+        {isAdmin && selectedIds.length > 0 && (
+          <Box
+            className="admin-packages-bulk-actions"
+            display="flex"
+            alignItems="center"
+            flexWrap="wrap"
+            gap={1.5}
+            mt={2}
+            p={1.5}
+            sx={{
+              backgroundColor: colors.primary[400],
+              borderRadius: "8px",
+            }}
+          >
+            <Typography variant="body2" sx={{ fontWeight: 600, mr: 1 }}>
+              {selectedIds.length} selected
+            </Typography>
+            <Button
+              size="small"
+              variant="contained"
+              disabled={bulkProcessing}
+              onClick={handleBulkActivate}
+              sx={{
+                backgroundColor: "#16A34A",
+                textTransform: "none",
+                "&:hover": { backgroundColor: "#15803D" },
+              }}
+            >
+              Activate
+            </Button>
+            <Button
+              size="small"
+              variant="contained"
+              disabled={bulkProcessing}
+              onClick={handleBulkDeactivate}
+              sx={{
+                backgroundColor: "#F59E0B",
+                textTransform: "none",
+                "&:hover": { backgroundColor: "#D97706" },
+              }}
+            >
+              Deactivate
+            </Button>
+            <Button
+              size="small"
+              variant="contained"
+              disabled={bulkProcessing}
+              onClick={handleBulkDelete}
+              sx={{
+                backgroundColor: "#DC2626",
+                textTransform: "none",
+                "&:hover": { backgroundColor: "#B91C1C" },
+              }}
+            >
+              Delete
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              disabled={bulkProcessing}
+              onClick={() => setSelectedIds([])}
+              sx={{ textTransform: "none", ml: "auto" }}
+            >
+              Clear selection
+            </Button>
+          </Box>
+        )}
 
         <Box
           m="20px 0 0 0"
@@ -367,7 +469,8 @@ const AdminPackages = () => {
               color: colors.greenAccent[300],
             },
             "& .MuiDataGrid-columnHeaders": {
-              backgroundColor: "#1674BB", color: "white",
+              backgroundColor: "#1674BB",
+              color: "white",
               borderBottom: "none",
             },
             "& .MuiDataGrid-virtualScroller": {
@@ -391,8 +494,13 @@ const AdminPackages = () => {
               columns={columns}
               pageSize={5}
               rowsPerPageOptions={[5, 10, 20]}
-              checkboxSelection
+              checkboxSelection={isAdmin}
               disableSelectionOnClick
+              selectionModel={selectedIds}
+              onSelectionModelChange={(newSelection) =>
+                setSelectedIds(newSelection)
+              }
+              loading={bulkProcessing}
             />
           </div>
         </Box>

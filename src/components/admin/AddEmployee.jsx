@@ -11,6 +11,7 @@ import {
   FormHelperText,
 } from "@mui/material";
 import Swal from "sweetalert2";
+import { confirmAdminAction } from "../../utils/adminConfirm";
 import CloseIcon from "@mui/icons-material/Close";
 import axiosInstance from "../../utils/axiosInstance";
 import {
@@ -243,6 +244,29 @@ const AddEmployee = ({
       setErrors(validationErrors);
       return;
     }
+
+    const confirmConfig =
+      mode === "inactive"
+        ? {
+            icon: "warning",
+            title: "Set employee inactive?",
+            text: `${formValues.FullName || formValues.EmployeeCode} will be marked inactive.`,
+            confirmButtonText: "Set inactive",
+          }
+        : mode === "edit"
+          ? {
+              title: "Save employee changes?",
+              text: `Update ${formValues.FullName || formValues.EmployeeCode}?`,
+              confirmButtonText: "Save changes",
+            }
+          : {
+              title: "Add this employee?",
+              text: `Create ${formValues.FullName || "the new employee record"}?`,
+              confirmButtonText: "Add employee",
+            };
+
+    const confirmed = await confirmAdminAction(confirmConfig);
+    if (!confirmed) return;
 
     setErrors({});
 

@@ -236,7 +236,6 @@ const Employees = () => {
               columns={columns}
               pageSize={5}
               rowsPerPageOptions={[5, 10, 20]}
-              checkboxSelection
               disableSelectionOnClick
               onRowClick={(params) => handleRowClick(params.row)}
             />

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, Box, MenuItem, Select, InputLabel, FormControl } from '@mui/material';
 import { useTheme } from '@emotion/react';
-import axiosInstance from '../../../utils/axiosInstance';
+import axiosInstance from '../../utils/axiosInstance';
+import { confirmAdminAction } from '../../utils/adminConfirm';
 
 // Helper to convert backend field names (e.g., "Full Names") to camelCase (e.g., "fullNames")
 const toCamelCase = (str) => {
@@ -176,7 +177,16 @@ useEffect(() => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    const confirmed = await confirmAdminAction({
+      title: contractData ? "Save contract changes?" : "Create this contract?",
+      text: contractData
+        ? "The contract details will be updated."
+        : "A new contract record will be created.",
+      confirmButtonText: contractData ? "Save changes" : "Create contract",
+    });
+    if (!confirmed) return;
+
     // Before submitting, convert camelCase keys back to original field names for the backend
     const dataToSend = {};
     for (const key in formData) {

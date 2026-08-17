@@ -7,6 +7,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { updateProfileImage } from "../../../store/reducers/authReducer";
 import axiosInstance from "../../../utils/axiosInstance";
 import Swal from "sweetalert2";
+import { confirmAdminAction } from "../../../utils/adminConfirm";
 import "../../../assets/style/global/handsetBenefitSimulator.css";
 import "../../../assets/style/global/userProfile.css";
 import "../../../assets/style/global/adminProfile.css";
@@ -115,6 +116,15 @@ function AdminProfileCard() {
       return;
     }
 
+    if (!selectedFile) return;
+
+    const confirmed = await confirmAdminAction({
+      title: "Update profile picture?",
+      text: "Your profile picture will be replaced with the selected image.",
+      confirmButtonText: "Upload photo",
+    });
+    if (!confirmed) return;
+
     try {
       setUploadStatus("uploading");
 
@@ -144,9 +154,21 @@ function AdminProfileCard() {
       dispatch(updateProfileImage({ ProfileImage: data.ProfileImage }));
 
       clearFileInput();
+      Swal.fire({
+        icon: "success",
+        title: "Photo updated",
+        text: "Your profile picture was updated successfully.",
+        timer: 1600,
+        showConfirmButton: false,
+      });
     } catch (error) {
       console.error("Upload failed:", error);
       setUploadStatus("select");
+      Swal.fire({
+        icon: "error",
+        title: "Upload failed",
+        text: "Could not update your profile picture. Please try again.",
+      });
     }
   };
 
@@ -164,6 +186,13 @@ function AdminProfileCard() {
 
   const handleUpdateInfo = async (e) => {
     e.preventDefault();
+
+    const confirmed = await confirmAdminAction({
+      title: "Save profile changes?",
+      text: "Your account details will be updated.",
+      confirmButtonText: "Save changes",
+    });
+    if (!confirmed) return;
 
     try {
       const response = await axiosInstance.put(

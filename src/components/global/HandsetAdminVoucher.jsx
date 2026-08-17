@@ -4,6 +4,7 @@ import Button from "react-bootstrap/Button";
 import { useTheme } from "@emotion/react";
 import logo from "../../assets/Img/image 1.png";
 import Swal from "sweetalert2";
+import { confirmAdminAction } from "../../utils/adminConfirm";
 import { addNotification } from "../../store/reducers/notificationReducer";
 import { useDispatch, useSelector } from "react-redux";
 import axiosInstance from "../../utils/axiosInstance";
@@ -167,6 +168,13 @@ const HandsetAdminVoucher = ({ open, handleClose, userData, role }) => {
       CollectionDate: formatDateForSubmission(collectionDate), // Editable
       status: status, 
     };
+
+    const confirmed = await confirmAdminAction({
+      title: "Save handset voucher changes?",
+      text: `Update collection details for ${employeeCode}?`,
+      confirmButtonText: "Save changes",
+    });
+    if (!confirmed) return;
 
     try {
       // Perform the PUT request to update the existing handset record

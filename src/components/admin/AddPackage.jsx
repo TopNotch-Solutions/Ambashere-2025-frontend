@@ -11,6 +11,7 @@ import {
   FormHelperText,
 } from "@mui/material";
 import Swal from "sweetalert2";
+import { confirmAdminAction } from "../../utils/adminConfirm";
 import CloseIcon from "@mui/icons-material/Close";
 import axiosInstance from "../../utils/axiosInstance";
 
@@ -165,6 +166,29 @@ const AddPackage = ({ open, handleClose, mode = "", packageData = {} }) => {
       setErrors(validationErrors);
       return;
     }
+
+    const confirmConfig =
+      mode === "remove"
+        ? {
+            icon: "warning",
+            title: "Delete this package?",
+            text: `"${formValues.PackageName}" will be permanently removed.`,
+            confirmButtonText: "Delete",
+          }
+        : mode === "edit"
+          ? {
+              title: "Save package changes?",
+              text: `Update "${formValues.PackageName}"?`,
+              confirmButtonText: "Save changes",
+            }
+          : {
+              title: "Add this package?",
+              text: `Create "${formValues.PackageName}"?`,
+              confirmButtonText: "Add package",
+            };
+
+    const confirmed = await confirmAdminAction(confirmConfig);
+    if (!confirmed) return;
 
     const hasDeviceLimit =
       formValues.AllowsDevice &&

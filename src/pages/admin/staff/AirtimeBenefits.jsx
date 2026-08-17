@@ -12,6 +12,7 @@ import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 import { useSelector, useDispatch } from "react-redux";
 import axiosInstance from "../../../utils/axiosInstance";
 import BenefitAdminVoucher from "../../../components/global/BenefitAdminVoucher";
+import { renderStatusCell } from "../../../utils/statusBadge";
 
 const AirtimeBenefits = () => {
   const { employeeCode } = useParams();
@@ -74,7 +75,7 @@ const AirtimeBenefits = () => {
     { field: "ContractDuration", headerName: "CONTRACT DURATION", width: 200 },
     { field: "ContractStartDate", headerName: "ALLOCATION DATE", width: 180 },
     { field: "ContractEndDate", headerName: "EXPIRY DATE", width: 180 },
-    { field: "Status", headerName: "STATUS", width: 200 },
+    { field: "Status", headerName: "STATUS", width: 140, renderCell: renderStatusCell },
   ];
 
   const rows = data.map((airtime, index) => ({

@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 import axiosInstance from "../../../utils/axiosInstance";
 import { useSelector, useDispatch } from "react-redux";
 import formatDate from "../../global/dateFormatter";
+import { renderStatusCell } from "../../../utils/statusBadge";
 
 const Table = () => {
   const navigate = useNavigate();
@@ -54,7 +55,12 @@ const Table = () => {
     { field: "HandsetName", headerName: "HANDSET NAME", width: 200 },
     { field: "CollectionDate", headerName: "ALLOCATION DATE", width: 160 },
     { field: "RenewalDate", headerName: "RENEWAL DATE", width: 160 },
-    { field: "Status", headerName: "STATUS", width: 100 },
+    {
+      field: "Status",
+      headerName: "STATUS",
+      width: 130,
+      renderCell: renderStatusCell,
+    },
   ];
 
   const mapDataToRows = (data) => {
@@ -187,7 +193,6 @@ const Table = () => {
             pagination
             page={page}
             onPageChange={(newPage) => setPage(newPage)}
-            checkboxSelection
             disableSelectionOnClick
             sx={{
               height: "10%", // Keep height within bounds

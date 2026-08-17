@@ -11,6 +11,8 @@ import {
 } from "@mui/material";
 import "../../../App.css";
 import axiosInstance from "../../../utils/axiosInstance";
+import Swal from "sweetalert2";
+import { confirmAdminAction } from "../../../utils/adminConfirm";
 import CustomEvent from "../../../components/global/CustomEvent";
 import "../../../assets/style/global/handsetBenefitSimulator.css";
 import "../../../assets/style/global/benefits.css";
@@ -88,11 +90,23 @@ const AdminCalendar = () => {
   };
 
   const handleEventSave = async () => {
-    // Basic validation to prevent null events
     if (!eventName || !eventDate || !eventTime) {
-      alert("Event name, date, and time cannot be null.");
+      Swal.fire({
+        icon: "warning",
+        title: "Missing details",
+        text: "Event name, date, and time are required.",
+      });
       return;
     }
+
+    const confirmed = await confirmAdminAction({
+      title: isEdit ? "Save event changes?" : "Create this event?",
+      text: isEdit
+        ? `Update "${eventName}" on the calendar?`
+        : `Add "${eventName}" to the calendar?`,
+      confirmButtonText: isEdit ? "Save changes" : "Create event",
+    });
+    if (!confirmed) return;
 
     const [hours, minutes] = eventTime.split(":");
     const startDate = new Date(eventDate);
@@ -152,18 +166,48 @@ const AdminCalendar = () => {
         ]);
       }
       handleModalClose();
+      Swal.fire({
+        icon: "success",
+        title: isEdit ? "Event updated" : "Event created",
+        timer: 1600,
+        showConfirmButton: false,
+      });
     } catch (error) {
       console.error("Error saving event:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Save failed",
+        text: "Could not save the event. Please try again.",
+      });
     }
   };
 
   const handleEventDelete = async () => {
+    const confirmed = await confirmAdminAction({
+      icon: "warning",
+      title: "Delete this event?",
+      text: `"${eventName || selectedEvent?.title || "This event"}" will be permanently removed.`,
+      confirmButtonText: "Delete",
+    });
+    if (!confirmed) return;
+
     try {
       await axiosInstance.delete(`/events/deleteEvent/${selectedEvent.id}`);
       setEvents(events.filter((ev) => ev.id !== selectedEvent.id));
       handleModalClose();
+      Swal.fire({
+        icon: "success",
+        title: "Event deleted",
+        timer: 1600,
+        showConfirmButton: false,
+      });
     } catch (error) {
       console.error("Error deleting event:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Delete failed",
+        text: "Could not delete the event. Please try again.",
+      });
     }
   };
 

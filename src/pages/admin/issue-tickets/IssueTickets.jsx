@@ -2,7 +2,12 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Box,
   Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
   FormControl,
+  IconButton,
+  InputBase,
   InputLabel,
   MenuItem,
   Select,
@@ -12,6 +17,12 @@ import {
   useTheme,
   CircularProgress,
 } from "@mui/material";
+import SearchIcon from "@mui/icons-material/Search";
+import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
+import CloseIcon from "@mui/icons-material/Close";
+import SubjectOutlinedIcon from "@mui/icons-material/SubjectOutlined";
+import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
+import ScheduleOutlinedIcon from "@mui/icons-material/ScheduleOutlined";
 import { DataGrid } from "@mui/x-data-grid";
 import Swal from "sweetalert2";
 import { useSelector } from "react-redux";
@@ -20,6 +31,7 @@ import { tokens } from "../../../theme";
 import formatDate from "../../../components/global/dateFormatter";
 import "../../../assets/style/global/handsetBenefitSimulator.css";
 import "../../../assets/style/global/adminDashboard.css";
+import "../../../assets/style/global/support.css";
 
 const NEXT_STATUS = {
   pending: "in progress",
@@ -45,6 +57,16 @@ const STATUS_COLORS = {
   pending: { bg: "#FEF3C7", color: "#92400E" },
   "in progress": { bg: "#DBEAFE", color: "#1E40AF" },
   completed: { bg: "#D1FAE5", color: "#065F46" },
+};
+
+const getInitials = (name) => {
+  const parts = String(name || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (!parts.length) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 };
 
 const StatCard = ({ title, value, subtitle }) => (
@@ -77,8 +99,22 @@ const IssueTickets = () => {
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState(null);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [searchText, setSearchText] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(0);
   const [rowCount, setRowCount] = useState(0);
+  const [viewTicket, setViewTicket] = useState(null);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchText.trim());
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchText]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch]);
 
   const fetchAnalytics = useCallback(async () => {
     try {
@@ -97,6 +133,7 @@ const IssueTickets = () => {
           page: page + 1,
           limit: TICKETS_PER_PAGE,
           status: statusFilter,
+          ...(debouncedSearch ? { search: debouncedSearch } : {}),
         },
       });
       setTickets(ticketsRes.data.tickets || []);
@@ -108,7 +145,7 @@ const IssueTickets = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, statusFilter]);
+  }, [page, statusFilter, debouncedSearch]);
 
   useEffect(() => {
     fetchAnalytics();
@@ -199,6 +236,97 @@ const IssueTickets = () => {
     }
   };
 
+  useEffect(() => {
+    if (!viewTicket) return;
+    const updated = tickets.find((item) => item.id === viewTicket.id);
+    if (!updated) return;
+
+    setViewTicket({
+      id: updated.id,
+      ticketNumber: updated.ticketNumber,
+      fullName: updated.fullName || "-",
+      employeeCode: updated.employeeCode || "-",
+      department: updated.department || "-",
+      email: updated.email || "-",
+      reason: updated.reason || "-",
+      message: updated.message || "-",
+      status: updated.status || "-",
+      assignedAdminCode: updated.assignedAdminCode || null,
+      assignedAdminName: updated.assignedAdminName || "-",
+      inProgressAt: updated.inProgressAt ? formatDate(updated.inProgressAt) : "-",
+      completedAt: updated.completedAt ? formatDate(updated.completedAt) : "-",
+      createdAt: formatDate(updated.createdAt),
+    });
+  }, [tickets, viewTicket?.id]);
+
+  const renderStatusActionButton = (row) => {
+    if (!row) return null;
+
+    const status = String(row.status || "").trim().toLowerCase();
+    const nextStatus = NEXT_STATUS[status];
+    const isCompleted = status === "completed" || !nextStatus;
+    const assignedCode = normalizeCode(row.assignedAdminCode);
+    const isAssignedToOther =
+      status === "in progress" &&
+      assignedCode &&
+      assignedCode !== currentAdminCode;
+    const isDisabled =
+      isCompleted || isAssignedToOther || updatingId === row.id;
+
+    const buttonLabel = (() => {
+      if (updatingId === row.id) {
+        return <CircularProgress size={16} sx={{ color: "#fff" }} />;
+      }
+      if (isCompleted) return "Completed";
+      if (isAssignedToOther) return "Assigned elsewhere";
+      if (status === "pending") return "Assign & start";
+      return "Mark completed";
+    })();
+
+    const button = (
+      <Button
+        size="small"
+        variant="contained"
+        disabled={isDisabled}
+        onClick={() => handleAdvanceStatus(row)}
+        className="support-ticket-view-btn"
+        sx={{
+          backgroundColor: isCompleted
+            ? "#9CA3AF"
+            : isAssignedToOther
+              ? "#9CA3AF"
+              : status === "pending"
+                ? "#F59E0B"
+                : "#16A34A",
+          textTransform: "none",
+          color: "#fff",
+          px: 2,
+          "&:hover": {
+            backgroundColor: isDisabled
+              ? undefined
+              : status === "pending"
+                ? "#D97706"
+                : "#15803D",
+          },
+        }}
+      >
+        {buttonLabel}
+      </Button>
+    );
+
+    if (isAssignedToOther) {
+      return (
+        <Tooltip
+          title={`Assigned to ${row.assignedAdminName}. Only they can complete this ticket.`}
+        >
+          <span>{button}</span>
+        </Tooltip>
+      );
+    }
+
+    return button;
+  };
+
   const rows = useMemo(
     () =>
       tickets.map((item) => ({
@@ -226,8 +354,6 @@ const IssueTickets = () => {
     { field: "employeeCode", headerName: "Code", width: 110 },
     { field: "department", headerName: "Department", width: 140 },
     { field: "email", headerName: "Email", width: 200 },
-    { field: "reason", headerName: "Reason", width: 160 },
-    { field: "message", headerName: "Message", width: 260 },
     {
       field: "status",
       headerName: "Status",
@@ -252,72 +378,36 @@ const IssueTickets = () => {
     {
       field: "actions",
       headerName: "Actions",
-      width: 200,
+      width: 240,
       sortable: false,
       filterable: false,
-      renderCell: (params) => {
-        const status = String(params.row.status || "").trim().toLowerCase();
-        const nextStatus = NEXT_STATUS[status];
-        const isCompleted = status === "completed" || !nextStatus;
-        const assignedCode = normalizeCode(params.row.assignedAdminCode);
-        const isAssignedToOther =
-          status === "in progress" &&
-          assignedCode &&
-          assignedCode !== currentAdminCode;
-        const isDisabled =
-          isCompleted || isAssignedToOther || updatingId === params.row.id;
-
-        const buttonLabel = (() => {
-          if (updatingId === params.row.id) {
-            return <CircularProgress size={16} sx={{ color: "#fff" }} />;
-          }
-          if (isCompleted) return "Completed";
-          if (isAssignedToOther) return "Assigned elsewhere";
-          if (status === "pending") return "Assign & start";
-          return "Mark completed";
-        })();
-
-        const button = (
-          <Button
-            size="small"
-            variant="contained"
-            disabled={isDisabled}
-            onClick={() => handleAdvanceStatus(params.row)}
-            sx={{
-              backgroundColor: isCompleted
-                ? "#9CA3AF"
-                : isAssignedToOther
-                  ? "#9CA3AF"
-                  : status === "pending"
-                    ? "#F59E0B"
-                    : "#16A34A",
-              textTransform: "none",
-              color: "#fff",
-              "&:hover": {
-                backgroundColor: isDisabled
-                  ? undefined
-                  : status === "pending"
-                    ? "#D97706"
-                    : "#15803D",
-              },
-            }}
-          >
-            {buttonLabel}
-          </Button>
-        );
-
-        if (isAssignedToOther) {
-          return (
-            <Tooltip
-              title={`Assigned to ${params.row.assignedAdminName}. Only they can complete this ticket.`}
+      renderCell: (params) => (
+        <Box display="flex" alignItems="center" gap={1}>
+          <Tooltip title="View ticket details">
+            <Button
+              size="small"
+              variant="contained"
+              startIcon={<VisibilityOutlinedIcon sx={{ fontSize: 16 }} />}
+              onClick={() => setViewTicket(params.row)}
+              className="support-ticket-view-btn"
+              sx={{
+                minWidth: 0,
+                px: 1.5,
+                backgroundColor: "rgba(0, 150, 214, 0.12)",
+                color: "#0096D6",
+                boxShadow: "none",
+                "&:hover": {
+                  backgroundColor: "rgba(0, 150, 214, 0.2)",
+                  boxShadow: "none",
+                },
+              }}
             >
-              <span>{button}</span>
-            </Tooltip>
-          );
-        }
-
-        return button;
-      },
+              View
+            </Button>
+          </Tooltip>
+          {renderStatusActionButton(params.row)}
+        </Box>
+      ),
     },
   ];
 
@@ -431,23 +521,41 @@ const IssueTickets = () => {
       >
         <Box className="d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between gap-2 mb-3">
           <h6 className="summary-title mb-0">Support Tickets</h6>
-          <FormControl size="small" sx={{ minWidth: 200 }}>
-            <InputLabel id="ticket-status-filter-label">Filter by status</InputLabel>
-            <Select
-              labelId="ticket-status-filter-label"
-              value={statusFilter}
-              label="Filter by status"
-              onChange={(event) => {
-                setStatusFilter(event.target.value);
-                setPage(0);
-              }}
+          <Box className="d-flex flex-column flex-sm-row align-items-stretch align-items-sm-center gap-2">
+            <Box
+              display="flex"
+              borderRadius="8px"
+              width={{ xs: "100%", sm: 260 }}
+              sx={{ backgroundColor: colors.primary[400] }}
             >
-              <MenuItem value="all">All</MenuItem>
-              <MenuItem value="pending">Pending</MenuItem>
-              <MenuItem value="in progress">In progress</MenuItem>
-              <MenuItem value="completed">Completed</MenuItem>
-            </Select>
-          </FormControl>
+              <InputBase
+                sx={{ ml: 2, flex: 1 }}
+                placeholder="Search tickets"
+                value={searchText}
+                onChange={(event) => setSearchText(event.target.value)}
+              />
+              <IconButton type="button" sx={{ p: 1 }}>
+                <SearchIcon />
+              </IconButton>
+            </Box>
+            <FormControl size="small" sx={{ minWidth: 200 }}>
+              <InputLabel id="ticket-status-filter-label">Filter by status</InputLabel>
+              <Select
+                labelId="ticket-status-filter-label"
+                value={statusFilter}
+                label="Filter by status"
+                onChange={(event) => {
+                  setStatusFilter(event.target.value);
+                  setPage(0);
+                }}
+              >
+                <MenuItem value="all">All</MenuItem>
+                <MenuItem value="pending">Pending</MenuItem>
+                <MenuItem value="in progress">In progress</MenuItem>
+                <MenuItem value="completed">Completed</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
         </Box>
 
         {loading ? (
@@ -486,6 +594,148 @@ const IssueTickets = () => {
           </Box>
         )}
       </Box>
+
+      <Dialog
+        className="support-ticket-view-dialog"
+        open={Boolean(viewTicket)}
+        onClose={() => setViewTicket(null)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <Box className="support-ticket-view-header">
+          <Box>
+            <span className="support-ticket-view-header-label">Support ticket</span>
+            <h3 className="support-ticket-view-header-title">
+              {viewTicket?.ticketNumber}
+            </h3>
+          </Box>
+          <IconButton
+            aria-label="Close ticket details"
+            onClick={() => setViewTicket(null)}
+            className="support-ticket-view-close"
+            size="small"
+          >
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </Box>
+
+        <DialogContent className="support-ticket-view-body" sx={{ p: 0 }}>
+          {viewTicket && (
+            <>
+              <Box className="support-ticket-view-profile">
+                <span className="support-ticket-view-avatar">
+                  {getInitials(viewTicket.fullName)}
+                </span>
+                <Box>
+                  <p className="support-ticket-view-profile-name">
+                    {viewTicket.fullName}
+                  </p>
+                  <p className="support-ticket-view-profile-meta">
+                    {viewTicket.employeeCode} · {viewTicket.department}
+                  </p>
+                  <p className="support-ticket-view-profile-meta">{viewTicket.email}</p>
+                </Box>
+              </Box>
+
+              <Box className="support-ticket-view-meta-grid">
+                <Box className="support-ticket-view-meta-card">
+                  <span className="support-ticket-view-meta-label">Status</span>
+                  <Box>
+                    {(() => {
+                      const status = String(viewTicket.status || "").toLowerCase();
+                      const style =
+                        STATUS_COLORS[status] || { bg: "#F3F4F6", color: "#374151" };
+                      return (
+                        <span
+                          className="support-ticket-status-badge"
+                          style={{ backgroundColor: style.bg, color: style.color }}
+                        >
+                          {viewTicket.status}
+                        </span>
+                      );
+                    })()}
+                  </Box>
+                </Box>
+                <Box className="support-ticket-view-meta-card">
+                  <span className="support-ticket-view-meta-label">Assigned to</span>
+                  <span className="support-ticket-view-meta-value">
+                    {viewTicket.assignedAdminName !== "-"
+                      ? viewTicket.assignedAdminName
+                      : "Unassigned"}
+                  </span>
+                </Box>
+              </Box>
+
+              <Box className="support-ticket-view-section">
+                <h4 className="support-ticket-view-section-title">
+                  <SubjectOutlinedIcon />
+                  Reason
+                </h4>
+                <p className="support-ticket-view-reason">{viewTicket.reason}</p>
+              </Box>
+
+              <Box className="support-ticket-view-section">
+                <h4 className="support-ticket-view-section-title">
+                  <ChatBubbleOutlineIcon />
+                  Message
+                </h4>
+                <p className="support-ticket-view-message">{viewTicket.message}</p>
+              </Box>
+
+              <Box className="support-ticket-view-section">
+                <h4 className="support-ticket-view-section-title">
+                  <ScheduleOutlinedIcon />
+                  Timeline
+                </h4>
+                <div className="support-ticket-view-timeline">
+                  <div className="support-ticket-view-timeline-item">
+                    <span className="support-ticket-view-timeline-dot" />
+                    <div>
+                      <p className="support-ticket-view-timeline-label">Submitted</p>
+                      <p className="support-ticket-view-timeline-date">
+                        {viewTicket.createdAt}
+                      </p>
+                    </div>
+                  </div>
+                  {viewTicket.inProgressAt !== "-" && (
+                    <div className="support-ticket-view-timeline-item">
+                      <span className="support-ticket-view-timeline-dot" />
+                      <div>
+                        <p className="support-ticket-view-timeline-label">Started</p>
+                        <p className="support-ticket-view-timeline-date">
+                          {viewTicket.inProgressAt}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  {viewTicket.completedAt !== "-" && (
+                    <div className="support-ticket-view-timeline-item">
+                      <span className="support-ticket-view-timeline-dot" />
+                      <div>
+                        <p className="support-ticket-view-timeline-label">Completed</p>
+                        <p className="support-ticket-view-timeline-date">
+                          {viewTicket.completedAt}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </Box>
+            </>
+          )}
+        </DialogContent>
+
+        <DialogActions className="support-ticket-view-footer" sx={{ p: 0 }}>
+          <Button
+            onClick={() => setViewTicket(null)}
+            className="support-ticket-view-btn"
+            sx={{ color: "#64748b" }}
+          >
+            Close
+          </Button>
+          <Box>{renderStatusActionButton(viewTicket)}</Box>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

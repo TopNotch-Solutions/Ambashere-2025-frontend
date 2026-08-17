@@ -18,6 +18,7 @@ import {
 import { useSelector } from "react-redux";
 import axiosInstance from "../../utils/axiosInstance";
 import Swal from "sweetalert2";
+import { confirmAdminAction } from "../../utils/adminConfirm";
 
 const AddHandsetModal = ({ open, handleClose, onSuccess }) => {
   const currentUser = useSelector((state) => state.auth.user);
@@ -119,6 +120,13 @@ const AddHandsetModal = ({ open, handleClose, onSuccess }) => {
     if (!validateForm()) {
       return;
     }
+
+    const confirmed = await confirmAdminAction({
+      title: "Create handset record?",
+      text: `Create a handset record for ${formData.EmployeeCode} (${formData.HandsetName})?`,
+      confirmButtonText: "Create record",
+    });
+    if (!confirmed) return;
 
     setLoading(true);
 

@@ -21,7 +21,9 @@ import HandsetAdminVoucher from "../../../components/global/HandsetAdminVoucher"
 import AddHandsetModal from "../../../components/admin/AddHandsetModal";
 import ProbationVerificationModal from "../../../components/admin/ProbationVerificationModal";
 import formatDate from "../../../components/global/dateFormatter";
+import { renderStatusCell } from "../../../utils/statusBadge";
 import Swal from "sweetalert2";
+import { confirmAdminAction } from "../../../utils/adminConfirm";
 import "../../../assets/style/global/handsetBenefitSimulator.css";
 import "../../../assets/style/global/benefits.css";
 import "../../../assets/style/global/adminHandsets.css";
@@ -120,7 +122,7 @@ const AdminHandsets = () => {
     // { field: "RequestDate", headerName: "Requested Date", width: 180 },
     { field: "CollectionDate", headerName: "Collected Date", width: 180 }, // Renamed from AllocationDate for clarity
     { field: "RenewalDate", headerName: "Renewal Date", width: 180 }, // Renamed from NewAllocationDate for clarity
-    { field: "Status", headerName: "Status", width: 100 },
+    { field: "Status", headerName: "Status", width: 130, renderCell: renderStatusCell },
     // {
     //   field: "actions",
     //   type: "actions",
@@ -321,6 +323,13 @@ const AdminHandsets = () => {
       });
       return;
     }
+
+    const confirmed = await confirmAdminAction({
+      title: "Assign MR number?",
+      text: `Assign MR number ${mrNumber.trim()} to ${selectedHandsetForMR.EmployeeCode}?`,
+      confirmButtonText: "Assign MR number",
+    });
+    if (!confirmed) return;
 
     try {
       const response = await axiosInstance.post(`/handsets/assign-mr-number/${selectedHandsetForMR.id}`, {
@@ -580,7 +589,6 @@ const AdminHandsets = () => {
               }}
               pageSize={5}
               rowsPerPageOptions={[5, 10, 20]}
-              checkboxSelection
               disableSelectionOnClick
               sx={{
                 "& .MuiDataGrid-overlayWrapper": {

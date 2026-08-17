@@ -4,6 +4,8 @@ import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import DescriptionSharpIcon from "@mui/icons-material/DescriptionSharp";
 import CloseButton from "react-bootstrap/CloseButton";
 import axiosInstance from "../../utils/axiosInstance";
+import Swal from "sweetalert2";
+import { confirmAdminAction } from "../../utils/adminConfirm";
 
 const UploadDeviceList = ({ open, handleClose }) => {
   const inputRef = useRef();
@@ -57,6 +59,15 @@ const UploadDeviceList = ({ open, handleClose }) => {
       return;
     }
 
+    if (!selectedFile) return;
+
+    const confirmed = await confirmAdminAction({
+      title: "Upload device price list?",
+      text: `"${selectedFile.name}" will replace or update the current price list.`,
+      confirmButtonText: "Upload",
+    });
+    if (!confirmed) return;
+
     try {
       setUploadStatus("uploading");
 
@@ -75,13 +86,30 @@ const UploadDeviceList = ({ open, handleClose }) => {
 
       if (response.status === 200) {
         setUploadStatus("done");
+        Swal.fire({
+          icon: "success",
+          title: "Upload complete",
+          text: "The device price list was uploaded successfully.",
+          timer: 1800,
+          showConfirmButton: false,
+        });
       } else {
         console.error("Upload failed with status:", response.status);
         setUploadStatus("select");
+        Swal.fire({
+          icon: "error",
+          title: "Upload failed",
+          text: "The price list could not be uploaded. Please try again.",
+        });
       }
     } catch (err) {
       console.error("Upload failed:", err);
       setUploadStatus("select");
+      Swal.fire({
+        icon: "error",
+        title: "Upload failed",
+        text: err.response?.data?.message || "The price list could not be uploaded.",
+      });
     }
   };
 
