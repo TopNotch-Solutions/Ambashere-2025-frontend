@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Box, Button, useTheme } from "@mui/material";
+import { Box, Button, CircularProgress, useTheme } from "@mui/material";
 import { tokens } from "../../../theme";
 import { DataGrid, GridActionsCellItem } from "@mui/x-data-grid";
 import EventAvailableIcon from "@mui/icons-material/EventAvailable";
@@ -10,13 +10,19 @@ import { useSelector } from "react-redux";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBoxOpen } from "@fortawesome/free-solid-svg-icons";
 import RemoveCircleIcon from "@mui/icons-material/RemoveCircle";
+import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
 import axiosInstance from "../../../utils/axiosInstance";
 import Swal from "sweetalert2";
 import formatDate from "../../../components/global/dateFormatter";
 import { formatMoney } from "../../../utils/formatMoney";
+import {
+  isActiveBenefitStatus,
+  shouldConsiderUserAirtimeContract,
+} from "../../../utils/statusBadge";
 import AirtimeBenefitSimulator from "../self-help/AirtimeBenefitSimulator";
 import "../../../assets/style/global/handsetBenefitSimulator.css";
 import "../../../assets/style/global/benefits.css";
+import "../../../assets/style/global/support.css";
 
 const UserBenefits = () => {
   const theme = useTheme();
@@ -29,16 +35,12 @@ const UserBenefits = () => {
   const [showSimulator, setShowSimulator] = useState(false);
   const [availableAllowance, setAvailableAllowance] = useState(null);
   const [minPackagePrice, setMinPackagePrice] = useState(null);
+  const [cancellingSubmissionId, setCancellingSubmissionId] = useState(null);
   const currentUser = useSelector((state) => state.auth.user);
   const { role } = useSelector((state) => state.auth);
-  const isActiveStatus = (status) => {
-    const normalized = String(status || "").trim().toLowerCase();
-    return (
-      normalized === "active" ||
-      normalized === "pending" ||
-      normalized === "in progress"
-    );
-  };
+  const isActiveStatus = (status) => isActiveBenefitStatus(status);
+
+  const consideredContracts = data.filter(shouldConsiderUserAirtimeContract);
 
   const getStatusStyle = (status) => {
     const normalized = String(status || "").trim().toLowerCase();
@@ -75,7 +77,66 @@ const UserBenefits = () => {
   const formatStatusLabel = (status) => {
     const normalized = String(status || "").trim().toLowerCase();
     if (normalized === "completed") return "Expired";
+    if (normalized === "cancelled" || normalized === "canceled") return "Cancelled";
     return status || "-";
+  };
+
+  const refreshBenefitsData = async () => {
+    const [contractsResponse, packagesResponse] = await Promise.all([
+      axiosInstance.get(`/contracts/${currentUser.EmployeeCode}`),
+      axiosInstance.get(`/packages/packageList?t=${Date.now()}`),
+    ]);
+
+    setData(contractsResponse.data.contracts || []);
+    setAvailableAllowance(
+      contractsResponse.data.available != null
+        ? parseFloat(contractsResponse.data.available)
+        : null
+    );
+
+    const packages = packagesResponse.data || [];
+    const prices = packages
+      .map((pkg) => parseFloat(pkg.MonthlyPrice))
+      .filter((price) => !isNaN(price) && price > 0);
+    setMinPackagePrice(prices.length ? Math.min(...prices) : null);
+  };
+
+  const handleCancelAirtimeSubmission = async (submissionId) => {
+    const confirmResult = await Swal.fire({
+      icon: "warning",
+      title: "Cancel airtime benefit request?",
+      text: "Your pending airtime benefit request will be cancelled. Admins will be notified.",
+      showCancelButton: true,
+      confirmButtonColor: "#DC2626",
+      cancelButtonColor: "#6c757d",
+      confirmButtonText: "Yes, cancel request",
+      cancelButtonText: "Keep request",
+    });
+
+    if (!confirmResult.isConfirmed) return;
+
+    try {
+      setCancellingSubmissionId(submissionId);
+      await axiosInstance.put(`/contracts/submissions/${submissionId}/cancel`);
+      Swal.fire({
+        icon: "success",
+        title: "Request cancelled",
+        text: "Your request was cancelled. You can submit a new airtime benefit request if you are eligible.",
+        timer: 3200,
+        showConfirmButton: false,
+      });
+      await refreshBenefitsData();
+    } catch (error) {
+      Swal.fire({
+        icon: "error",
+        title: "Cancellation failed",
+        text:
+          error.response?.data?.message ||
+          "Unable to cancel this airtime benefit request. Please try again.",
+      });
+    } finally {
+      setCancellingSubmissionId(null);
+    }
   };
 
   const hasDeviceName = (item) => {
@@ -92,23 +153,7 @@ const UserBenefits = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [contractsResponse, packagesResponse] = await Promise.all([
-          axiosInstance.get(`/contracts/${currentUser.EmployeeCode}`),
-          axiosInstance.get(`/packages/packageList?t=${Date.now()}`),
-        ]);
-
-        setData(contractsResponse.data.contracts || []);
-        setAvailableAllowance(
-          contractsResponse.data.available != null
-            ? parseFloat(contractsResponse.data.available)
-            : null
-        );
-
-        const packages = packagesResponse.data || [];
-        const prices = packages
-          .map((pkg) => parseFloat(pkg.MonthlyPrice))
-          .filter((price) => !isNaN(price) && price > 0);
-        setMinPackagePrice(prices.length ? Math.min(...prices) : null);
+        await refreshBenefitsData();
       } catch (error) {
         console.error("Error loading benefits eligibility:", error);
       }
@@ -203,36 +248,49 @@ const UserBenefits = () => {
         );
       },
     },
-  //   {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
-  //         field: "actions",
-  //         type: "actions",
-  //         headerName: "Actions",
-  //         width: 100,
-  //         cellClassName: "actions",
-  //         getActions: ({ row }) => { // Destructure 'row' from the params object
-  //     const actions = [];
+    {
+      field: "actions",
+      headerName: "Actions",
+      width: 130,
+      sortable: false,
+      filterable: false,
+      renderCell: (params) => {
+        const isPendingSubmission =
+          params.row.isSubmission &&
+          String(params.row.SubscriptionStatus || "").trim().toLowerCase() ===
+            "pending";
 
-  //     // Only add the delete action if approvalStatus is 'Pending'
-  //     if (row.ApprovalStatus === "Pending") {
-  //       actions.push(
-  //         <Tooltip title={`Delete contract`} arrow> {/* Add Tooltip here */}
-  //           <GridActionsCellItem
-  //             icon={<RemoveCircleIcon />}
-  //             label="delete"
-  //             className="textPrimary"
-  //             onClick={() => { handleContractDelection(row.id)}}
-  //             color="inherit"
-  //           />
-  //         </Tooltip>
-  //       );
-  //     }
-  //     return actions; // Return the array of actions (which might be empty)
-  //   },
-  // },
-];
+        if (!isPendingSubmission) {
+          return <span className="support-ticket-no-action">—</span>;
+        }
 
-  const rows = data?.map((contract, index) => ({
+        return (
+          <button
+            type="button"
+            className="support-cancel-btn"
+            onClick={() =>
+              handleCancelAirtimeSubmission(params.row.submissionId)
+            }
+            disabled={cancellingSubmissionId === params.row.submissionId}
+          >
+            {cancellingSubmissionId === params.row.submissionId ? (
+              <CircularProgress size={14} sx={{ color: "#991B1B" }} />
+            ) : (
+              <>
+                <CancelOutlinedIcon sx={{ fontSize: 16 }} />
+                Cancel
+              </>
+            )}
+          </button>
+        );
+      },
+    },
+  ];
+
+  const rows = consideredContracts?.map((contract, index) => ({
     id: `benefit-${contract?.id ?? contract?.ContractNumber ?? index + 1}`,
+    submissionId: contract?.submissionId ?? contract?.id,
+    isSubmission: Boolean(contract?.isSubmission),
     PackageName: contract?.PackageName || contract?.package || "-",
     DeviceName: contract?.DeviceName || contract?.device || "-",
     MSISDN: contract?.MSISDN || contract?.msisdn || "-",
@@ -341,7 +399,7 @@ const UserBenefits = () => {
           {/* Airtime Stats */}
           {currentUser.EmploymentCategory !== "Temporary" && (
             <>
-              {data.length > 0 ? (
+              {consideredContracts.length > 0 ? (
                 <Box className="col-12">
                   <div className="handset-summary-card shadow-sm benefits-stats-card">
                     <div className="row g-3">
@@ -350,7 +408,7 @@ const UserBenefits = () => {
                           <div>
                             <h5>Active Packages</h5>
                             <h3>
-                              {data?.filter(
+                              {consideredContracts?.filter(
                                 (item) =>
                                   item.PackageName &&
                                 isActiveStatus(
@@ -371,7 +429,7 @@ const UserBenefits = () => {
                           <div>
                             <h5>Active Device</h5>
                             <h3>
-                              {data?.filter(
+                              {consideredContracts?.filter(
                                 (item) =>
                                 hasDeviceName(item) &&
                                 isActiveStatus(

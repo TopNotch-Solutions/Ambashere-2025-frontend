@@ -14,6 +14,7 @@ import PhoneIphoneIcon from "@mui/icons-material/PhoneIphone";
 import PostAddIcon from "@mui/icons-material/PostAdd";
 import SupportAgentIcon from "@mui/icons-material/SupportAgent";
 import ShareIcon from "@mui/icons-material/Share";
+import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import Tooltip from "@mui/material/Tooltip";
@@ -27,6 +28,7 @@ import Swal from "sweetalert2";
 import HandsetBenfitSimulator from "../self-help/HandsetBenefitSimulator";
 import "../../../assets/style/global/handsetBenefitSimulator.css";
 import "../../../assets/style/global/benefits.css";
+import "../../../assets/style/global/support.css";
 
 const UserHandsets = () => {
   const theme = useTheme();
@@ -39,6 +41,7 @@ const UserHandsets = () => {
   const [selectedHandsetForIMEI, setSelectedHandsetForIMEI] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [cancellingSubmissionId, setCancellingSubmissionId] = useState(null);
   const [showSimulator, setShowSimulator] = useState(false);
   const { role } = useSelector((state) => state.auth);
   const currentUser = useSelector((state) => state.auth.user);
@@ -220,7 +223,49 @@ const UserHandsets = () => {
   const formatStatusLabel = (status) => {
     const normalized = String(status || "").trim().toLowerCase();
     if (normalized === "completed") return "Expired";
+    if (normalized === "cancelled" || normalized === "canceled") return "Cancelled";
     return status || "-";
+  };
+
+  const handleCancelHandsetSubmission = async (submissionId) => {
+    const confirmResult = await Swal.fire({
+      icon: "warning",
+      title: "Cancel handset request?",
+      text: "Your pending staff handset request will be cancelled. Admins will be notified.",
+      showCancelButton: true,
+      confirmButtonColor: "#DC2626",
+      cancelButtonColor: "#6c757d",
+      confirmButtonText: "Yes, cancel request",
+      cancelButtonText: "Keep request",
+    });
+
+    if (!confirmResult.isConfirmed) return;
+
+    try {
+      setCancellingSubmissionId(submissionId);
+      await axiosInstance.put(`/handsets/submissions/${submissionId}/cancel`);
+      Swal.fire({
+        icon: "success",
+        title: "Request cancelled",
+        text: "Your request was cancelled. You can submit a new staff handset request if you are eligible.",
+        timer: 3200,
+        showConfirmButton: false,
+      });
+      const response = await axiosInstance.get(
+        `/handsets/handset/${currentUser.EmployeeCode}`,
+      );
+      setDataAllocation(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      Swal.fire({
+        icon: "error",
+        title: "Cancellation failed",
+        text:
+          error.response?.data?.message ||
+          "Unable to cancel this handset request. Please try again.",
+      });
+    } finally {
+      setCancellingSubmissionId(null);
+    }
   };
 
   const columns = [
@@ -255,74 +300,48 @@ const UserHandsets = () => {
         );
       },
     },
-    // { field: "RenewalVerified", headerName: "Renewal Verified", width: 140 },
-    // { field: "IMEINumber", headerName: "IMEI Number", width: 150 },
-    // {
-    //   field: "actions",
-    //   type: "actions",
-    //   headerName: "Actions",
-    //   width: 150,
-    //   cellClassName: "actions",
-    //   getActions: ({ row }) => {
-    //     // Destructure 'row' from the params object
-    //     const actions = [];
+    {
+      field: "actions",
+      headerName: "Actions",
+      width: 130,
+      sortable: false,
+      filterable: false,
+      renderCell: (params) => {
+        const isPendingSubmission =
+          params.row.isSubmission &&
+          String(params.row.Status || "").trim().toLowerCase() === "pending";
 
-    //     // Add delete action if status is 'Pending'
-    //     if (row.Status === "Pending") {
-    //       actions.push(
-    //         <Tooltip title={`Delete handset`} arrow>
-    //           <GridActionsCellItem
-    //             icon={<RemoveCircleIcon />}
-    //             label="delete"
-    //             className="textPrimary"
-    //             onClick={() => {
-    //               handleHandsetDelection(row.id);
-    //             }}
-    //             color="inherit"
-    //           />
-    //         </Tooltip>,
-    //       );
-    //     }
+        if (!isPendingSubmission) {
+          return <span className="support-ticket-no-action">—</span>;
+        }
 
-    //     // Add share IMEI action if renewal is verified
-    //       id: row.id,
-    //       RenewalVerified: row.RenewalVerified,
-    //       Status: row.Status,
-    //       IMEINumber: row.IMEINumber,
-    //       shouldShowIMEI:
-    //         (row.RenewalVerified === true || row.RenewalVerified === "Yes") &&
-    //         (row.Status === "Renewal Verified" ||
-    //           row.Status === "Probation Verified"),
-    //     });
-
-    //     if (
-    //       (row.RenewalVerified === true || row.RenewalVerified === "Yes") &&
-    //       (row.Status === "Renewal Verified" ||
-    //         row.Status === "Probation Verified")
-    //     ) {
-    //       actions.push(
-    //         <Tooltip title={`Share IMEI with admin`} arrow>
-    //           <GridActionsCellItem
-    //             icon={<ShareIcon />}
-    //             label="Share IMEI"
-    //             className="textPrimary"
-    //             onClick={() => {
-    //               handleOpenIMEIModal(row);
-    //             }}
-    //             color="primary"
-    //           />
-    //         </Tooltip>,
-    //       );
-    //     }
-    //     return actions; // Return the array of actions (which might be empty)
-    //   },
-    // },
+        return (
+          <button
+            type="button"
+            className="support-cancel-btn"
+            onClick={() => handleCancelHandsetSubmission(params.row.submissionId)}
+            disabled={cancellingSubmissionId === params.row.submissionId}
+          >
+            {cancellingSubmissionId === params.row.submissionId ? (
+              <CircularProgress size={14} sx={{ color: "#991B1B" }} />
+            ) : (
+              <>
+                <CancelOutlinedIcon sx={{ fontSize: 16 }} />
+                Cancel
+              </>
+            )}
+          </button>
+        );
+      },
+    },
   ];
 
   const rows = dataAllocation?.map((handset, index) => {
 
     return {
       id: handset.id,
+      submissionId: handset.submissionId,
+      isSubmission: Boolean(handset.isSubmission),
       EmployeeCode: handset.EmployeeCode,
       HandsetName: handset.HandsetName,
       DevicePrice: formatMoney(handset.HandsetPrice),

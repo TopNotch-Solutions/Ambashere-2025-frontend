@@ -46,7 +46,43 @@ export function formatStatusLabel(status) {
   if (normalized === "pending") return "Pending";
   if (normalized === "in progress") return "In Progress";
   if (normalized === "completed") return "Completed";
+  if (normalized === "cancelled" || normalized === "canceled") return "Cancelled";
   return status || "-";
+}
+
+export function normalizeBenefitStatus(status) {
+  return String(status || "").trim().toLowerCase();
+}
+
+export function isCancelledStatus(status) {
+  const normalized = normalizeBenefitStatus(status);
+  return normalized === "cancelled" || normalized === "canceled";
+}
+
+export function shouldConsiderUserAirtimeContract(contract) {
+  if (!contract) return false;
+
+  const status = normalizeBenefitStatus(
+    contract?.SubscriptionStatus ?? contract?.subscription_status
+  );
+
+  if (isCancelledStatus(status)) return false;
+
+  if (contract?.isSubmission) {
+    return status === "pending" || status === "in progress";
+  }
+
+  return true;
+}
+
+export function isActiveBenefitStatus(status) {
+  const normalized = normalizeBenefitStatus(status);
+  if (isCancelledStatus(normalized)) return false;
+  return (
+    normalized === "active" ||
+    normalized === "pending" ||
+    normalized === "in progress"
+  );
 }
 
 export function StatusBadge({ status }) {

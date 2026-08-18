@@ -22,6 +22,7 @@ import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
 import ReportProblemOutlinedIcon from "@mui/icons-material/ReportProblemOutlined";
 import LightbulbOutlinedIcon from "@mui/icons-material/LightbulbOutlined";
 import SendIcon from "@mui/icons-material/Send";
+import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
 import formatDate from "../../../components/global/dateFormatter";
 import "../../../assets/style/global/handsetBenefitSimulator.css";
 import "../../../assets/style/global/support.css";
@@ -30,6 +31,7 @@ const STATUS_COLORS = {
   pending: { bg: "#FEF3C7", color: "#92400E", label: "Pending" },
   "in progress": { bg: "#DBEAFE", color: "#1E40AF", label: "In Progress" },
   completed: { bg: "#D1FAE5", color: "#065F46", label: "Completed" },
+  cancelled: { bg: "#FEE2E2", color: "#991B1B", label: "Cancelled" },
 };
 
 const tempSupportTopics = [
@@ -108,6 +110,7 @@ const Support = () => {
   const [errors, setErrors] = useState({});
   const [responseMessage, setResponseMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [cancellingId, setCancellingId] = useState(null);
   const [tickets, setTickets] = useState([]);
   const [ticketsLoading, setTicketsLoading] = useState(true);
   const [ticketPage, setTicketPage] = useState(1);
@@ -234,6 +237,44 @@ const Support = () => {
     }
   };
 
+  const handleCancelTicket = async (ticket) => {
+    const confirmResult = await Swal.fire({
+      icon: "warning",
+      title: "Cancel support ticket?",
+      html: `Ticket <strong>${ticket.ticketNumber}</strong> will be cancelled. This action cannot be undone.`,
+      showCancelButton: true,
+      confirmButtonColor: "#DC2626",
+      cancelButtonColor: "#6c757d",
+      confirmButtonText: "Yes, cancel ticket",
+      cancelButtonText: "Keep ticket",
+    });
+
+    if (!confirmResult.isConfirmed) return;
+
+    try {
+      setCancellingId(ticket.id);
+      await axiosInstance.put(`/support-tickets/${ticket.id}/cancel`);
+      Swal.fire({
+        icon: "success",
+        title: "Ticket Cancelled",
+        text: "Your support ticket has been cancelled. Admins have been notified.",
+        timer: 2200,
+        showConfirmButton: false,
+      });
+      await fetchTickets(ticketPage);
+    } catch (error) {
+      Swal.fire({
+        icon: "error",
+        title: "Cancellation failed",
+        text:
+          error.response?.data?.message ||
+          "Unable to cancel this ticket. Please try again.",
+      });
+    } finally {
+      setCancellingId(null);
+    }
+  };
+
   return (
     <div className="container-main m-3 handset-simulator-page support-page">
       <div className="support-hero mb-4">
@@ -352,6 +393,7 @@ const Support = () => {
                         <th>Message</th>
                         <th>Status</th>
                         <th>Submitted</th>
+                        <th>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -366,6 +408,27 @@ const Support = () => {
                             <StatusBadge status={ticket.status} />
                           </td>
                           <td>{formatDate(ticket.createdAt)}</td>
+                          <td>
+                            {String(ticket.status || "").toLowerCase() === "pending" ? (
+                              <button
+                                type="button"
+                                className="support-cancel-btn"
+                                onClick={() => handleCancelTicket(ticket)}
+                                disabled={cancellingId === ticket.id}
+                              >
+                                {cancellingId === ticket.id ? (
+                                  <CircularProgress size={14} sx={{ color: "#991B1B" }} />
+                                ) : (
+                                  <>
+                                    <CancelOutlinedIcon sx={{ fontSize: 16 }} />
+                                    Cancel
+                                  </>
+                                )}
+                              </button>
+                            ) : (
+                              <span className="support-ticket-no-action">—</span>
+                            )}
+                          </td>
                         </tr>
                       ))}
                     </tbody>

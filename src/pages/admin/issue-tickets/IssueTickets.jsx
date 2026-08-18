@@ -57,6 +57,7 @@ const STATUS_COLORS = {
   pending: { bg: "#FEF3C7", color: "#92400E" },
   "in progress": { bg: "#DBEAFE", color: "#1E40AF" },
   completed: { bg: "#D1FAE5", color: "#065F46" },
+  cancelled: { bg: "#FEE2E2", color: "#991B1B" },
 };
 
 const getInitials = (name) => {
@@ -157,6 +158,16 @@ const IssueTickets = () => {
 
   const handleAdvanceStatus = async (row, targetStatus) => {
     const currentStatus = String(row.status || "").trim().toLowerCase();
+
+    if (currentStatus === "cancelled" || currentStatus === "canceled") {
+      Swal.fire({
+        icon: "info",
+        title: "Cancelled ticket",
+        text: "This ticket was cancelled by the employee and cannot be updated.",
+      });
+      return;
+    }
+
     const allowedStatuses = ALLOWED_NEXT_STATUSES[currentStatus] || [];
     const nextStatus = targetStatus || allowedStatuses[0];
 
@@ -274,7 +285,9 @@ const IssueTickets = () => {
 
     const status = String(row.status || "").trim().toLowerCase();
     const allowedStatuses = ALLOWED_NEXT_STATUSES[status] || [];
-    const isCompleted = status === "completed" || allowedStatuses.length === 0;
+    const isCancelled = status === "cancelled";
+    const isCompleted =
+      status === "completed" || isCancelled || allowedStatuses.length === 0;
     const assignedCode = normalizeCode(row.assignedAdminCode);
     const isAssignedToOther =
       status === "in progress" &&
@@ -316,14 +329,14 @@ const IssueTickets = () => {
           disabled
           className="support-ticket-view-btn"
           sx={{
-            backgroundColor: "#9CA3AF",
+            backgroundColor: isCancelled ? "#FCA5A5" : "#9CA3AF",
             textTransform: "none",
             color: "#fff",
             px: 1.5,
             minWidth: 0,
           }}
         >
-          Completed
+          {isCancelled ? "Cancelled" : "Completed"}
         </Button>
       );
     }
@@ -469,6 +482,9 @@ const IssueTickets = () => {
           <StatCard title="Completed" value={analytics?.completed} subtitle="Resolved" />
         </Box>
         <Box gridColumn={isSmallScreen ? "span 12" : "span 3"}>
+          <StatCard title="Cancelled" value={analytics?.cancelled} subtitle="Withdrawn by employee" />
+        </Box>
+        <Box gridColumn={isSmallScreen ? "span 12" : "span 3"}>
           <StatCard
             title="Avg Pickup Time"
             value={formatDurationMinutes(analytics?.avgPickupMinutes)}
@@ -578,6 +594,7 @@ const IssueTickets = () => {
                 <MenuItem value="pending">Pending</MenuItem>
                 <MenuItem value="in progress">In progress</MenuItem>
                 <MenuItem value="completed">Completed</MenuItem>
+                <MenuItem value="cancelled">Cancelled</MenuItem>
               </Select>
             </FormControl>
           </Box>

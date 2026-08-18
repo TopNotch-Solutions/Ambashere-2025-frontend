@@ -44,7 +44,8 @@ export function renderContractStatusActionButton({
 
   const status = String(row.subscription_status || "").trim().toLowerCase();
   const nextStatus = NEXT_STATUS[status];
-  const isCompleted = status === "completed" || !nextStatus;
+  const isCancelled = status === "cancelled" || status === "canceled";
+  const isCompleted = status === "completed" || isCancelled || !nextStatus;
   const assignedCode = normalizeCode(row.assignedAdminCode);
   const isAssignedToOther =
     status === "in progress" &&
@@ -57,6 +58,7 @@ export function renderContractStatusActionButton({
     if (updatingId === row.id) {
       return <CircularProgress size={16} sx={{ color: "#fff" }} />;
     }
+    if (isCancelled) return "Cancelled";
     if (isCompleted) return "Completed";
     if (isAssignedToOther) return "Assigned elsewhere";
     if (status === "pending") return "Assign & start";
@@ -68,16 +70,21 @@ export function renderContractStatusActionButton({
       size="small"
       variant="contained"
       disabled={isDisabled}
-      onClick={() => onAdvance(row)}
+      onClick={() => {
+        if (isCancelled || isCompleted) return;
+        onAdvance(row);
+      }}
       className="support-ticket-view-btn"
       sx={{
-        backgroundColor: isCompleted
-          ? "#9CA3AF"
-          : isAssignedToOther
+        backgroundColor: isCancelled
+          ? "#FCA5A5"
+          : isCompleted
             ? "#9CA3AF"
-            : nextStatus === "in progress"
-              ? "#F59E0B"
-              : "#16A34A",
+            : isAssignedToOther
+              ? "#9CA3AF"
+              : nextStatus === "in progress"
+                ? "#F59E0B"
+                : "#16A34A",
         textTransform: "none",
         color: "#fff",
         px: 2,
@@ -89,7 +96,11 @@ export function renderContractStatusActionButton({
               : "#15803D",
         },
         "&.Mui-disabled": {
-          backgroundColor: isCompleted || isAssignedToOther ? "#D1D5DB" : undefined,
+          backgroundColor: isCancelled
+            ? "#FCA5A5"
+            : isCompleted || isAssignedToOther
+              ? "#D1D5DB"
+              : undefined,
           color: "#fff",
         },
       }}
@@ -97,6 +108,14 @@ export function renderContractStatusActionButton({
       {buttonLabel}
     </Button>
   );
+
+  if (isCancelled) {
+    return (
+      <Tooltip title="This submission was cancelled by the employee and cannot be updated.">
+        <span>{button}</span>
+      </Tooltip>
+    );
+  }
 
   if (isAssignedToOther) {
     return (

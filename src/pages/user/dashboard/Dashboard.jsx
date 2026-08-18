@@ -12,6 +12,7 @@ import MiniCalendar from "../../../components/global/calendar/MiniCalendar";
 import { useNavigate } from "react-router-dom";
 import formatDate from "../../../components/global/dateFormatter";
 import { formatMoney } from "../../../utils/formatMoney";
+import { shouldConsiderUserAirtimeContract } from "../../../utils/statusBadge";
 import "../../../assets/style/global/handsetBenefitSimulator.css";
 import "../../../assets/style/global/benefits.css";
 import "../../../assets/style/global/dashboard.css";
@@ -190,11 +191,13 @@ const UserDashboard = () => {
     },
   ];
 
-  const airtimeContracts = Array.isArray(airtimeData?.contracts)
-    ? airtimeData.contracts
-    : Array.isArray(airtimeData)
-      ? airtimeData
-      : [];
+  const airtimeContracts = (
+    Array.isArray(airtimeData?.contracts)
+      ? airtimeData.contracts
+      : Array.isArray(airtimeData)
+        ? airtimeData
+        : []
+  ).filter(shouldConsiderUserAirtimeContract);
 
   const airtimeRows = airtimeContracts.map((airtime, index) => ({
     id: `airtime-${airtime?.id ?? airtime?.ContractNumber ?? index + 1}`,

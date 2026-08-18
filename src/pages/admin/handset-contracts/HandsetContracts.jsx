@@ -100,6 +100,16 @@ const AdminHandsetContracts = () => {
     const currentStatus = String(row.subscription_status || "")
       .trim()
       .toLowerCase();
+
+    if (currentStatus === "cancelled" || currentStatus === "canceled") {
+      Swal.fire({
+        icon: "info",
+        title: "Cancelled submission",
+        text: "This submission was cancelled by the employee and cannot be updated.",
+      });
+      return;
+    }
+
     const nextStatus = NEXT_STATUS[currentStatus];
 
     if (!nextStatus) {
@@ -318,6 +328,7 @@ const AdminHandsetContracts = () => {
                   <MenuItem value="pending">Pending</MenuItem>
                   <MenuItem value="in progress">In progress</MenuItem>
                   <MenuItem value="completed">Completed</MenuItem>
+                  <MenuItem value="cancelled">Cancelled</MenuItem>
                 </Select>
               </FormControl>
             </Box>
