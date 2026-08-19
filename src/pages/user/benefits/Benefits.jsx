@@ -11,6 +11,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBoxOpen } from "@fortawesome/free-solid-svg-icons";
 import RemoveCircleIcon from "@mui/icons-material/RemoveCircle";
 import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
+import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
 import axiosInstance from "../../../utils/axiosInstance";
 import Swal from "sweetalert2";
 import formatDate from "../../../components/global/dateFormatter";
@@ -36,6 +37,7 @@ const UserBenefits = () => {
   const [availableAllowance, setAvailableAllowance] = useState(null);
   const [minPackagePrice, setMinPackagePrice] = useState(null);
   const [cancellingSubmissionId, setCancellingSubmissionId] = useState(null);
+  const [receivingSubmissionId, setReceivingSubmissionId] = useState(null);
   const currentUser = useSelector((state) => state.auth.user);
   const { role } = useSelector((state) => state.auth);
   const isActiveStatus = (status) => isActiveBenefitStatus(status);
@@ -74,9 +76,11 @@ const UserBenefits = () => {
     return { background: "#F3F4F6", color: "#374151", border: "#9CA3AF" };
   };
 
-  const formatStatusLabel = (status) => {
+  const formatStatusLabel = (status, isSubmission) => {
     const normalized = String(status || "").trim().toLowerCase();
-    if (normalized === "completed") return "Expired";
+    if (normalized === "completed") {
+      return isSubmission ? "Completed" : "Expired";
+    }
     if (normalized === "cancelled" || normalized === "canceled") return "Cancelled";
     return status || "-";
   };
@@ -136,6 +140,44 @@ const UserBenefits = () => {
       });
     } finally {
       setCancellingSubmissionId(null);
+    }
+  };
+
+  const handleMarkAirtimeReceived = async (submissionId) => {
+    const confirmResult = await Swal.fire({
+      icon: "question",
+      title: "Mark this contract as received?",
+      text: "Confirm that you have received this airtime contract.",
+      showCancelButton: true,
+      confirmButtonColor: "#0D9488",
+      cancelButtonColor: "#6c757d",
+      confirmButtonText: "Yes, I received it",
+      cancelButtonText: "Not yet",
+    });
+
+    if (!confirmResult.isConfirmed) return;
+
+    try {
+      setReceivingSubmissionId(submissionId);
+      await axiosInstance.put(`/contracts/submissions/${submissionId}/received`);
+      Swal.fire({
+        icon: "success",
+        title: "Marked as received",
+        text: "Your airtime contract has been marked as received.",
+        timer: 2800,
+        showConfirmButton: false,
+      });
+      await refreshBenefitsData();
+    } catch (error) {
+      Swal.fire({
+        icon: "error",
+        title: "Update failed",
+        text:
+          error.response?.data?.message ||
+          "Unable to mark this airtime contract as received. Please try again.",
+      });
+    } finally {
+      setReceivingSubmissionId(null);
     }
   };
 
@@ -243,7 +285,7 @@ const UserBenefits = () => {
               borderColor: style.border,
             }}
           >
-            {formatStatusLabel(status)}
+            {formatStatusLabel(status, params.row.isSubmission)}
           </span>
         );
       },
@@ -251,38 +293,62 @@ const UserBenefits = () => {
     {
       field: "actions",
       headerName: "Actions",
-      width: 130,
+      width: 160,
       sortable: false,
       filterable: false,
       renderCell: (params) => {
-        const isPendingSubmission =
+        const status = String(params.row.SubscriptionStatus || "")
+          .trim()
+          .toLowerCase();
+        const isPendingSubmission = params.row.isSubmission && status === "pending";
+        const canMarkReceived =
           params.row.isSubmission &&
-          String(params.row.SubscriptionStatus || "").trim().toLowerCase() ===
-            "pending";
+          status === "completed" &&
+          !params.row.isReceived;
 
-        if (!isPendingSubmission) {
-          return <span className="support-ticket-no-action">—</span>;
+        if (isPendingSubmission) {
+          return (
+            <button
+              type="button"
+              className="support-cancel-btn"
+              onClick={() =>
+                handleCancelAirtimeSubmission(params.row.submissionId)
+              }
+              disabled={cancellingSubmissionId === params.row.submissionId}
+            >
+              {cancellingSubmissionId === params.row.submissionId ? (
+                <CircularProgress size={14} sx={{ color: "#991B1B" }} />
+              ) : (
+                <>
+                  <CancelOutlinedIcon sx={{ fontSize: 16 }} />
+                  Cancel
+                </>
+              )}
+            </button>
+          );
         }
 
-        return (
-          <button
-            type="button"
-            className="support-cancel-btn"
-            onClick={() =>
-              handleCancelAirtimeSubmission(params.row.submissionId)
-            }
-            disabled={cancellingSubmissionId === params.row.submissionId}
-          >
-            {cancellingSubmissionId === params.row.submissionId ? (
-              <CircularProgress size={14} sx={{ color: "#991B1B" }} />
-            ) : (
-              <>
-                <CancelOutlinedIcon sx={{ fontSize: 16 }} />
-                Cancel
-              </>
-            )}
-          </button>
-        );
+        if (canMarkReceived) {
+          return (
+            <button
+              type="button"
+              className="support-receive-btn"
+              onClick={() => handleMarkAirtimeReceived(params.row.submissionId)}
+              disabled={receivingSubmissionId === params.row.submissionId}
+            >
+              {receivingSubmissionId === params.row.submissionId ? (
+                <CircularProgress size={14} sx={{ color: "#0F766E" }} />
+              ) : (
+                <>
+                  <CheckCircleOutlinedIcon sx={{ fontSize: 16 }} />
+                  Received
+                </>
+              )}
+            </button>
+          );
+        }
+
+        return <span className="support-ticket-no-action">—</span>;
       },
     },
   ];
@@ -291,6 +357,7 @@ const UserBenefits = () => {
     id: `benefit-${contract?.id ?? contract?.ContractNumber ?? index + 1}`,
     submissionId: contract?.submissionId ?? contract?.id,
     isSubmission: Boolean(contract?.isSubmission),
+    isReceived: Boolean(contract?.isReceived),
     PackageName: contract?.PackageName || contract?.package || "-",
     DeviceName: contract?.DeviceName || contract?.device || "-",
     MSISDN: contract?.MSISDN || contract?.msisdn || "-",
@@ -312,7 +379,8 @@ const UserBenefits = () => {
       const isOpenSubmission =
         contract?.isSubmission ||
         status === "pending" ||
-        status === "in progress";
+        status === "in progress" ||
+        (status === "completed" && !contract?.isReceived);
       if (isOpenSubmission) return "-";
       return formatDate(
         contract?.ContractStartDate ?? contract?.contract_start_date

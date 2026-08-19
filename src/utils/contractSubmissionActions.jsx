@@ -129,3 +129,51 @@ export function renderContractStatusActionButton({
 
   return button;
 }
+
+export function renderContractCancelButton({
+  row,
+  updatingId,
+  onCancel,
+}) {
+  if (!row) return null;
+
+  const status = String(row.subscription_status || "").trim().toLowerCase();
+  const canCancel = status === "in progress" || status === "completed";
+
+  if (!canCancel) return null;
+
+  const isUpdating = updatingId === row.id;
+
+  return (
+    <Tooltip title="Cancel this submission and notify the employee. Admins are copied on the email.">
+      <span>
+        <Button
+          size="small"
+          variant="contained"
+          disabled={isUpdating}
+          onClick={() => onCancel(row)}
+          className="support-ticket-view-btn"
+          sx={{
+            backgroundColor: "#DC2626",
+            textTransform: "none",
+            color: "#fff",
+            px: 2,
+            "&:hover": {
+              backgroundColor: isUpdating ? undefined : "#B91C1C",
+            },
+            "&.Mui-disabled": {
+              backgroundColor: "#FCA5A5",
+              color: "#fff",
+            },
+          }}
+        >
+          {isUpdating ? (
+            <CircularProgress size={16} sx={{ color: "#fff" }} />
+          ) : (
+            "Cancel"
+          )}
+        </Button>
+      </span>
+    </Tooltip>
+  );
+}

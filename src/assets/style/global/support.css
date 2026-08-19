@@ -554,6 +554,31 @@
   cursor: not-allowed;
 }
 
+.support-receive-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid #99f6e4;
+  border-radius: 8px;
+  background: #f0fdfa;
+  color: #0f766e;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.support-receive-btn:hover:not(:disabled) {
+  background: #ccfbf1;
+  border-color: #5eead4;
+}
+
+.support-receive-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
 .support-ticket-no-action {
   color: #94a3b8;
 }

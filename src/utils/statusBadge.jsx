@@ -38,14 +38,17 @@ export function getStatusStyle(status) {
   return { background: "#F3F4F6", color: "#374151", border: "#9CA3AF" };
 }
 
-export function formatStatusLabel(status) {
+export function formatStatusLabel(status, isSubmission) {
   const normalized = String(status || "").trim().toLowerCase();
   if (normalized === "active") return "Active";
   if (normalized === "inactive") return "Inactive";
   if (normalized === "done") return "Done";
   if (normalized === "pending") return "Pending";
   if (normalized === "in progress") return "In Progress";
-  if (normalized === "completed") return "Completed";
+  if (normalized === "completed") {
+    return isSubmission === false ? "Expired" : "Completed";
+  }
+  if (normalized === "expired") return "Expired";
   if (normalized === "cancelled" || normalized === "canceled") return "Cancelled";
   return status || "-";
 }
@@ -59,6 +62,10 @@ export function isCancelledStatus(status) {
   return normalized === "cancelled" || normalized === "canceled";
 }
 
+export function isReceivedFlag(value) {
+  return value === true || value === 1 || value === "1" || value === "true";
+}
+
 export function shouldConsiderUserAirtimeContract(contract) {
   if (!contract) return false;
 
@@ -69,7 +76,11 @@ export function shouldConsiderUserAirtimeContract(contract) {
   if (isCancelledStatus(status)) return false;
 
   if (contract?.isSubmission) {
-    return status === "pending" || status === "in progress";
+    if (status === "pending" || status === "in progress") return true;
+    if (status === "completed" && !isReceivedFlag(contract?.isReceived)) {
+      return true;
+    }
+    return false;
   }
 
   return true;
@@ -85,7 +96,7 @@ export function isActiveBenefitStatus(status) {
   );
 }
 
-export function StatusBadge({ status }) {
+export function StatusBadge({ status, isSubmission }) {
   const value = status || "-";
   const style = getStatusStyle(value);
 
@@ -104,7 +115,7 @@ export function StatusBadge({ status }) {
         textTransform: "capitalize",
       }}
     >
-      {formatStatusLabel(value)}
+      {formatStatusLabel(value, isSubmission)}
     </span>
   );
 }

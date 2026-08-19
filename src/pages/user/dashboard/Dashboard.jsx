@@ -6,6 +6,8 @@ import pic from "../../../assets/Img/landing/Ambasphere-Logo@2x.png";
 import { DataGrid } from "@mui/x-data-grid";
 import { useSelector } from "react-redux";
 import axiosInstance from "../../../utils/axiosInstance";
+import Swal from "sweetalert2";
+import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
 import RoleSwitcher from "../../../components/admin/RoleSwitcher";
 import UserCalendar from "../calendar/Calendar";
 import MiniCalendar from "../../../components/global/calendar/MiniCalendar";
@@ -16,6 +18,7 @@ import { shouldConsiderUserAirtimeContract } from "../../../utils/statusBadge";
 import "../../../assets/style/global/handsetBenefitSimulator.css";
 import "../../../assets/style/global/benefits.css";
 import "../../../assets/style/global/dashboard.css";
+import "../../../assets/style/global/support.css";
 // import DashboardTableChange from "../../../components/user/DashboardTableChange";
 
 const UserDashboard = () => {
@@ -31,6 +34,7 @@ const UserDashboard = () => {
   const [isLoadingAirtime, setIsLoadingAirtime] = useState(false);
   const [isLoadingHandset, setIsLoadingHandset] = useState(false);
   const [benefitAmount, setBenefitAmount] = useState(0);
+  const [receivingSubmissionId, setReceivingSubmissionId] = useState(null);
   const currentUser = useSelector((state) => state.auth.user);
   const navigate = useNavigate();
   const selfHelp = () => {
@@ -112,6 +116,80 @@ const UserDashboard = () => {
     }
   }, [currentUser?.EmployeeCode]);
 
+  const fetchAirtimeData = async () => {
+    const response = await axiosInstance.get(
+      `/contracts/${currentUser.EmployeeCode}`
+    );
+    if (response.data.status === 1) {
+      setNoContract(response.data);
+      setAirtimeData({});
+    } else {
+      setNoContract({});
+      setAirtimeData(response.data || {});
+    }
+  };
+
+  const fetchHandsetData = async () => {
+    const response = await axiosInstance.get(
+      `/handsets/${currentUser.EmployeeCode}`
+    );
+    if (response.data.status === 1) {
+      setNoHandset(response.data || {});
+      setHandsetData([]);
+    } else {
+      setNoHandset({});
+      setHandsetData(response.data || []);
+    }
+  };
+
+  const handleMarkReceived = async (type, submissionId) => {
+    const confirmResult = await Swal.fire({
+      icon: "question",
+      title:
+        type === "airtime"
+          ? "Mark this contract as received?"
+          : "Mark this handset as received?",
+      text: "Confirm that you have received it. It will then leave your current deductions and table.",
+      showCancelButton: true,
+      confirmButtonColor: "#0D9488",
+      cancelButtonColor: "#6c757d",
+      confirmButtonText: "Yes, I received it",
+      cancelButtonText: "Not yet",
+    });
+
+    if (!confirmResult.isConfirmed) return;
+
+    try {
+      setReceivingSubmissionId(submissionId);
+      const endpoint =
+        type === "airtime"
+          ? `/contracts/submissions/${submissionId}/received`
+          : `/handsets/submissions/${submissionId}/received`;
+      await axiosInstance.put(endpoint);
+      Swal.fire({
+        icon: "success",
+        title: "Marked as received",
+        timer: 2800,
+        showConfirmButton: false,
+      });
+      if (type === "airtime") {
+        await fetchAirtimeData();
+      } else {
+        await fetchHandsetData();
+      }
+    } catch (error) {
+      Swal.fire({
+        icon: "error",
+        title: "Update failed",
+        text:
+          error.response?.data?.message ||
+          "Unable to mark this item as received. Please try again.",
+      });
+    } finally {
+      setReceivingSubmissionId(null);
+    }
+  };
+
   const getStatusStyle = (status) => {
     const normalized = String(status || "").trim().toLowerCase();
 
@@ -144,9 +222,11 @@ const UserDashboard = () => {
     return { background: "#F3F4F6", color: "#374151", border: "#9CA3AF" };
   };
 
-  const formatStatusLabel = (status) => {
+  const formatStatusLabel = (status, isSubmission) => {
     const normalized = String(status || "").trim().toLowerCase();
-    if (normalized === "completed") return "Expired";
+    if (normalized === "completed") {
+      return isSubmission ? "Completed" : "Expired";
+    }
     return status || "-";
   };
 
@@ -163,7 +243,7 @@ const UserDashboard = () => {
           borderColor: style.border,
         }}
       >
-        {formatStatusLabel(status)}
+        {formatStatusLabel(status, params.row?.isSubmission)}
       </span>
     );
   };
@@ -189,6 +269,42 @@ const UserDashboard = () => {
       width: 180,
       renderCell: renderStatusCell,
     },
+    {
+      field: "actions",
+      headerName: "Actions",
+      width: 150,
+      sortable: false,
+      filterable: false,
+      renderCell: (params) => {
+        const status = String(params.row.Status || "").trim().toLowerCase();
+        const canMarkReceived =
+          params.row.isSubmission &&
+          status === "completed" &&
+          !params.row.isReceived;
+
+        if (!canMarkReceived) {
+          return <span className="support-ticket-no-action">—</span>;
+        }
+
+        return (
+          <button
+            type="button"
+            className="support-receive-btn"
+            onClick={() => handleMarkReceived("airtime", params.row.submissionId)}
+            disabled={receivingSubmissionId === params.row.submissionId}
+          >
+            {receivingSubmissionId === params.row.submissionId ? (
+              <CircularProgress size={14} sx={{ color: "#0F766E" }} />
+            ) : (
+              <>
+                <CheckCircleOutlinedIcon sx={{ fontSize: 16 }} />
+                Received
+              </>
+            )}
+          </button>
+        );
+      },
+    },
   ];
 
   const airtimeContracts = (
@@ -201,6 +317,9 @@ const UserDashboard = () => {
 
   const airtimeRows = airtimeContracts.map((airtime, index) => ({
     id: `airtime-${airtime?.id ?? airtime?.ContractNumber ?? index + 1}`,
+    submissionId: airtime?.submissionId ?? airtime?.id,
+    isSubmission: Boolean(airtime?.isSubmission),
+    isReceived: Boolean(airtime?.isReceived),
     MSISDN: airtime?.msisdn || airtime?.MSISDN || airtime?.staff_msisdn || "",
     PackageName: airtime?.package || airtime?.PackageName || "-",
     PackageMonthlyPayment: formatMoney(airtime?.PackageMonthlyPayment ?? airtime?.serviceplan_monthly_price),
@@ -219,7 +338,8 @@ const UserDashboard = () => {
       const isOpenSubmission =
         airtime?.isSubmission ||
         status === "pending" ||
-        status === "in progress";
+        status === "in progress" ||
+        (status === "completed" && !airtime?.isReceived);
       if (isOpenSubmission) return "-";
       return formatDate(
         airtime?.contract_start_date ?? airtime?.ContractStartDate
@@ -247,9 +367,48 @@ const UserDashboard = () => {
       width: 180,
       renderCell: renderStatusCell,
     },
+    {
+      field: "actions",
+      headerName: "Actions",
+      width: 150,
+      sortable: false,
+      filterable: false,
+      renderCell: (params) => {
+        const status = String(params.row.Status || "").trim().toLowerCase();
+        const canMarkReceived =
+          params.row.isSubmission &&
+          status === "completed" &&
+          !params.row.isReceived;
+
+        if (!canMarkReceived) {
+          return <span className="support-ticket-no-action">—</span>;
+        }
+
+        return (
+          <button
+            type="button"
+            className="support-receive-btn"
+            onClick={() => handleMarkReceived("handset", params.row.submissionId)}
+            disabled={receivingSubmissionId === params.row.submissionId}
+          >
+            {receivingSubmissionId === params.row.submissionId ? (
+              <CircularProgress size={14} sx={{ color: "#0F766E" }} />
+            ) : (
+              <>
+                <CheckCircleOutlinedIcon sx={{ fontSize: 16 }} />
+                Received
+              </>
+            )}
+          </button>
+        );
+      },
+    },
   ];
   const handsetRows = (handsetData?.handsets || []).map((handset, index) => ({
     id: handset?.id ?? `handset-${index + 1}`,
+    submissionId: handset?.submissionId,
+    isSubmission: Boolean(handset?.isSubmission),
+    isReceived: Boolean(handset?.isReceived),
     FixedAssetCode: handset?.FixedAssetCode,
     HandsetAllocation: formatMoney(handset?.HandsetAllocation),
     HandsetPrice: formatMoney(handset?.HandsetPrice),

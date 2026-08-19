@@ -15,6 +15,7 @@ import PostAddIcon from "@mui/icons-material/PostAdd";
 import SupportAgentIcon from "@mui/icons-material/SupportAgent";
 import ShareIcon from "@mui/icons-material/Share";
 import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
+import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import Tooltip from "@mui/material/Tooltip";
@@ -42,6 +43,7 @@ const UserHandsets = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [cancellingSubmissionId, setCancellingSubmissionId] = useState(null);
+  const [receivingSubmissionId, setReceivingSubmissionId] = useState(null);
   const [showSimulator, setShowSimulator] = useState(false);
   const { role } = useSelector((state) => state.auth);
   const currentUser = useSelector((state) => state.auth.user);
@@ -220,9 +222,11 @@ const UserHandsets = () => {
     return { background: "#F3F4F6", color: "#374151", border: "#9CA3AF" };
   };
 
-  const formatStatusLabel = (status) => {
+  const formatStatusLabel = (status, isSubmission) => {
     const normalized = String(status || "").trim().toLowerCase();
-    if (normalized === "completed") return "Expired";
+    if (normalized === "completed") {
+      return isSubmission ? "Completed" : "Expired";
+    }
     if (normalized === "cancelled" || normalized === "canceled") return "Cancelled";
     return status || "-";
   };
@@ -251,10 +255,7 @@ const UserHandsets = () => {
         timer: 3200,
         showConfirmButton: false,
       });
-      const response = await axiosInstance.get(
-        `/handsets/handset/${currentUser.EmployeeCode}`,
-      );
-      setDataAllocation(Array.isArray(response.data) ? response.data : []);
+      await refreshHandsetData();
     } catch (error) {
       Swal.fire({
         icon: "error",
@@ -265,6 +266,51 @@ const UserHandsets = () => {
       });
     } finally {
       setCancellingSubmissionId(null);
+    }
+  };
+
+  const refreshHandsetData = async () => {
+    const response = await axiosInstance.get(
+      `/handsets/handset/${currentUser.EmployeeCode}`,
+    );
+    setDataAllocation(Array.isArray(response.data) ? response.data : []);
+  };
+
+  const handleMarkHandsetReceived = async (submissionId) => {
+    const confirmResult = await Swal.fire({
+      icon: "question",
+      title: "Mark this handset as received?",
+      text: "Confirm that you have received this staff handset.",
+      showCancelButton: true,
+      confirmButtonColor: "#0D9488",
+      cancelButtonColor: "#6c757d",
+      confirmButtonText: "Yes, I received it",
+      cancelButtonText: "Not yet",
+    });
+
+    if (!confirmResult.isConfirmed) return;
+
+    try {
+      setReceivingSubmissionId(submissionId);
+      await axiosInstance.put(`/handsets/submissions/${submissionId}/received`);
+      Swal.fire({
+        icon: "success",
+        title: "Marked as received",
+        text: "Your staff handset has been marked as received.",
+        timer: 2800,
+        showConfirmButton: false,
+      });
+      await refreshHandsetData();
+    } catch (error) {
+      Swal.fire({
+        icon: "error",
+        title: "Update failed",
+        text:
+          error.response?.data?.message ||
+          "Unable to mark this handset as received. Please try again.",
+      });
+    } finally {
+      setReceivingSubmissionId(null);
     }
   };
 
@@ -295,7 +341,7 @@ const UserHandsets = () => {
               borderColor: style.border,
             }}
           >
-            {formatStatusLabel(status)}
+            {formatStatusLabel(status, params.row.isSubmission)}
           </span>
         );
       },
@@ -303,35 +349,58 @@ const UserHandsets = () => {
     {
       field: "actions",
       headerName: "Actions",
-      width: 130,
+      width: 160,
       sortable: false,
       filterable: false,
       renderCell: (params) => {
-        const isPendingSubmission =
+        const status = String(params.row.Status || "").trim().toLowerCase();
+        const isPendingSubmission = params.row.isSubmission && status === "pending";
+        const canMarkReceived =
           params.row.isSubmission &&
-          String(params.row.Status || "").trim().toLowerCase() === "pending";
+          status === "completed" &&
+          !params.row.isReceived;
 
-        if (!isPendingSubmission) {
-          return <span className="support-ticket-no-action">—</span>;
+        if (isPendingSubmission) {
+          return (
+            <button
+              type="button"
+              className="support-cancel-btn"
+              onClick={() => handleCancelHandsetSubmission(params.row.submissionId)}
+              disabled={cancellingSubmissionId === params.row.submissionId}
+            >
+              {cancellingSubmissionId === params.row.submissionId ? (
+                <CircularProgress size={14} sx={{ color: "#991B1B" }} />
+              ) : (
+                <>
+                  <CancelOutlinedIcon sx={{ fontSize: 16 }} />
+                  Cancel
+                </>
+              )}
+            </button>
+          );
         }
 
-        return (
-          <button
-            type="button"
-            className="support-cancel-btn"
-            onClick={() => handleCancelHandsetSubmission(params.row.submissionId)}
-            disabled={cancellingSubmissionId === params.row.submissionId}
-          >
-            {cancellingSubmissionId === params.row.submissionId ? (
-              <CircularProgress size={14} sx={{ color: "#991B1B" }} />
-            ) : (
-              <>
-                <CancelOutlinedIcon sx={{ fontSize: 16 }} />
-                Cancel
-              </>
-            )}
-          </button>
-        );
+        if (canMarkReceived) {
+          return (
+            <button
+              type="button"
+              className="support-receive-btn"
+              onClick={() => handleMarkHandsetReceived(params.row.submissionId)}
+              disabled={receivingSubmissionId === params.row.submissionId}
+            >
+              {receivingSubmissionId === params.row.submissionId ? (
+                <CircularProgress size={14} sx={{ color: "#0F766E" }} />
+              ) : (
+                <>
+                  <CheckCircleOutlinedIcon sx={{ fontSize: 16 }} />
+                  Received
+                </>
+              )}
+            </button>
+          );
+        }
+
+        return <span className="support-ticket-no-action">—</span>;
       },
     },
   ];
@@ -342,6 +411,7 @@ const UserHandsets = () => {
       id: handset.id,
       submissionId: handset.submissionId,
       isSubmission: Boolean(handset.isSubmission),
+      isReceived: Boolean(handset.isReceived),
       EmployeeCode: handset.EmployeeCode,
       HandsetName: handset.HandsetName,
       DevicePrice: formatMoney(handset.HandsetPrice),

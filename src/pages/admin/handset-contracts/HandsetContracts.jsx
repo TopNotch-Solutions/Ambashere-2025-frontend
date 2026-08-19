@@ -29,6 +29,7 @@ import { renderStatusCell, StatusBadge } from "../../../utils/statusBadge";
 import {
   renderContractStatusActionButton,
   renderContractViewButton,
+  renderContractCancelButton,
 } from "../../../utils/contractSubmissionActions";
 import "../../../assets/style/global/handsetBenefitSimulator.css";
 import "../../../assets/style/global/adminDashboard.css";
@@ -56,6 +57,7 @@ const mapHandsetSubmissionRow = (item, index) => ({
   subscription_status: item.subscription_status || "-",
   assignedAdminCode: item.assignedAdminCode || null,
   assignedAdminName: item.assignedAdminName || "-",
+  isReceived: Boolean(item.isReceived),
 });
 
 const AdminHandsetContracts = () => {
@@ -169,6 +171,53 @@ const AdminHandsetContracts = () => {
     normalizeCode,
   };
 
+  const handleAdminCancel = async (row) => {
+    const currentStatus = String(row.subscription_status || "")
+      .trim()
+      .toLowerCase();
+
+    if (currentStatus !== "in progress" && currentStatus !== "completed") {
+      Swal.fire({
+        icon: "info",
+        title: "Cannot cancel",
+        text: "Only in progress or completed submissions can be cancelled by an admin.",
+      });
+      return;
+    }
+
+    const confirmed = await confirmAdminAction({
+      title: "Cancel this handset submission?",
+      text: "The employee will be notified in-app and by email. All admins will be copied on the email.",
+      icon: "warning",
+      confirmButtonText: "Yes, cancel submission",
+    });
+
+    if (!confirmed) return;
+
+    try {
+      setUpdatingId(row.id);
+      await axiosInstance.put(`/handsets/submissions/${row.id}/admin-cancel`);
+      await fetchActiveSubmissions();
+      Swal.fire({
+        icon: "success",
+        title: "Cancelled",
+        text: "The submission was cancelled and the employee was notified.",
+        timer: 1800,
+        showConfirmButton: false,
+      });
+    } catch (error) {
+      Swal.fire({
+        icon: "error",
+        title: "Cancel failed",
+        text:
+          error.response?.data?.message ||
+          "Could not cancel this submission.",
+      });
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
   const rows = useMemo(() => {
     let filtered =
       statusFilter === "all"
@@ -220,9 +269,15 @@ const AdminHandsetContracts = () => {
       width: 160,
     },
     {
+      field: "isReceived",
+      headerName: "Received",
+      width: 110,
+      renderCell: (params) => (params.row.isReceived ? "Yes" : "No"),
+    },
+    {
       field: "actions",
       headerName: "Actions",
-      width: 240,
+      width: 330,
       sortable: false,
       filterable: false,
       renderCell: (params) => (
@@ -236,6 +291,11 @@ const AdminHandsetContracts = () => {
           {renderContractStatusActionButton({
             row: params.row,
             ...statusActionProps,
+          })}
+          {renderContractCancelButton({
+            row: params.row,
+            updatingId,
+            onCancel: handleAdminCancel,
           })}
         </Box>
       ),
@@ -394,6 +454,10 @@ const AdminHandsetContracts = () => {
                   value: <StatusBadge status={viewSubmission.subscription_status} />,
                 },
                 {
+                  label: "Received",
+                  value: viewSubmission.isReceived ? "Yes" : "No",
+                },
+                {
                   label: "Attended by",
                   value:
                     viewSubmission.assignedAdminName !== "-"
@@ -423,10 +487,19 @@ const AdminHandsetContracts = () => {
             ? [{ label: "Submitted", date: viewSubmission.contract_submitted_date }]
             : []
         }
-        actions={renderContractStatusActionButton({
-          row: viewSubmission,
-          ...statusActionProps,
-        })}
+        actions={
+          <Box display="flex" alignItems="center" gap={1}>
+            {renderContractStatusActionButton({
+              row: viewSubmission,
+              ...statusActionProps,
+            })}
+            {renderContractCancelButton({
+              row: viewSubmission,
+              updatingId,
+              onCancel: handleAdminCancel,
+            })}
+          </Box>
+        }
       />
     </Box>
   );
