@@ -16,6 +16,7 @@ import SupportAgentIcon from "@mui/icons-material/SupportAgent";
 import ShareIcon from "@mui/icons-material/Share";
 import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
 import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import Tooltip from "@mui/material/Tooltip";
@@ -349,7 +350,7 @@ const UserHandsets = () => {
     {
       field: "actions",
       headerName: "Actions",
-      width: 160,
+      width: 220,
       sortable: false,
       filterable: false,
       renderCell: (params) => {
@@ -362,21 +363,31 @@ const UserHandsets = () => {
 
         if (isPendingSubmission) {
           return (
-            <button
-              type="button"
-              className="support-cancel-btn"
-              onClick={() => handleCancelHandsetSubmission(params.row.submissionId)}
-              disabled={cancellingSubmissionId === params.row.submissionId}
-            >
-              {cancellingSubmissionId === params.row.submissionId ? (
-                <CircularProgress size={14} sx={{ color: "#991B1B" }} />
-              ) : (
-                <>
-                  <CancelOutlinedIcon sx={{ fontSize: 16 }} />
-                  Cancel
-                </>
-              )}
-            </button>
+            <Box display="flex" alignItems="center" gap={1}>
+              <button
+                type="button"
+                className="support-receive-btn"
+                onClick={() => setShowSimulator(true)}
+              >
+                <EditOutlinedIcon sx={{ fontSize: 16 }} />
+                Edit
+              </button>
+              <button
+                type="button"
+                className="support-cancel-btn"
+                onClick={() => handleCancelHandsetSubmission(params.row.submissionId)}
+                disabled={cancellingSubmissionId === params.row.submissionId}
+              >
+                {cancellingSubmissionId === params.row.submissionId ? (
+                  <CircularProgress size={14} sx={{ color: "#991B1B" }} />
+                ) : (
+                  <>
+                    <CancelOutlinedIcon sx={{ fontSize: 16 }} />
+                    Cancel
+                  </>
+                )}
+              </button>
+            </Box>
           );
         }
 

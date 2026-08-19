@@ -17,6 +17,11 @@ import axiosInstance from "../../utils/axiosInstance";
 import "../../assets/style/global/voucher.css";
 import UploadVoucher from "../../pages/admin/upload/UploadVoucher";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
+import {
+  isRenewalTransaction,
+  isValidAirtimeMsisdn,
+  normalizeAirtimeMsisdn,
+} from "../../utils/airtimeMsisdn";
 
 const BenefitVoucher = ({
   open,
@@ -56,6 +61,9 @@ const BenefitVoucher = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isSimulationLocked =
     Array.isArray(prefillData) && prefillData.length > 0;
+  const prefilledMsisdn =
+    (prefillData || []).find((item) => normalizeAirtimeMsisdn(item?.msisdn))
+      ?.msisdn || "";
 
   useEffect(() => {
     const handle = async () => {
@@ -203,7 +211,7 @@ const BenefitVoucher = ({
       dropdown: prefill.packageName,
       column2: `${price}`,
       column3: "",
-      column4: "",
+      column4: prefill.msisdn || "",
       column5: "",
       column6: prefill.subscriptionType || "New",
       packageID: prefill.packageID ?? selectedOption?.PackageID ?? null,
@@ -215,7 +223,7 @@ const BenefitVoucher = ({
     dropdown: "Equipment Plan",
     column2: prefill?.devicePrice ? `${prefill.devicePrice}` : "",
     column3: prefill?.deviceName || "",
-    column4: "",
+    column4: prefill?.msisdn || "",
     column5: "",
     column6: "",
   });
@@ -252,11 +260,15 @@ const BenefitVoucher = ({
         {
           id: 11,
           dropdown: "Service Account/ MSISDN",
-          column2: userData.staffWithAirtimeAllocation[0].ServicePlan === "PostPaid" 
-            ? "POST: " + userData.staffWithAirtimeAllocation[0].PhoneNumber 
+          column2: prefilledMsisdn
+            ? prefilledMsisdn
+            : userData.staffWithAirtimeAllocation[0].ServicePlan === "PostPaid"
+            ? "POST: " + userData.staffWithAirtimeAllocation[0].PhoneNumber
             : "",
-          column3: userData.staffWithAirtimeAllocation[0].ServicePlan === "PrePaid" 
-            ? "PRE: " + userData.staffWithAirtimeAllocation[0].PhoneNumber 
+          column3: prefilledMsisdn
+            ? ""
+            : userData.staffWithAirtimeAllocation[0].ServicePlan === "PrePaid"
+            ? "PRE: " + userData.staffWithAirtimeAllocation[0].PhoneNumber
             : "",
           column4: "",
           column5: "",
@@ -324,8 +336,8 @@ const BenefitVoucher = ({
       if (contract?.deviceName && deviceNameRef.current[deviceRowId]) {
         deviceNameRef.current[deviceRowId].value = contract.deviceName;
       }
-      if (contract?.devicePrice && devicePriceRef.current[deviceRowId]) {
-        devicePriceRef.current[deviceRowId].value = contract.devicePrice;
+      if (contract?.msisdn && msisdnRef.current[deviceRowId]) {
+        msisdnRef.current[deviceRowId].value = contract.msisdn;
       }
     });
   }, [open, prefillData, rows.length]);
@@ -346,6 +358,13 @@ const BenefitVoucher = ({
               column2: userData.staffWithAirtimeAllocation[0].EmployeeCode,
             };
           case 11:
+            if (prefilledMsisdn) {
+              return {
+                ...row,
+                column2: prefilledMsisdn,
+                column3: "",
+              };
+            }
             return userData.staffWithAirtimeAllocation[0].ServicePlan ===
               "PostPaid"
               ? {
@@ -431,7 +450,7 @@ const BenefitVoucher = ({
 
   // Handle Dropdown changes
   const handleDropdownChange = (event, rowId, field) => {
-    if (isSimulationLocked && field === "dropdown" && rowId >= 1 && rowId <= 5) {
+    if (isSimulationLocked && (field === "dropdown" || field === "column6") && rowId >= 1 && rowId <= 5) {
       return;
     }
     if (field === "column6" && rowId >= 1 && rowId <= 5) {
@@ -754,6 +773,25 @@ const BenefitVoucher = ({
             );
           }
           const monthlyPrice = parseFloat(packageRow.column2);
+          const prefill = prefillData?.[packageRow.id - 1];
+          const packageMsisdn = normalizeAirtimeMsisdn(
+            prefill?.msisdn ||
+              packageRow.column4 ||
+              msisdnRef.current[packageRow.id + 5]?.value
+          );
+
+          if (
+            isRenewalTransaction(packageRow.column6) &&
+            !isValidAirtimeMsisdn(packageMsisdn)
+          ) {
+            throw new Error(
+              `Renewal requires a valid MSISDN starting with 81, e.g. 812081591 ${
+                packageRow.dropdown && packageRow.dropdown !== "Select Package"
+                  ? `for Package: ${packageRow.dropdown}`
+                  : `in row ${packageRow.id}`
+              }.`
+            );
+          }
 
           selectedPackagesDetails.push({
             id: packageRow.id,
@@ -764,6 +802,7 @@ const BenefitVoucher = ({
             DisplayName: packageRow.dropdown,
             DeviceAssigned: null,
             AdjustedMonthlyPrice: monthlyPrice,
+            MSISDN: packageMsisdn || null,
           });
         }
       }
@@ -858,13 +897,19 @@ const BenefitVoucher = ({
       }
 
       let msisdn = "";
-      if (role === 1) {
-        msisdn =
+      if (prefilledMsisdn) {
+        msisdn = normalizeAirtimeMsisdn(prefilledMsisdn);
+      } else if (role === 1) {
+        msisdn = normalizeAirtimeMsisdn(
           rows.find((row) => row.id === 11)?.column2 ||
-          rows.find((row) => row.id === 11)?.column3;
+            rows.find((row) => row.id === 11)?.column3
+        );
         if (!msisdn) {
           throw new Error("MSISDN is missing. Admin must fill this field.");
         }
+      } else {
+        msisdn =
+          selectedPackagesDetails.find((pkg) => pkg.MSISDN)?.MSISDN || "";
       }
 
       const updatedRows = calculateMUL(rows);
@@ -938,6 +983,7 @@ const BenefitVoucher = ({
           ContractDuration: pkg.ContractDuration,
           DeviceAssigned: pkg.DeviceAssigned,
           DisplayName: pkg.DisplayName,
+          MSISDN: pkg.MSISDN || msisdn || null,
         })),
       };
 
@@ -1294,6 +1340,16 @@ const BenefitVoucher = ({
               !!params.row.column2);
 
           if (!hasPackage) {
+            return (
+              <span className="border-0 shadow-none bg-transparent">
+                {params.value && params.value !== "Select Type"
+                  ? params.value
+                  : ""}
+              </span>
+            );
+          }
+
+          if (isSimulationLocked) {
             return (
               <span className="border-0 shadow-none bg-transparent">
                 {params.value && params.value !== "Select Type"

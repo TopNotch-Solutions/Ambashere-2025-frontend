@@ -134,6 +134,8 @@ export function renderContractCancelButton({
   row,
   updatingId,
   onCancel,
+  currentAdminCode,
+  normalizeCode,
 }) {
   if (!row) return null;
 
@@ -143,37 +145,57 @@ export function renderContractCancelButton({
   if (!canCancel) return null;
 
   const isUpdating = updatingId === row.id;
+  const assignedCode = normalizeCode(row.assignedAdminCode);
+  const isAssignedToOther = !assignedCode || assignedCode !== currentAdminCode;
+  const isDisabled = isUpdating || isAssignedToOther;
+
+  const button = (
+    <Button
+      size="small"
+      variant="contained"
+      disabled={isDisabled}
+      onClick={() => {
+        if (isDisabled) return;
+        onCancel(row);
+      }}
+      className="support-ticket-view-btn"
+      sx={{
+        backgroundColor: isAssignedToOther ? "#9CA3AF" : "#DC2626",
+        textTransform: "none",
+        color: "#fff",
+        px: 2,
+        "&:hover": {
+          backgroundColor: isDisabled ? undefined : "#B91C1C",
+        },
+        "&.Mui-disabled": {
+          backgroundColor: isAssignedToOther ? "#D1D5DB" : "#FCA5A5",
+          color: "#fff",
+        },
+      }}
+    >
+      {isUpdating ? (
+        <CircularProgress size={16} sx={{ color: "#fff" }} />
+      ) : isAssignedToOther ? (
+        "Assigned elsewhere"
+      ) : (
+        "Cancel"
+      )}
+    </Button>
+  );
+
+  if (isAssignedToOther) {
+    return (
+      <Tooltip
+        title={`Assigned to ${row.assignedAdminName || "another admin"}. Only they can cancel this submission.`}
+      >
+        <span>{button}</span>
+      </Tooltip>
+    );
+  }
 
   return (
     <Tooltip title="Cancel this submission and notify the employee. Admins are copied on the email.">
-      <span>
-        <Button
-          size="small"
-          variant="contained"
-          disabled={isUpdating}
-          onClick={() => onCancel(row)}
-          className="support-ticket-view-btn"
-          sx={{
-            backgroundColor: "#DC2626",
-            textTransform: "none",
-            color: "#fff",
-            px: 2,
-            "&:hover": {
-              backgroundColor: isUpdating ? undefined : "#B91C1C",
-            },
-            "&.Mui-disabled": {
-              backgroundColor: "#FCA5A5",
-              color: "#fff",
-            },
-          }}
-        >
-          {isUpdating ? (
-            <CircularProgress size={16} sx={{ color: "#fff" }} />
-          ) : (
-            "Cancel"
-          )}
-        </Button>
-      </span>
+      <span>{button}</span>
     </Tooltip>
   );
 }

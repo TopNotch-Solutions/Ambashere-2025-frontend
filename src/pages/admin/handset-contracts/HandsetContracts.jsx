@@ -185,6 +185,15 @@ const AdminHandsetContracts = () => {
       return;
     }
 
+    if (normalizeCode(row.assignedAdminCode) !== currentAdminCode) {
+      Swal.fire({
+        icon: "info",
+        title: "Assigned elsewhere",
+        text: `This contract is assigned to ${row.assignedAdminName || "another admin"}. Only the assigned admin can cancel it.`,
+      });
+      return;
+    }
+
     const confirmed = await confirmAdminAction({
       title: "Cancel this handset submission?",
       text: "The employee will be notified in-app and by email. All admins will be copied on the email.",
@@ -296,6 +305,8 @@ const AdminHandsetContracts = () => {
             row: params.row,
             updatingId,
             onCancel: handleAdminCancel,
+            currentAdminCode,
+            normalizeCode,
           })}
         </Box>
       ),
@@ -497,6 +508,8 @@ const AdminHandsetContracts = () => {
               row: viewSubmission,
               updatingId,
               onCancel: handleAdminCancel,
+              currentAdminCode,
+              normalizeCode,
             })}
           </Box>
         }

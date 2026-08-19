@@ -12,6 +12,7 @@ import { faBoxOpen } from "@fortawesome/free-solid-svg-icons";
 import RemoveCircleIcon from "@mui/icons-material/RemoveCircle";
 import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
 import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import axiosInstance from "../../../utils/axiosInstance";
 import Swal from "sweetalert2";
 import formatDate from "../../../components/global/dateFormatter";
@@ -38,6 +39,7 @@ const UserBenefits = () => {
   const [minPackagePrice, setMinPackagePrice] = useState(null);
   const [cancellingSubmissionId, setCancellingSubmissionId] = useState(null);
   const [receivingSubmissionId, setReceivingSubmissionId] = useState(null);
+  const [editingSubmission, setEditingSubmission] = useState(null);
   const currentUser = useSelector((state) => state.auth.user);
   const { role } = useSelector((state) => state.auth);
   const isActiveStatus = (status) => isActiveBenefitStatus(status);
@@ -122,6 +124,8 @@ const UserBenefits = () => {
     try {
       setCancellingSubmissionId(submissionId);
       await axiosInstance.put(`/contracts/submissions/${submissionId}/cancel`);
+      setEditingSubmission(null);
+      setShowSimulator(false);
       Swal.fire({
         icon: "success",
         title: "Request cancelled",
@@ -293,7 +297,7 @@ const UserBenefits = () => {
     {
       field: "actions",
       headerName: "Actions",
-      width: 160,
+      width: 220,
       sortable: false,
       filterable: false,
       renderCell: (params) => {
@@ -308,23 +312,41 @@ const UserBenefits = () => {
 
         if (isPendingSubmission) {
           return (
-            <button
-              type="button"
-              className="support-cancel-btn"
-              onClick={() =>
-                handleCancelAirtimeSubmission(params.row.submissionId)
-              }
-              disabled={cancellingSubmissionId === params.row.submissionId}
-            >
-              {cancellingSubmissionId === params.row.submissionId ? (
-                <CircularProgress size={14} sx={{ color: "#991B1B" }} />
-              ) : (
-                <>
-                  <CancelOutlinedIcon sx={{ fontSize: 16 }} />
-                  Cancel
-                </>
-              )}
-            </button>
+            <Box display="flex" alignItems="center" gap={1}>
+              <button
+                type="button"
+                className="support-receive-btn"
+                onClick={() => {
+                  const contract = data.find(
+                    (item) =>
+                      item?.isSubmission &&
+                      (item?.submissionId ?? item?.id) === params.row.submissionId
+                  );
+                  setEditingSubmission(contract || null);
+                  setShowSimulator(true);
+                }}
+              >
+                <EditOutlinedIcon sx={{ fontSize: 16 }} />
+                Edit
+              </button>
+              <button
+                type="button"
+                className="support-cancel-btn"
+                onClick={() =>
+                  handleCancelAirtimeSubmission(params.row.submissionId)
+                }
+                disabled={cancellingSubmissionId === params.row.submissionId}
+              >
+                {cancellingSubmissionId === params.row.submissionId ? (
+                  <CircularProgress size={14} sx={{ color: "#991B1B" }} />
+                ) : (
+                  <>
+                    <CancelOutlinedIcon sx={{ fontSize: 16 }} />
+                    Cancel
+                  </>
+                )}
+              </button>
+            </Box>
           );
         }
 
@@ -434,7 +456,10 @@ const UserBenefits = () => {
         </div>
         <Button
           className="benefits-cta-btn"
-          onClick={() => setShowSimulator((prev) => !prev)}
+          onClick={() => {
+            setEditingSubmission(null);
+            setShowSimulator((prev) => !prev);
+          }}
         >
           {showSimulator ? "Back to My Staff Benefits" : "Simulate Staff Airtime Benefit"}
         </Button>
@@ -452,8 +477,16 @@ const UserBenefits = () => {
       {showSimulator ? (
         <AirtimeBenefitSimulator
           embedded
+          editingSubmission={editingSubmission}
+          onUpdated={async () => {
+            setShowSimulator(false);
+            setEditingSubmission(null);
+            await refreshBenefitsData();
+          }}
           onApplySimulation={
-            canSimulateAirtimeBenefit ? handleApplySimulation : undefined
+            canSimulateAirtimeBenefit && !editingSubmission
+              ? handleApplySimulation
+              : undefined
           }
         />
       ) : (

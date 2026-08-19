@@ -15,21 +15,52 @@ import axiosInstance from "../../../utils/axiosInstance";
 import { useSelector } from "react-redux";
 import Swal from "sweetalert2";
 import "../../../assets/style/global/handsetBenefitSimulator.css";
+import {
+  AIRTIME_MSISDN_HELPER,
+  AIRTIME_TRANSACTION_TYPES,
+  isRenewalTransaction,
+  isValidAirtimeMsisdn,
+  normalizeAirtimeMsisdn,
+} from "../../../utils/airtimeMsisdn";
 
-const AirtimeBenefitSimulator = ({ embedded = false, onApplySimulation }) => {
+const AirtimeBenefitSimulator = ({
+  embedded = false,
+  onApplySimulation,
+  editingSubmission = null,
+  onUpdated,
+}) => {
   const [packages, setPackages] = useState([]);
   const [devices, setDevices] = useState([]);
   const [numberOfContracts, setNumberOfContracts] = useState(1);
   const [contractData, setContractData] = useState([
-    { selectedPackage: "", devicePrice: "", deviceName: "", packagePrice: "" },
+    {
+      selectedPackage: "",
+      devicePrice: "",
+      deviceName: "",
+      packagePrice: "",
+      subscriptionType: "New",
+      msisdn: "",
+    },
   ]);
   const [airtimeAllocation, setAirtimeAllocation] = useState("");
   const [availableAllowance, setAvailableAllowance] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [devicesError, setDevicesError] = useState("");
   const [packagesError, setPackagesError] = useState("");
   const currentUser = useSelector((state) => state.auth.user);
   const employeeCode = currentUser?.EmployeeCode;
+  const isEditing = Boolean(
+    editingSubmission?.submissionId || editingSubmission?.id
+  );
+  const editingSubmissionId =
+    editingSubmission?.submissionId ?? editingSubmission?.id;
+  const pendingMonthly = isEditing
+    ? (Number(editingSubmission?.device_monthly_price) || 0) +
+        (Number(editingSubmission?.serviceplan_monthly_price) || 0) ||
+      Number(editingSubmission?.MonthlyPayment) ||
+      0
+    : 0;
 
   const sortedPackages = useMemo(
     () =>
@@ -117,6 +148,21 @@ const AirtimeBenefitSimulator = ({ embedded = false, onApplySimulation }) => {
     fetchAvailableAllowance();
   }, [employeeCode]);
 
+  useEffect(() => {
+    if (!isEditing) return;
+    setNumberOfContracts(1);
+    setContractData([
+      {
+        selectedPackage: "",
+        devicePrice: "",
+        deviceName: "",
+        packagePrice: "",
+        subscriptionType: "",
+        msisdn: "",
+      },
+    ]);
+  }, [isEditing, editingSubmissionId]);
+
   const getPackageMonthlyCost = (contract) => {
     const selectedPkg = packages.find(
       (pkg) => pkg.PackageID === contract.selectedPackage
@@ -157,11 +203,12 @@ const AirtimeBenefitSimulator = ({ embedded = false, onApplySimulation }) => {
     getPackageMonthlyCost(contract) + getDeviceMonthlyCost(contract);
 
   const limitBudget = useMemo(() => {
-    if (availableAllowance !== null) {
-      return parseFloat(availableAllowance) || 0;
-    }
-    return 0.7 * (parseFloat(airtimeAllocation) || 0);
-  }, [availableAllowance, airtimeAllocation]);
+    const available =
+      availableAllowance !== null
+        ? parseFloat(availableAllowance) || 0
+        : 0.7 * (parseFloat(airtimeAllocation) || 0);
+    return available + (isEditing ? pendingMonthly : 0);
+  }, [availableAllowance, airtimeAllocation, isEditing, pendingMonthly]);
 
   const getRemainingBeforeContract = (index, data = contractData) => {
     let remaining = limitBudget;
@@ -278,6 +325,8 @@ const AirtimeBenefitSimulator = ({ embedded = false, onApplySimulation }) => {
           netOption: "",
           netAdditionalRow: false,
           packageError: "",
+          subscriptionType: "New",
+          msisdn: "",
         });
       }
       return newData.slice(0, numContracts);
@@ -297,6 +346,16 @@ const AirtimeBenefitSimulator = ({ embedded = false, onApplySimulation }) => {
       const updatedData = [...prevData];
       let updatedContract = { ...updatedData[index], [field]: value };
       const remaining = getRemainingBeforeContract(index, updatedData);
+
+      if (field === "subscriptionType") {
+        if (!isRenewalTransaction(value)) {
+          updatedContract.msisdn = "";
+        }
+      }
+
+      if (field === "msisdn") {
+        updatedContract.msisdn = normalizeAirtimeMsisdn(value).slice(0, 9);
+      }
 
       if (field === "selectedPackage") {
         if (!value) {
@@ -413,8 +472,19 @@ const AirtimeBenefitSimulator = ({ embedded = false, onApplySimulation }) => {
     (contract) => !!contract.selectedPackage
   );
 
+  const hasValidTransactionDetails = contractData
+    .filter((contract) => !!contract.selectedPackage)
+    .every((contract) => {
+      if (!contract.subscriptionType) return false;
+      if (isRenewalTransaction(contract.subscriptionType)) {
+        return isValidAirtimeMsisdn(contract.msisdn);
+      }
+      return true;
+    });
+
   const canProceedToApplication =
     hasSelectedPackages &&
+    hasValidTransactionDetails &&
     (checkLimit === "Within Limit" || totalTopUp > 0);
 
   const handleProceedToApplication = async () => {
@@ -436,7 +506,10 @@ const AirtimeBenefitSimulator = ({ embedded = false, onApplySimulation }) => {
           packagePrice: contract.packagePrice,
           deviceName: contract.deviceName || "",
           devicePrice: contract.devicePrice || "",
-          subscriptionType: "New",
+          subscriptionType: contract.subscriptionType || "New",
+          msisdn: isRenewalTransaction(contract.subscriptionType)
+            ? normalizeAirtimeMsisdn(contract.msisdn)
+            : "",
           topUp,
         };
       });
@@ -477,6 +550,135 @@ const AirtimeBenefitSimulator = ({ embedded = false, onApplySimulation }) => {
     }
 
     openVoucher(false);
+  };
+
+  const handleUpdatePendingSubmission = async () => {
+    if (!isEditing || !editingSubmissionId || !canProceedToApplication) return;
+
+    const contract = contractData[0];
+    const selectedPkg = packages.find(
+      (pkg) => pkg.PackageID === contract.selectedPackage
+    );
+    if (!selectedPkg) {
+      Swal.fire({
+        icon: "info",
+        title: "Select a package",
+        text: "Please choose a package from the current list before updating.",
+      });
+      return;
+    }
+
+    const subscriptionType = contract.subscriptionType || "New";
+    const msisdn = isRenewalTransaction(subscriptionType)
+      ? normalizeAirtimeMsisdn(contract.msisdn)
+      : "";
+
+    if (isRenewalTransaction(subscriptionType) && !isValidAirtimeMsisdn(msisdn)) {
+      Swal.fire({
+        icon: "info",
+        title: "MSISDN required",
+        text: AIRTIME_MSISDN_HELPER,
+      });
+      return;
+    }
+
+    const durationMatch = selectedPkg?.PackageName?.match(/\((\d+)\)/);
+    const duration =
+      durationMatch
+        ? parseInt(durationMatch[1], 10)
+        : Math.trunc(Number(editingSubmission?.contract_duration)) || 0;
+    const devicePrice = parseFloat(contract.devicePrice) || 0;
+    const monthlyDeviceCost = duration ? devicePrice / duration : 0;
+    const calc = contractCalculations[0] || {};
+
+    const result = await Swal.fire({
+      icon: "question",
+      title: "Update airtime benefit request?",
+      html: `
+        <p style="text-align:left;margin:0 0 8px;">Please confirm the new details:</p>
+        <p style="text-align:left;margin:0;"><strong>Package:</strong> ${selectedPkg.PackageName}</p>
+        <p style="text-align:left;margin:0;"><strong>Device:</strong> ${contract.deviceName || "No device"}</p>
+        <p style="text-align:left;margin:0;"><strong>Transaction type:</strong> ${subscriptionType}</p>
+        <p style="text-align:left;margin:0;"><strong>MSISDN:</strong> ${msisdn || "-"}</p>
+        <p style="text-align:left;margin:0;"><strong>Package price:</strong> ${formatCurrency(calc.packageCost)}</p>
+        <p style="text-align:left;margin:0;"><strong>Device price:</strong> ${formatCurrency(devicePrice)}</p>
+        <p style="text-align:left;margin:0;"><strong>Monthly payment:</strong> ${formatCurrency(calc.monthly)}</p>
+        <p style="text-align:left;margin:0;"><strong>Top-up:</strong> ${formatCurrency(calc.topUp || 0)}</p>
+      `,
+      showCancelButton: true,
+      confirmButtonColor: "#0096D6",
+      cancelButtonColor: "#6c757d",
+      confirmButtonText: "Yes, update",
+      cancelButtonText: "Cancel",
+    });
+
+    if (!result.isConfirmed) return;
+
+    if ((calc.topUp || 0) > 0) {
+      const topUpResult = await Swal.fire({
+        icon: "warning",
+        title: "Top-up Required",
+        html: `
+          <p style="text-align:left;margin:0 0 12px;">
+            Your selected package is within limit, but device costs exceed
+            your available allowance. Total top-up required:
+            <strong>${formatCurrency(calc.topUp)}</strong>.
+          </p>
+          <p style="text-align:left;margin:0;font-weight:600;">
+            I confirm that I can top up the excess amount
+          </p>
+        `,
+        showCancelButton: true,
+        confirmButtonColor: "#0096D6",
+        cancelButtonColor: "#6c757d",
+        confirmButtonText: "Confirm & Update",
+        cancelButtonText: "Cancel",
+      });
+      if (!topUpResult.isConfirmed) return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      await axiosInstance.put(`/contracts/submissions/${editingSubmissionId}`, {
+        PackageID: selectedPkg.PackageID,
+        DisplayName: selectedPkg.PackageName,
+        BaseMonthlyPrice: calc.packageCost,
+        AdjustedMonthlyPrice: calc.monthly,
+        ContractDuration: duration,
+        SubscriptionStatus: subscriptionType,
+        MSISDN: msisdn || null,
+        LimitCheck: calc.packageWithinLimit ? "Within Limit" : checkLimit,
+        TopUpAmount: calc.topUp || 0,
+        DeviceAssigned: contract.deviceName
+          ? {
+              DeviceName: contract.deviceName,
+              DevicePrice: devicePrice,
+              MonthlyDeviceCost: monthlyDeviceCost,
+              UpfrontPayment: 0,
+            }
+          : null,
+      });
+
+      Swal.fire({
+        icon: "success",
+        title: "Request updated",
+        text: "Your pending airtime benefit request has been updated.",
+      }).then(() => {
+        if (typeof onUpdated === "function") {
+          onUpdated();
+        }
+      });
+    } catch (error) {
+      Swal.fire({
+        icon: "error",
+        title: "Update failed",
+        text:
+          error.response?.data?.message ||
+          "Could not update your airtime benefit request. Please try again.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleNetOptionChange = (index, value) => {
@@ -551,10 +753,26 @@ const AirtimeBenefitSimulator = ({ embedded = false, onApplySimulation }) => {
                 <div>
                   <h5 className="mb-1">Configure your simulation</h5>
                   <p className="mb-0">
-                    Device prices are auto-populated from the latest device list.
+                    {isEditing
+                      ? "Your current request is shown above. Choose a new package and device from the latest lists."
+                      : "Device prices are auto-populated from the latest device list."}
                   </p>
                 </div>
-                {onApplySimulation && canProceedToApplication && (
+                {isEditing && canProceedToApplication && (
+                  <Button
+                    className="benefits-cta-btn flex-shrink-0"
+                    onClick={handleUpdatePendingSubmission}
+                    disabled={isSubmitting}
+                    endIcon={isSubmitting ? undefined : <PostAddIcon />}
+                  >
+                    {isSubmitting ? (
+                      <CircularProgress size={18} sx={{ color: "white" }} />
+                    ) : (
+                      "Update Airtime Request"
+                    )}
+                  </Button>
+                )}
+                {!isEditing && onApplySimulation && canProceedToApplication && (
                   <Button
                     className="benefits-cta-btn flex-shrink-0"
                     onClick={handleProceedToApplication}
@@ -571,6 +789,83 @@ const AirtimeBenefitSimulator = ({ embedded = false, onApplySimulation }) => {
                 </Alert>
               )}
 
+              {isEditing && (
+                <div className="current-request-card">
+                  <p className="current-request-label">Current pending request</p>
+                  <div className="current-request-grid">
+                    <div className="current-request-item">
+                      <span>Current package</span>
+                      <strong>
+                        {editingSubmission?.PackageName ||
+                          editingSubmission?.package ||
+                          "-"}
+                      </strong>
+                    </div>
+                    <div className="current-request-item">
+                      <span>Current device</span>
+                      <strong>
+                        {editingSubmission?.DeviceName ||
+                          editingSubmission?.device ||
+                          "No device"}
+                      </strong>
+                    </div>
+                    <div className="current-request-item">
+                      <span>Current package price</span>
+                      <strong>
+                        {formatCurrency(
+                          editingSubmission?.serviceplan_monthly_price ??
+                            editingSubmission?.package_price
+                        )}
+                      </strong>
+                    </div>
+                    <div className="current-request-item">
+                      <span>Current device price</span>
+                      <strong>
+                        {formatCurrency(
+                          editingSubmission?.DevicePrice ??
+                            editingSubmission?.device_initial_cost ??
+                            editingSubmission?.device_initail_cost
+                        )}
+                      </strong>
+                    </div>
+                    <div className="current-request-item">
+                      <span>Current monthly payment</span>
+                      <strong>
+                        {formatCurrency(
+                          editingSubmission?.MonthlyPayment ??
+                            pendingMonthly
+                        )}
+                      </strong>
+                    </div>
+                    <div className="current-request-item">
+                      <span>Current top-up</span>
+                      <strong>
+                        {formatCurrency(
+                          editingSubmission?.top_up_amount ??
+                            editingSubmission?.TopUpAmount
+                        )}
+                      </strong>
+                    </div>
+                    <div className="current-request-item">
+                      <span>Current transaction type</span>
+                      <strong>
+                        {editingSubmission?.transaction_type ||
+                          editingSubmission?.TransactionType ||
+                          "-"}
+                      </strong>
+                    </div>
+                    <div className="current-request-item">
+                      <span>Current MSISDN</span>
+                      <strong>
+                        {editingSubmission?.msisdn ||
+                          editingSubmission?.MSISDN ||
+                          "-"}
+                      </strong>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="row">
                 <div className="col-md-6">
                   <FormControl fullWidth margin="normal">
@@ -579,6 +874,7 @@ const AirtimeBenefitSimulator = ({ embedded = false, onApplySimulation }) => {
                       onChange={handleNumberOfContractsChange}
                       value={numberOfContracts}
                       label="Number of Contracts To Simulate"
+                      disabled={isEditing}
                     >
                       <MenuItem value="1">1</MenuItem>
                       <MenuItem value="2">2</MenuItem>
@@ -649,7 +945,7 @@ const AirtimeBenefitSimulator = ({ embedded = false, onApplySimulation }) => {
                         renderInput={(params) => (
                           <TextField
                             {...params}
-                            label="Select Package"
+                            label={isEditing ? "New Package" : "Select Package"}
                             margin="normal"
                             fullWidth
                             error={!!contract.packageError}
@@ -674,6 +970,63 @@ const AirtimeBenefitSimulator = ({ embedded = false, onApplySimulation }) => {
                         InputProps={{ readOnly: true }}
                       />
                     </div>
+                  </div>
+
+                  <div className="row">
+                    <div className="col-md-6">
+                      <FormControl fullWidth margin="normal">
+                        <InputLabel>
+                          {isEditing ? "New Transaction Type" : "Transaction Type"}
+                        </InputLabel>
+                        <Select
+                          value={contract.subscriptionType || ""}
+                          label={
+                            isEditing ? "New Transaction Type" : "Transaction Type"
+                          }
+                          onChange={(event) =>
+                            handleContractChange(
+                              index,
+                              "subscriptionType",
+                              event.target.value
+                            )
+                          }
+                        >
+                          <MenuItem value="">
+                            Select Transaction Type
+                          </MenuItem>
+                          {AIRTIME_TRANSACTION_TYPES.map((option) => (
+                            <MenuItem key={option} value={option}>
+                              {option}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </div>
+                    {isRenewalTransaction(contract.subscriptionType) && (
+                      <div className="col-md-6">
+                        <TextField
+                          name="msisdn"
+                          label={isEditing ? "New MSISDN" : "MSISDN"}
+                          value={contract.msisdn || ""}
+                          onChange={(event) =>
+                            handleContractChange(
+                              index,
+                              "msisdn",
+                              event.target.value
+                            )
+                          }
+                          fullWidth
+                          margin="normal"
+                          placeholder="812081591"
+                          inputProps={{ maxLength: 9, inputMode: "numeric" }}
+                          error={
+                            !!contract.msisdn &&
+                            !isValidAirtimeMsisdn(contract.msisdn)
+                          }
+                          helperText={AIRTIME_MSISDN_HELPER}
+                        />
+                      </div>
+                    )}
                   </div>
 
                   <div className="row">
@@ -703,7 +1056,7 @@ const AirtimeBenefitSimulator = ({ embedded = false, onApplySimulation }) => {
                         renderInput={(params) => (
                           <TextField
                             {...params}
-                            label="Device Name"
+                            label={isEditing ? "New Device Name" : "Device Name"}
                             margin="normal"
                             fullWidth
                             helperText={
@@ -725,7 +1078,7 @@ const AirtimeBenefitSimulator = ({ embedded = false, onApplySimulation }) => {
                     <div className="col-md-6">
                       <TextField
                         name="DevicePrice"
-                        label="Device Price"
+                        label={isEditing ? "New Device Price" : "Device Price"}
                         value={formatCurrency(contract.devicePrice)}
                         fullWidth
                         margin="normal"

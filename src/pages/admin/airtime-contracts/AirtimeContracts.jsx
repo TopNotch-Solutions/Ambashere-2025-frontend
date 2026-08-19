@@ -194,6 +194,15 @@ const AdminAirtimeContracts = () => {
       return;
     }
 
+    if (normalizeCode(row.assignedAdminCode) !== currentAdminCode) {
+      Swal.fire({
+        icon: "info",
+        title: "Assigned elsewhere",
+        text: `This contract is assigned to ${row.assignedAdminName || "another admin"}. Only the assigned admin can cancel it.`,
+      });
+      return;
+    }
+
     const confirmed = await confirmAdminAction({
       title: "Cancel this airtime submission?",
       text: "The employee will be notified in-app and by email. All admins will be copied on the email.",
@@ -334,6 +343,8 @@ const AdminAirtimeContracts = () => {
             row: params.row,
             updatingId,
             onCancel: handleAdminCancel,
+            currentAdminCode,
+            normalizeCode,
           })}
         </Box>
       ),
@@ -545,6 +556,8 @@ const AdminAirtimeContracts = () => {
               row: viewSubmission,
               updatingId,
               onCancel: handleAdminCancel,
+              currentAdminCode,
+              normalizeCode,
             })}
           </Box>
         }

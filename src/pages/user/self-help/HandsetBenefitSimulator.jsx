@@ -22,6 +22,8 @@ const HandsetBenfitSimulator = ({ embedded = false, onSubmitted }) => {
   const [devicesError, setDevicesError] = useState("");
   const [eligibility, setEligibility] = useState({
     canApply: false,
+    canEditPending: false,
+    pendingSubmission: null,
     reason: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -115,12 +117,16 @@ const HandsetBenfitSimulator = ({ embedded = false, onSubmitted }) => {
         );
         setEligibility({
           canApply: Boolean(response?.data?.canApply),
+          canEditPending: Boolean(response?.data?.canEditPending),
+          pendingSubmission: response?.data?.pendingSubmission || null,
           reason: response?.data?.reason || "",
         });
       } catch (error) {
         console.error("Failed to load handset eligibility", error);
         setEligibility({
           canApply: false,
+          canEditPending: false,
+          pendingSubmission: null,
           reason: "Unable to confirm whether you can apply for a staff handset.",
         });
       }
@@ -149,7 +155,11 @@ const HandsetBenfitSimulator = ({ embedded = false, onSubmitted }) => {
       return;
     }
 
-    if (!eligibility.canApply) {
+    const isEditing = Boolean(
+      eligibility.canEditPending && eligibility.pendingSubmission?.id
+    );
+
+    if (!eligibility.canApply && !isEditing) {
       Swal.fire({
         icon: "warning",
         title: "Not eligible",
@@ -160,7 +170,9 @@ const HandsetBenfitSimulator = ({ embedded = false, onSubmitted }) => {
 
     const result = await Swal.fire({
       icon: "question",
-      title: "Submit staff handset request?",
+      title: isEditing
+        ? "Update staff handset request?"
+        : "Submit staff handset request?",
       html: `
         <p style="text-align:left;margin:0 0 8px;">Please confirm the details below:</p>
         <p style="text-align:left;margin:0;"><strong>Employee:</strong> ${currentUser?.FullName || "-"} (${employeeCode || "-"})</p>
@@ -171,7 +183,7 @@ const HandsetBenfitSimulator = ({ embedded = false, onSubmitted }) => {
       showCancelButton: true,
       confirmButtonColor: "#0096D6",
       cancelButtonColor: "#6c757d",
-      confirmButtonText: "Yes, submit",
+      confirmButtonText: isEditing ? "Yes, update" : "Yes, submit",
       cancelButtonText: "Cancel",
     });
 
@@ -179,24 +191,51 @@ const HandsetBenfitSimulator = ({ embedded = false, onSubmitted }) => {
 
     try {
       setIsSubmitting(true);
-      await axiosInstance.post("/handsets/submissions", {
+      const payload = {
         EmployeeCode: employeeCode,
         employee_name: currentUser?.FullName,
         device: deviceName,
         device_price: Number(devicePrice) || 0,
         excess_payment: Number(topupPayment) || 0,
-      });
+      };
+
+      let savedSubmission = eligibility.pendingSubmission;
+      if (isEditing) {
+        await axiosInstance.put(
+          `/handsets/submissions/${eligibility.pendingSubmission.id}`,
+          payload
+        );
+        savedSubmission = {
+          ...eligibility.pendingSubmission,
+          device: deviceName,
+          device_price: Number(devicePrice) || 0,
+          excess_payment: Number(topupPayment) || 0,
+        };
+      } else {
+        const response = await axiosInstance.post("/handsets/submissions", payload);
+        savedSubmission = response?.data?.submission || {
+          device: deviceName,
+          device_price: Number(devicePrice) || 0,
+          excess_payment: Number(topupPayment) || 0,
+        };
+      }
 
       setEligibility({
         canApply: false,
+        canEditPending: true,
+        pendingSubmission: savedSubmission,
         reason:
-          "You already have a staff handset request that is pending or in progress. You cannot submit another until it is completed.",
+          "You have a pending staff handset request. You can still edit the device until an administrator starts processing it.",
       });
+      setDeviceName("");
+      setDevicePrice("");
 
       Swal.fire({
         icon: "success",
-        title: "Request submitted",
-        text: "Your staff handset request has been submitted and is pending review.",
+        title: isEditing ? "Request updated" : "Request submitted",
+        text: isEditing
+          ? "Your pending staff handset request has been updated."
+          : "Your staff handset request has been submitted and is pending review.",
       }).then(() => {
         if (typeof onSubmitted === "function") {
           onSubmitted();
@@ -205,10 +244,12 @@ const HandsetBenfitSimulator = ({ embedded = false, onSubmitted }) => {
     } catch (error) {
       Swal.fire({
         icon: "error",
-        title: "Submission failed",
+        title: isEditing ? "Update failed" : "Submission failed",
         text:
           error.response?.data?.message ||
-          "Could not submit your staff handset request. Please try again.",
+          (isEditing
+            ? "Could not update your staff handset request. Please try again."
+            : "Could not submit your staff handset request. Please try again."),
       });
     } finally {
       setIsSubmitting(false);
@@ -236,10 +277,12 @@ const HandsetBenfitSimulator = ({ embedded = false, onSubmitted }) => {
               <div>
                 <h5 className="mb-1">Calculate your handset contribution</h5>
                 <p className="mb-0">
-                  Values update automatically based on the selected device list.
+                  {eligibility.canEditPending
+                    ? "Your current request is shown above. Choose a new device from the latest price list."
+                    : "Values update automatically based on the selected device list."}
                 </p>
               </div>
-              {eligibility.canApply && deviceName && (
+              {(eligibility.canApply || eligibility.canEditPending) && deviceName && (
                 <Button
                   className="benefits-cta-btn flex-shrink-0"
                   onClick={handleSubmitApplication}
@@ -248,6 +291,8 @@ const HandsetBenfitSimulator = ({ embedded = false, onSubmitted }) => {
                 >
                   {isSubmitting ? (
                     <CircularProgress size={18} sx={{ color: "white" }} />
+                  ) : eligibility.canEditPending ? (
+                    "Update Handset Request"
                   ) : (
                     "Submit Handset Request"
                   )}
@@ -263,13 +308,37 @@ const HandsetBenfitSimulator = ({ embedded = false, onSubmitted }) => {
             {eligibility.reason && (
               <p
                 className={`simulator-notice mb-3 ${
-                  eligibility.canApply
+                  eligibility.canApply || eligibility.canEditPending
                     ? "simulator-notice-info"
                     : "simulator-notice-muted"
                 }`}
               >
                 {eligibility.reason}
               </p>
+            )}
+
+            {eligibility.canEditPending && eligibility.pendingSubmission && (
+              <div className="current-request-card">
+                <p className="current-request-label">Current pending request</p>
+                <div className="current-request-grid">
+                  <div className="current-request-item">
+                    <span>Current device</span>
+                    <strong>{eligibility.pendingSubmission.device || "-"}</strong>
+                  </div>
+                  <div className="current-request-item">
+                    <span>Current device price</span>
+                    <strong>
+                      {formatCurrency(eligibility.pendingSubmission.device_price)}
+                    </strong>
+                  </div>
+                  <div className="current-request-item">
+                    <span>Current excess payment</span>
+                    <strong>
+                      {formatCurrency(eligibility.pendingSubmission.excess_payment)}
+                    </strong>
+                  </div>
+                </div>
+              </div>
             )}
 
             <div className="row">
@@ -303,7 +372,11 @@ const HandsetBenfitSimulator = ({ embedded = false, onSubmitted }) => {
                   renderInput={(params) => (
                     <TextField
                       {...params}
-                      label="Device Name"
+                      label={
+                        eligibility.canEditPending
+                          ? "New Device Name"
+                          : "Device Name"
+                      }
                       margin="normal"
                       fullWidth
                     />
@@ -316,7 +389,11 @@ const HandsetBenfitSimulator = ({ embedded = false, onSubmitted }) => {
               <div className="col-md-6">
                 <TextField
                   name="DevicePrice"
-                  label="Device Price (Staff Discounted)"
+                  label={
+                    eligibility.canEditPending
+                      ? "New Device Price (Staff Discounted)"
+                      : "Device Price (Staff Discounted)"
+                  }
                   type="text"
                   value={formatCurrency(devicePrice)}
                   fullWidth
@@ -330,7 +407,9 @@ const HandsetBenfitSimulator = ({ embedded = false, onSubmitted }) => {
               <div className="col-md-6">
                 <TextField
                   name="Topup"
-                  label="Excess Payment"
+                  label={
+                    eligibility.canEditPending ? "New Excess Payment" : "Excess Payment"
+                  }
                   fullWidth
                   margin="normal"
                   sx={{
