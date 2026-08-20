@@ -13,6 +13,7 @@ import EditIcon from "@mui/icons-material/Edit";
 import axiosInstance from "../../../utils/axiosInstance";
 import { useSelector, useDispatch } from "react-redux";
 import formatDate from "../../../components/global/dateFormatter";
+import { formatPlanPeriod } from "../../../utils/planPeriod";
 import AirtimeAdminVoucher from "../../../components/global/AirtimeAdminVoucher";
 import "../../../assets/style/global/handsetBenefitSimulator.css";
 import "../../../assets/style/global/benefits.css";
@@ -69,6 +70,7 @@ const AdminContracts = () => {
     { field: "PackageName", headerName: "Package", width: 180 },
     { field: "DeviceName", headerName: "Device Name", width: 180 },
     { field: "ContractDuration", headerName: "Duration", width: 120 },
+    { field: "ServiceDuration", headerName: "Service Duration", width: 150 },
     { field: "DevicePrice", headerName: "Device Price", width: 180 },
     { field: "DeviceUpfrontPayment", headerName: "Upfront Amount", width: 150 },
     { field: "DevicePayoutBalance", headerName: "Payout Balance", width: 150 },
@@ -112,6 +114,9 @@ const AdminContracts = () => {
       PackageName: bundle.PackageName || bundle.package || "",
       DeviceName: bundle.DeviceName || bundle.device || "",
       ContractDuration: bundle.ContractDuration || bundle.contract_duration || "",
+      ServiceDuration: formatPlanPeriod(
+        bundle.plan_period ?? bundle.PlanPeriod ?? bundle.ServiceDuration
+      ),
       DevicePrice: bundle.DevicePrice || bundle.device_initial_cost || "",
       DeviceUpfrontPayment:
         bundle.DeviceUpfrontPayment || bundle.device_upfront_payment || "",

@@ -13,6 +13,7 @@ import { useSelector, useDispatch } from "react-redux";
 import axiosInstance from "../../../utils/axiosInstance";
 import BenefitAdminVoucher from "../../../components/global/BenefitAdminVoucher";
 import { renderStatusCell } from "../../../utils/statusBadge";
+import { formatPlanPeriod } from "../../../utils/planPeriod";
 
 const AirtimeBenefits = () => {
   const { employeeCode } = useParams();
@@ -72,7 +73,8 @@ const AirtimeBenefits = () => {
     { field: "PackageMonthlyPayment", headerName: "PACKAGE MONTHLY PAYMENT", width: 200 },
     { field: "TotalMonthlyPayment", headerName: "TOTAL MONTHLY PAYMENT", width: 200 },
     { field: "PayoutBalance", headerName: "PAYOUT AMOUNT", width: 200 },
-    { field: "ContractDuration", headerName: "CONTRACT DURATION", width: 200 },
+    { field: "ContractDuration", headerName: "CONTRACT DURATION", width: 180 },
+    { field: "ServiceDuration", headerName: "SERVICE DURATION", width: 170 },
     { field: "ContractStartDate", headerName: "ALLOCATION DATE", width: 180 },
     { field: "ContractEndDate", headerName: "EXPIRY DATE", width: 180 },
     { field: "Status", headerName: "STATUS", width: 140, renderCell: renderStatusCell },
@@ -88,6 +90,9 @@ const AirtimeBenefits = () => {
     TotalMonthlyPayment: "N$ " + (Number(airtime.device_monthly_price) + Number(airtime.serviceplan_monthly_price)).toFixed(2),
     PayoutBalance: "N$ " + airtime.device_payout_balance,
     ContractDuration: airtime.contract_duration,
+    ServiceDuration: formatPlanPeriod(
+      airtime?.plan_period ?? airtime?.PlanPeriod
+    ),
     ContractStartDate: new Date(airtime.contract_start_date).toLocaleDateString(),
 ContractEndDate: new Date(airtime.contract_end_date).toLocaleDateString(),
 Status: airtime.subscription_status,

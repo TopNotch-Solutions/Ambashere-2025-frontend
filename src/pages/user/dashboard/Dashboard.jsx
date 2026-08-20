@@ -14,6 +14,7 @@ import MiniCalendar from "../../../components/global/calendar/MiniCalendar";
 import { useNavigate } from "react-router-dom";
 import formatDate from "../../../components/global/dateFormatter";
 import { formatMoney } from "../../../utils/formatMoney";
+import { formatPlanPeriod } from "../../../utils/planPeriod";
 import { shouldConsiderUserAirtimeContract } from "../../../utils/statusBadge";
 import "../../../assets/style/global/handsetBenefitSimulator.css";
 import "../../../assets/style/global/benefits.css";
@@ -261,6 +262,7 @@ const UserDashboard = () => {
     },
     { field: "PayoutBalance", headerName: "Payout Amount", width: 180 },
     { field: "TotalMonthlyPayment", headerName: "Total Monthly Payment", width: 180 },
+    { field: "ServiceDuration", headerName: "Service Duration", width: 160 },
     { field: "ContractStartDate", headerName: "Contract Start Date", width: 200 },
     { field: "ContractEndDate", headerName: "Contract End Date", width: 200 },
     {
@@ -351,6 +353,9 @@ const UserDashboard = () => {
       airtime?.TotalMonthlyPayment ??
         (Number(airtime?.device_monthly_price) || 0) +
           (Number(airtime?.serviceplan_monthly_price) || 0)
+    ),
+    ServiceDuration: formatPlanPeriod(
+      airtime?.plan_period ?? airtime?.PlanPeriod ?? airtime?.ServiceDuration
     ),
   }));
 

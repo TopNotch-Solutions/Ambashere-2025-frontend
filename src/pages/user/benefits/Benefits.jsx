@@ -17,6 +17,7 @@ import axiosInstance from "../../../utils/axiosInstance";
 import Swal from "sweetalert2";
 import formatDate from "../../../components/global/dateFormatter";
 import { formatMoney } from "../../../utils/formatMoney";
+import { formatPlanPeriod } from "../../../utils/planPeriod";
 import {
   isActiveBenefitStatus,
   shouldConsiderUserAirtimeContract,
@@ -267,7 +268,8 @@ const UserBenefits = () => {
     { field: "DeviceName", headerName: "DEVICE NAME", width: 220 },
     { field: "MSISDN", headerName: "MSISDN", width: 180 },
     { field: "DevicePrice", headerName: "DEVICE PRICE", width: 180 },
-    { field: "ContractDuration", headerName: "PAYEMENT DURATION", width: 210 },
+    { field: "ContractDuration", headerName: "PAYMENT DURATION", width: 180 },
+    { field: "ServiceDuration", headerName: "SERVICE DURATION", width: 170 },
     { field: "MonthlyPayment", headerName: "MONTHLY PAYMENT", width: 180 },
     { field: "PayoutBalance", headerName: "PAYOUT AMOUNT", width: 180 },
     { field: "ContractStartDate", headerName: "CONTRACT START", width: 180 },
@@ -392,6 +394,9 @@ const UserBenefits = () => {
             )
           )
         : "-",
+    ServiceDuration: formatPlanPeriod(
+      contract?.plan_period ?? contract?.PlanPeriod ?? contract?.ServiceDuration
+    ),
     ContractStartDate: (() => {
       const status = String(
         contract?.SubscriptionStatus || contract?.subscription_status || ""
