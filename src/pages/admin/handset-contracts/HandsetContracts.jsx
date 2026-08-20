@@ -194,18 +194,44 @@ const AdminHandsetContracts = () => {
       return;
     }
 
-    const confirmed = await confirmAdminAction({
-      title: "Cancel this handset submission?",
-      text: "The employee will be notified in-app and by email. All admins will be copied on the email.",
+    const result = await Swal.fire({
       icon: "warning",
+      title: "Cancel this handset submission?",
+      html: `
+        <p style="margin:0 0 12px;color:#475569;text-align:left;">
+          The employee will be notified in-app and by email. All admins will be copied on the email.
+        </p>
+      `,
+      input: "textarea",
+      inputLabel: "Cancellation reason (required)",
+      inputPlaceholder: "Explain why this submission is being cancelled...",
+      inputAttributes: {
+        "aria-label": "Cancellation reason",
+        rows: 4,
+      },
+      inputValidator: (value) => {
+        if (!String(value || "").trim()) {
+          return "Please provide a cancellation reason.";
+        }
+        return null;
+      },
+      showCancelButton: true,
+      confirmButtonColor: "#DC2626",
+      cancelButtonColor: "#6c757d",
       confirmButtonText: "Yes, cancel submission",
+      cancelButtonText: "Keep submission",
+      reverseButtons: true,
     });
 
-    if (!confirmed) return;
+    if (!result.isConfirmed) return;
+
+    const reason = String(result.value || "").trim();
 
     try {
       setUpdatingId(row.id);
-      await axiosInstance.put(`/handsets/submissions/${row.id}/admin-cancel`);
+      await axiosInstance.put(`/handsets/submissions/${row.id}/admin-cancel`, {
+        reason,
+      });
       await fetchActiveSubmissions();
       Swal.fire({
         icon: "success",

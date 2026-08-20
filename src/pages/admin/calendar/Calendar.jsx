@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Calendar, momentLocalizer, Views } from "react-big-calendar";
 import moment from "moment";
 import "react-big-calendar/lib/css/react-big-calendar.css";
@@ -8,6 +8,9 @@ import {
   Typography,
   TextField,
   Button,
+  FormControlLabel,
+  Checkbox,
+  Autocomplete,
 } from "@mui/material";
 import "../../../App.css";
 import axiosInstance from "../../../utils/axiosInstance";
@@ -20,8 +23,25 @@ import "../../../assets/style/global/adminCalendar.css";
 
 const localizer = momentLocalizer(moment);
 
+const buildDefaultHandsetMessage = (employeeName, eventDate) => {
+  const name = String(employeeName || "").trim() || "there";
+  const formattedDate = eventDate
+    ? moment(eventDate).format("dddd, D MMMM YYYY")
+    : "the selected date";
+
+  return (
+    `Hi ${name},\n\n` +
+    `Your past handset benefit record has been reviewed and updated on Ambasphere.\n\n` +
+    `Based on your previous handset allocation history, your new handset eligibility date is ${formattedDate}. ` +
+    `On or after this date, you will be able to apply for a new staff handset through the benefits portal.\n\n` +
+    `Your current device remains yours to keep. You will also receive reminder notifications as your new handset date approaches.\n\n` +
+    `Visit the benefits portal: https://ambasphere.mtc.com.na`
+  );
+};
+
 const AdminCalendar = () => {
   const [events, setEvents] = useState([]);
+  const [staffOptions, setStaffOptions] = useState([]);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [eventName, setEventName] = useState("");
@@ -31,6 +51,17 @@ const AdminCalendar = () => {
   const [recurrenceType, setRecurrenceType] = useState("None");
   const [recurrenceInterval, setRecurrenceInterval] = useState(1);
   const [isEdit, setIsEdit] = useState(false);
+  const [notifyHandsetDate, setNotifyHandsetDate] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [notifyOnSave, setNotifyOnSave] = useState(true);
+
+  const sortedStaff = useMemo(
+    () =>
+      [...staffOptions].sort((a, b) =>
+        String(a.FullName || "").localeCompare(String(b.FullName || ""))
+      ),
+    [staffOptions]
+  );
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -48,6 +79,8 @@ const AdminCalendar = () => {
             title: event.EventName,
             description: event.EventDescription,
             id: event.EventID,
+            TargetEmployeeCode: event.TargetEmployeeCode || null,
+            IsHandsetRenewal: Boolean(event.IsHandsetRenewal),
           };
         });
 
@@ -57,10 +90,21 @@ const AdminCalendar = () => {
       }
     };
 
+    const fetchStaff = async () => {
+      try {
+        const response = await axiosInstance.get("/staffmember");
+        setStaffOptions(Array.isArray(response.data) ? response.data : []);
+      } catch (error) {
+        console.error("Error fetching staff for calendar:", error);
+        setStaffOptions([]);
+      }
+    };
+
     fetchEvents();
+    fetchStaff();
   }, []);
 
-  const handleSelectSlot = ({ start }) => {
+  const resetForm = (start = new Date()) => {
     setEventName("");
     setEventDescription("");
     setEventDate(start);
@@ -69,24 +113,69 @@ const AdminCalendar = () => {
     setRecurrenceInterval(1);
     setSelectedEvent(null);
     setIsEdit(false);
+    setNotifyHandsetDate(false);
+    setSelectedEmployee(null);
+    setNotifyOnSave(true);
+  };
+
+  const handleSelectSlot = ({ start }) => {
+    resetForm(start);
     setModalOpen(true);
   };
 
   const handleSelectEvent = (event) => {
     setSelectedEvent(event);
-    setEventName(event.title); // Use title from calendar event data
+    setEventName(event.title);
     setEventDescription(event.description || "");
-    setEventDate(event.start); // Use start date from calendar event data
+    setEventDate(event.start);
     setEventTime(moment(event.start).format("HH:mm"));
-    setRecurrenceType(event.RecurrenceType || "none");
+    setRecurrenceType(event.RecurrenceType || "None");
     setRecurrenceInterval(event.RecurrenceInterval || 1);
     setIsEdit(true);
+    setNotifyHandsetDate(Boolean(event.IsHandsetRenewal));
+    setNotifyOnSave(false);
+    const matched =
+      sortedStaff.find(
+        (staff) =>
+          String(staff.EmployeeCode || "").replace(/[-\s]/g, "").toUpperCase() ===
+          String(event.TargetEmployeeCode || "")
+            .replace(/[-\s]/g, "")
+            .toUpperCase()
+      ) || null;
+    setSelectedEmployee(matched);
     setModalOpen(true);
   };
 
   const handleModalClose = () => {
     setModalOpen(false);
     setSelectedEvent(null);
+  };
+
+  const handleToggleHandsetNotify = (checked) => {
+    setNotifyHandsetDate(checked);
+    if (!checked) {
+      setSelectedEmployee(null);
+      return;
+    }
+    if (!eventName) {
+      setEventName("New Handset Date");
+    }
+    if (selectedEmployee && !eventDescription) {
+      setEventDescription(
+        buildDefaultHandsetMessage(selectedEmployee.FullName, eventDate)
+      );
+    }
+  };
+
+  const handleEmployeeChange = (employee) => {
+    setSelectedEmployee(employee);
+    if (!notifyHandsetDate || !employee) return;
+    setEventDescription(
+      buildDefaultHandsetMessage(employee.FullName, eventDate)
+    );
+    if (!eventName) {
+      setEventName(`New Handset Date — ${employee.FullName}`);
+    }
   };
 
   const handleEventSave = async () => {
@@ -99,11 +188,26 @@ const AdminCalendar = () => {
       return;
     }
 
+    if (notifyHandsetDate && !selectedEmployee?.EmployeeCode) {
+      Swal.fire({
+        icon: "warning",
+        title: "Select an employee",
+        text: "Choose the employee who should receive the new handset date notification.",
+      });
+      return;
+    }
+
     const confirmed = await confirmAdminAction({
       title: isEdit ? "Save event changes?" : "Create this event?",
-      text: isEdit
-        ? `Update "${eventName}" on the calendar?`
-        : `Add "${eventName}" to the calendar?`,
+      text: notifyHandsetDate
+        ? `Set ${selectedEmployee.FullName}'s new handset date to ${moment(
+            eventDate
+          ).format("DD MMM YYYY")} and ${
+            notifyOnSave ? "notify them now" : "save without re-notifying"
+          }?`
+        : isEdit
+          ? `Update "${eventName}" on the calendar?`
+          : `Add "${eventName}" to the calendar?`,
       confirmButtonText: isEdit ? "Save changes" : "Create event",
     });
     if (!confirmed) return;
@@ -120,6 +224,11 @@ const AdminCalendar = () => {
       EventTime: eventTime,
       RecurrenceType: recurrenceType,
       RecurrenceInterval: recurrenceInterval,
+      IsHandsetRenewal: notifyHandsetDate,
+      TargetEmployeeCode: notifyHandsetDate
+        ? selectedEmployee.EmployeeCode
+        : null,
+      NotifyEmployee: notifyHandsetDate ? notifyOnSave : false,
     };
 
     try {
@@ -128,7 +237,9 @@ const AdminCalendar = () => {
           `/events/updateEvent/${selectedEvent.id}`,
           eventData
         );
-        const updatedStart = new Date(`${updatedEvent.data.EventDate}T${eventTime}`);
+        const updatedStart = new Date(
+          `${updatedEvent.data.EventDate}T${eventTime}`
+        );
         const updatedEnd = new Date(updatedStart);
         updatedEnd.setHours(updatedEnd.getHours() + 1);
 
@@ -141,6 +252,9 @@ const AdminCalendar = () => {
                   end: updatedEnd,
                   title: updatedEvent.data.EventName,
                   description: updatedEvent.data.EventDescription,
+                  id: updatedEvent.data.EventID || selectedEvent.id,
+                  TargetEmployeeCode: updatedEvent.data.TargetEmployeeCode,
+                  IsHandsetRenewal: Boolean(updatedEvent.data.IsHandsetRenewal),
                 }
               : ev
           )
@@ -150,7 +264,9 @@ const AdminCalendar = () => {
           "/events/createEvent",
           eventData
         );
-        const createdStart = new Date(`${newEvent.data.EventDate}T${eventTime}`);
+        const createdStart = new Date(
+          `${newEvent.data.EventDate}T${eventTime}`
+        );
         const createdEnd = new Date(createdStart);
         createdEnd.setHours(createdEnd.getHours() + 1);
 
@@ -162,6 +278,9 @@ const AdminCalendar = () => {
             end: createdEnd,
             title: newEvent.data.EventName,
             description: newEvent.data.EventDescription,
+            id: newEvent.data.EventID,
+            TargetEmployeeCode: newEvent.data.TargetEmployeeCode,
+            IsHandsetRenewal: Boolean(newEvent.data.IsHandsetRenewal),
           },
         ]);
       }
@@ -169,7 +288,10 @@ const AdminCalendar = () => {
       Swal.fire({
         icon: "success",
         title: isEdit ? "Event updated" : "Event created",
-        timer: 1600,
+        text: notifyHandsetDate
+          ? "The new handset date is saved and will show for the employee and admins."
+          : undefined,
+        timer: notifyHandsetDate ? 2200 : 1600,
         showConfirmButton: false,
       });
     } catch (error) {
@@ -177,7 +299,9 @@ const AdminCalendar = () => {
       Swal.fire({
         icon: "error",
         title: "Save failed",
-        text: "Could not save the event. Please try again.",
+        text:
+          error.response?.data?.message ||
+          "Could not save the event. Please try again.",
       });
     }
   };
@@ -217,7 +341,8 @@ const AdminCalendar = () => {
         <div>
           <h2 className="handset-title">Calendar</h2>
           <p className="handset-subtitle mb-0">
-            Schedule and manage company events, reminders, and key dates.
+            Schedule company events, or set a staff member&apos;s new handset
+            date with in-app and email notification.
           </p>
         </div>
       </div>
@@ -249,7 +374,9 @@ const AdminCalendar = () => {
             top: "50%",
             left: "50%",
             transform: "translate(-50%, -50%)",
-            width: "80%",
+            width: { xs: "92%", md: "80%" },
+            maxHeight: "90vh",
+            overflowY: "auto",
             bgcolor: "background.paper",
             boxShadow: 24,
             p: 4,
@@ -287,52 +414,72 @@ const AdminCalendar = () => {
               />
             </div>
           </div>
-          {/* <div className="row">
-            <div className="col">
-              <Select
-                label="Recurrence Type"
-                value={recurrenceType}
-                onChange={(e) => setRecurrenceType(e.target.value)}
-                fullWidth
-              >
-                <MenuItem value="none">None</MenuItem>
-                <MenuItem value="Daily">Daily</MenuItem>
-                <MenuItem value="Weekly">Weekly</MenuItem>
-                <MenuItem value="Monthly">Monthly</MenuItem>
-              </Select>
-            </div>
-            <div className="col">
-              <TextField
-                label="Recurrence Interval"
-                type="number"
-                value={recurrenceInterval}
-                onChange={(e) => setRecurrenceInterval(e.target.value)}
-                fullWidth
-                disabled={recurrenceType === "none"}
+
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={notifyHandsetDate}
+                onChange={(e) => handleToggleHandsetNotify(e.target.checked)}
               />
-            </div>
-          </div>
-         */}
-           <TextField
-            label="Event Description"
+            }
+            label="Set new handset date and notify employee"
+          />
+
+          {notifyHandsetDate && (
+            <>
+              <Autocomplete
+                options={sortedStaff}
+                getOptionLabel={(option) =>
+                  `${option.FullName || "Unknown"} (${option.EmployeeCode || "-"})`
+                }
+                value={selectedEmployee}
+                onChange={(_, value) => handleEmployeeChange(value)}
+                isOptionEqualToValue={(option, value) =>
+                  option.EmployeeCode === value.EmployeeCode
+                }
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Employee"
+                    helperText="Event date becomes this employee's new handset / renewal date."
+                  />
+                )}
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={notifyOnSave}
+                    onChange={(e) => setNotifyOnSave(e.target.checked)}
+                  />
+                }
+                label="Send in-app and email notification now"
+              />
+            </>
+          )}
+
+          <TextField
+            label={
+              notifyHandsetDate
+                ? "Notification message (production wording)"
+                : "Event Description"
+            }
             value={eventDescription}
             onChange={(e) => setEventDescription(e.target.value)}
             fullWidth
             multiline
-            rows={3}
+            rows={notifyHandsetDate ? 8 : 3}
+            helperText={
+              notifyHandsetDate
+                ? "Explains why their past handset record was updated and states the new eligibility date."
+                : undefined
+            }
           />
           <Box sx={{ display: "flex", justifyContent: "space-between", mt: 2 }}>
-            <Button
-              className="benefits-cta-btn"
-              onClick={handleEventSave}
-            >
+            <Button className="benefits-cta-btn" onClick={handleEventSave}>
               Save
             </Button>
             {isEdit && (
-              <Button
-                className="benefits-cta-btn"
-                onClick={handleEventDelete}
-              >
+              <Button className="benefits-cta-btn" onClick={handleEventDelete}>
                 Delete
               </Button>
             )}

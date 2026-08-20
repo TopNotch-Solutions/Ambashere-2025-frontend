@@ -194,7 +194,7 @@ export function renderContractCancelButton({
   }
 
   return (
-    <Tooltip title="Cancel this submission and notify the employee. Admins are copied on the email.">
+    <Tooltip title="Cancel this submission with a reason. The employee is notified in-app and by email; admins are copied.">
       <span>{button}</span>
     </Tooltip>
   );
