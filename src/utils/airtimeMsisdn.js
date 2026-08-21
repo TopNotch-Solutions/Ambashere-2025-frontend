@@ -16,4 +16,4 @@ export const isValidAirtimeMsisdn = (value) =>
   /^81\d{7}$/.test(normalizeAirtimeMsisdn(value));
 
 export const AIRTIME_MSISDN_HELPER =
-  "Required for Renewal. Must start with 81, e.g. 812081591";
+  "Required for Renewal. Select an MSISDN from your current contracts.";

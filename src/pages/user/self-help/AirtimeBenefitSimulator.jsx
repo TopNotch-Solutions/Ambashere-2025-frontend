@@ -44,6 +44,7 @@ const AirtimeBenefitSimulator = ({
   ]);
   const [airtimeAllocation, setAirtimeAllocation] = useState("");
   const [availableAllowance, setAvailableAllowance] = useState(null);
+  const [currentContracts, setCurrentContracts] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [devicesError, setDevicesError] = useState("");
@@ -56,8 +57,13 @@ const AirtimeBenefitSimulator = ({
   const editingSubmissionId =
     editingSubmission?.submissionId ?? editingSubmission?.id;
   const pendingMonthly = isEditing
-    ? (Number(editingSubmission?.device_monthly_price) || 0) +
-        (Number(editingSubmission?.serviceplan_monthly_price) || 0) ||
+    ? (isRenewalTransaction(
+        editingSubmission?.transaction_type ||
+          editingSubmission?.TransactionType
+      )
+        ? Number(editingSubmission?.device_monthly_price) || 0
+        : (Number(editingSubmission?.device_monthly_price) || 0) +
+          (Number(editingSubmission?.serviceplan_monthly_price) || 0)) ||
       Number(editingSubmission?.MonthlyPayment) ||
       0
     : 0;
@@ -140,13 +146,50 @@ const AirtimeBenefitSimulator = ({
             ? parseFloat(response.data.available)
             : null
         );
+        setCurrentContracts(
+          Array.isArray(response.data.contracts) ? response.data.contracts : []
+        );
       } catch (error) {
         console.error("Failed to load available allowance", error);
+        setCurrentContracts([]);
       }
     };
 
     fetchAvailableAllowance();
   }, [employeeCode]);
+
+  const renewalMsisdnOptions = useMemo(() => {
+    const seen = new Set();
+    return (currentContracts || [])
+      .filter((contract) => !contract.isSubmission)
+      .map((contract) => {
+        const msisdn = normalizeAirtimeMsisdn(
+          contract.msisdn || contract.MSISDN || contract.staff_msisdn
+        );
+        const status = String(
+          contract.subscription_status || contract.SubscriptionStatus || ""
+        )
+          .trim()
+          .toLowerCase();
+        return {
+          msisdn,
+          packageName: contract.package || contract.PackageName || "",
+          status,
+        };
+      })
+      .filter(
+        (contract) =>
+          isValidAirtimeMsisdn(contract.msisdn) &&
+          contract.status !== "cancelled" &&
+          contract.status !== "canceled" &&
+          contract.status !== "done"
+      )
+      .filter((contract) => {
+        if (seen.has(contract.msisdn)) return false;
+        seen.add(contract.msisdn);
+        return true;
+      });
+  }, [currentContracts]);
 
   useEffect(() => {
     if (!isEditing) return;
@@ -174,6 +217,12 @@ const AirtimeBenefitSimulator = ({
     return packageTotal;
   };
 
+  // Renewal: package already running — only device is deducted from allowance.
+  const getBillablePackageMonthlyCost = (contract) =>
+    isRenewalTransaction(contract.subscriptionType)
+      ? 0
+      : getPackageMonthlyCost(contract);
+
   const getDeviceMonthlyCost = (contract) => {
     const selectedPkg = packages.find(
       (pkg) => pkg.PackageID === contract.selectedPackage
@@ -200,7 +249,7 @@ const AirtimeBenefitSimulator = ({
   };
 
   const getContractMonthlyPayment = (contract) =>
-    getPackageMonthlyCost(contract) + getDeviceMonthlyCost(contract);
+    getBillablePackageMonthlyCost(contract) + getDeviceMonthlyCost(contract);
 
   const limitBudget = useMemo(() => {
     const available =
@@ -261,7 +310,8 @@ const AirtimeBenefitSimulator = ({
       const selectedPkg = packages.find(
         (pkg) => pkg.PackageID === contract.selectedPackage
       );
-      const packageCost = getPackageMonthlyCost(contract);
+      const displayPackageCost = getPackageMonthlyCost(contract);
+      const packageCost = getBillablePackageMonthlyCost(contract);
       const allowsDevice = packageAllowsDevice(selectedPkg);
       const deviceCost = allowsDevice ? getDeviceMonthlyCost(contract) : 0;
       const monthly = packageCost + deviceCost;
@@ -283,7 +333,8 @@ const AirtimeBenefitSimulator = ({
 
       return {
         monthly,
-        packageCost,
+        packageCost: displayPackageCost,
+        billablePackageCost: packageCost,
         deviceCost,
         packageWithinLimit,
         allowsDevice,
@@ -350,6 +401,25 @@ const AirtimeBenefitSimulator = ({
       if (field === "subscriptionType") {
         if (!isRenewalTransaction(value)) {
           updatedContract.msisdn = "";
+          const packagePrice = getPackageMonthlyCost(updatedContract);
+          if (
+            updatedContract.selectedPackage &&
+            !isPackageWithinLimit(packagePrice, remaining)
+          ) {
+            updatedContract = clearDeviceSelection({
+              ...updatedContract,
+              selectedPackage: "",
+              packagePrice: "",
+              showNetOption: false,
+              netOption: "",
+              netAdditionalRow: false,
+              packageError: `This package (${formatCurrency(
+                packagePrice
+              )}) exceeds your remaining allowance (${formatCurrency(
+                remaining
+              )}). Choose a cheaper package — top-up cannot cover package overage.`,
+            });
+          }
         }
       }
 
@@ -371,8 +441,13 @@ const AirtimeBenefitSimulator = ({
           } else {
           const selectedPkg = packages.find((pkg) => pkg.PackageID === value);
           const packagePrice = parseFloat(selectedPkg?.MonthlyPrice) || 0;
+          const billablePackagePrice = isRenewalTransaction(
+            updatedContract.subscriptionType
+          )
+            ? 0
+            : packagePrice;
 
-          if (!isPackageWithinLimit(packagePrice, remaining)) {
+          if (!isPackageWithinLimit(billablePackagePrice, remaining)) {
             // Package alone exceeds limit — cannot select, no top-up allowed
             updatedContract = clearDeviceSelection({
               ...updatedData[index],
@@ -477,7 +552,8 @@ const AirtimeBenefitSimulator = ({
     .every((contract) => {
       if (!contract.subscriptionType) return false;
       if (isRenewalTransaction(contract.subscriptionType)) {
-        return isValidAirtimeMsisdn(contract.msisdn);
+        const msisdn = normalizeAirtimeMsisdn(contract.msisdn);
+        return renewalMsisdnOptions.some((option) => option.msisdn === msisdn);
       }
       return true;
     });
@@ -573,7 +649,10 @@ const AirtimeBenefitSimulator = ({
       ? normalizeAirtimeMsisdn(contract.msisdn)
       : "";
 
-    if (isRenewalTransaction(subscriptionType) && !isValidAirtimeMsisdn(msisdn)) {
+    if (
+      isRenewalTransaction(subscriptionType) &&
+      !renewalMsisdnOptions.some((option) => option.msisdn === msisdn)
+    ) {
       Swal.fire({
         icon: "info",
         title: "MSISDN required",
@@ -968,6 +1047,11 @@ const AirtimeBenefitSimulator = ({
                         fullWidth
                         margin="normal"
                         InputProps={{ readOnly: true }}
+                        helperText={
+                          isRenewalTransaction(contract.subscriptionType)
+                            ? "Already running — not deducted from allowance"
+                            : undefined
+                        }
                       />
                     </div>
                   </div>
@@ -1004,27 +1088,63 @@ const AirtimeBenefitSimulator = ({
                     </div>
                     {isRenewalTransaction(contract.subscriptionType) && (
                       <div className="col-md-6">
-                        <TextField
-                          name="msisdn"
-                          label={isEditing ? "New MSISDN" : "MSISDN"}
-                          value={contract.msisdn || ""}
-                          onChange={(event) =>
-                            handleContractChange(
-                              index,
-                              "msisdn",
-                              event.target.value
-                            )
-                          }
-                          fullWidth
-                          margin="normal"
-                          placeholder="812081591"
-                          inputProps={{ maxLength: 9, inputMode: "numeric" }}
-                          error={
-                            !!contract.msisdn &&
-                            !isValidAirtimeMsisdn(contract.msisdn)
-                          }
-                          helperText={AIRTIME_MSISDN_HELPER}
-                        />
+                        <FormControl fullWidth margin="normal">
+                          <InputLabel>
+                            {isEditing ? "New MSISDN" : "MSISDN"}
+                          </InputLabel>
+                          <Select
+                            value={
+                              renewalMsisdnOptions.some(
+                                (option) => option.msisdn === contract.msisdn
+                              )
+                                ? contract.msisdn || ""
+                                : ""
+                            }
+                            label={isEditing ? "New MSISDN" : "MSISDN"}
+                            onChange={(event) =>
+                              handleContractChange(
+                                index,
+                                "msisdn",
+                                event.target.value
+                              )
+                            }
+                            error={
+                              !!contract.msisdn &&
+                              !renewalMsisdnOptions.some(
+                                (option) => option.msisdn === contract.msisdn
+                              )
+                            }
+                          >
+                            <MenuItem value="">
+                              {renewalMsisdnOptions.length
+                                ? "Select MSISDN"
+                                : "No current contracts found"}
+                            </MenuItem>
+                            {renewalMsisdnOptions.map((option) => (
+                              <MenuItem key={option.msisdn} value={option.msisdn}>
+                                {option.packageName
+                                  ? `${option.msisdn} — ${option.packageName}`
+                                  : option.msisdn}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                        <p
+                          className="MuiFormHelperText-root MuiFormHelperText-sizeMedium MuiFormHelperText-contained"
+                          style={{
+                            margin: "3px 14px 0",
+                            fontSize: "0.75rem",
+                            color:
+                              !!contract.msisdn &&
+                              !renewalMsisdnOptions.some(
+                                (option) => option.msisdn === contract.msisdn
+                              )
+                                ? "#d32f2f"
+                                : "rgba(0, 0, 0, 0.6)",
+                          }}
+                        >
+                          {AIRTIME_MSISDN_HELPER}
+                        </p>
                       </div>
                     )}
                   </div>

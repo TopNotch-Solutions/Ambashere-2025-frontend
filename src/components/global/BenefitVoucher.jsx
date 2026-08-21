@@ -785,7 +785,7 @@ const BenefitVoucher = ({
             !isValidAirtimeMsisdn(packageMsisdn)
           ) {
             throw new Error(
-              `Renewal requires a valid MSISDN starting with 81, e.g. 812081591 ${
+              `Renewal requires selecting an MSISDN from your current contracts ${
                 packageRow.dropdown && packageRow.dropdown !== "Select Package"
                   ? `for Package: ${packageRow.dropdown}`
                   : `in row ${packageRow.id}`
@@ -793,6 +793,7 @@ const BenefitVoucher = ({
             );
           }
 
+          const isRenewal = isRenewalTransaction(packageRow.column6);
           selectedPackagesDetails.push({
             id: packageRow.id,
             PackageID: packageID,
@@ -801,7 +802,8 @@ const BenefitVoucher = ({
             ContractDuration: contractDuration,
             DisplayName: packageRow.dropdown,
             DeviceAssigned: null,
-            AdjustedMonthlyPrice: monthlyPrice,
+            // Renewal: package already running — only device is billed against allowance.
+            AdjustedMonthlyPrice: isRenewal ? 0 : monthlyPrice,
             MSISDN: packageMsisdn || null,
           });
         }
@@ -925,7 +927,11 @@ const BenefitVoucher = ({
         0
       );
       const packageOnlyMonthlyCost = selectedPackagesDetails.reduce(
-        (sum, pkg) => sum + pkg.BaseMonthlyPrice,
+        (sum, pkg) =>
+          sum +
+          (isRenewalTransaction(pkg.SubscriptionStatus)
+            ? 0
+            : pkg.BaseMonthlyPrice),
         0
       );
 
