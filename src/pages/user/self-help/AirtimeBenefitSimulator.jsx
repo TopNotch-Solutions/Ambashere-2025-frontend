@@ -11,8 +11,10 @@ import {
   Button,
 } from "@mui/material";
 import PostAddIcon from "@mui/icons-material/PostAdd";
+import SupportAgentIcon from "@mui/icons-material/SupportAgent";
 import axiosInstance from "../../../utils/axiosInstance";
 import { useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import "../../../assets/style/global/handsetBenefitSimulator.css";
 import {
@@ -51,6 +53,7 @@ const AirtimeBenefitSimulator = ({
   const [packagesError, setPackagesError] = useState("");
   const currentUser = useSelector((state) => state.auth.user);
   const employeeCode = currentUser?.EmployeeCode;
+  const navigate = useNavigate();
   const isEditing = Boolean(
     editingSubmission?.submissionId || editingSubmission?.id
   );
@@ -1385,6 +1388,20 @@ const AirtimeBenefitSimulator = ({
                 cannot use top-up. Top-up only applies when the package is
                 within limit but the device pushes the total over.
               </p>
+            </div>
+
+            <div className="handset-summary-card shadow-sm mt-3 simulator-sla-notice">
+              <p className="simulator-sla-text mb-3">
+                <strong>NB:</strong> The SLA for requests is 24 hours. If it takes
+                longer than expected, please log a follow-up ticket.
+              </p>
+              <Button
+                className="simulator-sla-support-btn"
+                startIcon={<SupportAgentIcon />}
+                onClick={() => navigate("/user/Support")}
+              >
+                Go to User Support
+              </Button>
             </div>
           </div>
         </div>

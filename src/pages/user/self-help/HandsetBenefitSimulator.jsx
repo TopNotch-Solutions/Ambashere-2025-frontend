@@ -6,8 +6,10 @@ import {
   CircularProgress,
 } from "@mui/material";
 import PostAddIcon from "@mui/icons-material/PostAdd";
+import SupportAgentIcon from "@mui/icons-material/SupportAgent";
 import axiosInstance from "../../../utils/axiosInstance.jsx";
 import { useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import "../../../assets/style/global/handsetBenefitSimulator.css";
 import "../../../assets/style/global/benefits.css";
@@ -29,6 +31,7 @@ const HandsetBenfitSimulator = ({ embedded = false, onSubmitted }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const currentUser = useSelector((state) => state.auth.user);
   const employeeCode = currentUser?.EmployeeCode;
+  const navigate = useNavigate();
   const sortedDevices = useMemo(
     () =>
       [...devices].sort((a, b) =>
@@ -467,6 +470,20 @@ const HandsetBenfitSimulator = ({ embedded = false, onSubmitted }) => {
               cell phones only. Tablets, watches, and similar devices are not
               covered under this benefit.
             </p>
+          </div>
+
+          <div className="handset-summary-card shadow-sm mt-3 simulator-sla-notice">
+            <p className="simulator-sla-text mb-3">
+              <strong>NB:</strong> The SLA for requests is 24 hours. If it takes
+              longer than expected, please log a follow-up ticket.
+            </p>
+            <Button
+              className="simulator-sla-support-btn"
+              startIcon={<SupportAgentIcon />}
+              onClick={() => navigate("/user/Support")}
+            >
+              Go to User Support
+            </Button>
           </div>
         </div>
       </div>

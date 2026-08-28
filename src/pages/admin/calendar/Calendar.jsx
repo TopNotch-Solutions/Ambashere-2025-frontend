@@ -34,7 +34,7 @@ const buildDefaultHandsetMessage = (employeeName, eventDate) => {
     `Your past handset benefit record has been reviewed and updated on Ambasphere.\n\n` +
     `Based on your previous handset allocation history, your new handset eligibility date is ${formattedDate}. ` +
     `On or after this date, you will be able to apply for a new staff handset through the benefits portal.\n\n` +
-    `Your current device remains yours to keep. You will also receive reminder notifications as your new handset date approaches.\n\n` +
+    `You will also receive reminder notifications as your new handset date approaches.\n\n` +
     `Visit the benefits portal: https://ambasphere.mtc.com.na`
   );
 };
