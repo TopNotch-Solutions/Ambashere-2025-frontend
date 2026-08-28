@@ -474,7 +474,7 @@ const HandsetBenfitSimulator = ({ embedded = false, onSubmitted }) => {
 
           <div className="handset-summary-card shadow-sm mt-3 simulator-sla-notice">
             <p className="simulator-sla-text mb-3">
-              <strong>NB:</strong> The SLA for requests is 24 hours. If it takes
+              <strong>NB:</strong> The SLA for requests is 24 - 48 hours. If it takes
               longer than expected, please log a follow-up ticket.
             </p>
             <Button
