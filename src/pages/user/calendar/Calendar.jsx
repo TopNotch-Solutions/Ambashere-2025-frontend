@@ -15,6 +15,24 @@ import "../../../assets/style/global/userCalendar.css";
 
 const localizer = momentLocalizer(moment);
 
+const normalizeCode = (code) =>
+  String(code || "")
+    .trim()
+    .replace(/[-\s]/g, "")
+    .toUpperCase();
+
+const isHandsetEvent = (event) => {
+  if (Boolean(event?.IsHandsetRenewal)) return true;
+  const name = String(event?.EventName || "").toLowerCase();
+  const desc = String(event?.EventDescription || "").toLowerCase();
+  return (
+    name.includes("handset") ||
+    name.includes("new handset date") ||
+    desc.includes("handset benefit") ||
+    desc.includes("new handset eligibility")
+  );
+};
+
 const formatApiEvent = (event) => {
   const eventTime =
     typeof event.EventTime === "string" && event.EventTime.length === 5
@@ -24,13 +42,17 @@ const formatApiEvent = (event) => {
   const eventEndDate = new Date(eventStartDate);
   eventEndDate.setHours(eventEndDate.getHours() + 1);
 
+  const isHandset = isHandsetEvent(event);
+
   return {
     start: eventStartDate,
     end: eventEndDate,
     title: event.EventName,
     description: event.EventDescription,
     id: `event-${event.EventID}`,
-    eventType: "admin",
+    eventType: isHandset ? "handset-end" : "admin",
+    TargetEmployeeCode: event.TargetEmployeeCode,
+    IsHandsetRenewal: Boolean(event.IsHandsetRenewal),
   };
 };
 
@@ -44,32 +66,69 @@ const UserCalendar = () => {
   useEffect(() => {
     const fetchEvents = async () => {
       if (!currentUser?.EmployeeCode) return;
+      const currentEmployeeCode = normalizeCode(currentUser.EmployeeCode);
 
       try {
         setIsLoading(true);
         const [eventsResponse, airtimeResponse, handsetResponse] =
           await Promise.all([
-            axiosInstance.get("/events"),
+            axiosInstance.get(`/events?employeeCode=${currentUser.EmployeeCode}`),
             axiosInstance.get(`/contracts/${currentUser.EmployeeCode}`),
             axiosInstance.get(`/handsets/${currentUser.EmployeeCode}`),
           ]);
 
-        const adminEvents = (eventsResponse.data || []).map(formatApiEvent);
-        const airtimeContracts = Array.isArray(airtimeResponse.data?.contracts)
-          ? airtimeResponse.data.contracts
-          : [];
-        const handsetList = Array.isArray(handsetResponse.data?.handsets)
-          ? handsetResponse.data.handsets
-          : Array.isArray(handsetResponse.data)
-            ? handsetResponse.data
-            : [];
+        const filteredApiEvents = (eventsResponse.data || [])
+          .filter((event) => {
+            const isHandset = isHandsetEvent(event);
+            const targetCode = normalizeCode(event.TargetEmployeeCode);
+
+            // If targeted to a specific employee, only show if it matches the logged-in user
+            if (targetCode) {
+              return targetCode === currentEmployeeCode;
+            }
+
+            // If it is a handset renewal event without a target employee, do not show to general users
+            if (isHandset) {
+              return false;
+            }
+
+            // General company events are shown to all users
+            return true;
+          })
+          .map(formatApiEvent);
+
+        const airtimeContracts = (
+          Array.isArray(airtimeResponse.data?.contracts)
+            ? airtimeResponse.data.contracts
+            : []
+        ).filter((contract) => {
+          const code =
+            contract?.EmployeeCode ||
+            contract?.employee_code ||
+            contract?.employeeCode;
+          return !code || normalizeCode(code) === currentEmployeeCode;
+        });
+
+        const handsetList = (
+          Array.isArray(handsetResponse.data?.handsets)
+            ? handsetResponse.data.handsets
+            : Array.isArray(handsetResponse.data)
+              ? handsetResponse.data
+              : []
+        ).filter((handset) => {
+          const code =
+            handset?.EmployeeCode ||
+            handset?.employee_code ||
+            handset?.employeeCode;
+          return !code || normalizeCode(code) === currentEmployeeCode;
+        });
 
         const contractEvents = [
           ...buildAirtimeContractCalendarEvents(airtimeContracts),
           ...buildHandsetContractCalendarEvents(handsetList),
         ];
 
-        setEvents([...adminEvents, ...contractEvents]);
+        setEvents([...filteredApiEvents, ...contractEvents]);
       } catch (error) {
         console.error("Error fetching events:", error);
       } finally {
@@ -209,7 +268,7 @@ const UserCalendar = () => {
                 </>
               )}
               {selectedEvent.description && (
-                <Typography variant="body1">
+                <Typography variant="body1" sx={{ whiteSpace: "pre-line" }}>
                   <strong>Details:</strong> {selectedEvent.description}
                 </Typography>
               )}

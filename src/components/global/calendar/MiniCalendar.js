@@ -137,15 +137,53 @@ export default function MiniCalendar(props) {
     return recurringEvents;
   };
 
+  const normalizeCode = (code) =>
+    String(code || "")
+      .trim()
+      .replace(/[-\s]/g, "")
+      .toUpperCase();
+
+  const isHandsetEvent = (event) => {
+    if (Boolean(event?.IsHandsetRenewal)) return true;
+    const name = String(event?.EventName || "").toLowerCase();
+    const desc = String(event?.EventDescription || "").toLowerCase();
+    return (
+      name.includes("handset") ||
+      name.includes("new handset date") ||
+      desc.includes("handset benefit") ||
+      desc.includes("new handset eligibility")
+    );
+  };
+
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const response = await axiosInstance.get("/events");
-        const formattedEvents = (response.data || []).map(formatApiEvent);
+        const currentCode = normalizeCode(currentUser?.EmployeeCode);
+        const response = await axiosInstance.get(
+          currentUser?.EmployeeCode
+            ? `/events?employeeCode=${currentUser.EmployeeCode}`
+            : "/events"
+        );
+        const filteredEvents = (response.data || [])
+          .filter((event) => {
+            const isHandset = isHandsetEvent(event);
+            const targetCode = normalizeCode(event.TargetEmployeeCode);
+
+            if (targetCode) {
+              return Boolean(currentCode && targetCode === currentCode);
+            }
+
+            if (isHandset) {
+              return false;
+            }
+
+            return true;
+          })
+          .map(formatApiEvent);
         const permanentEvents = generatePermanentEvents();
         const recurringEvents = generateRecurringEvents();
 
-        setEvents([...formattedEvents, ...permanentEvents, ...recurringEvents]);
+        setEvents([...filteredEvents, ...permanentEvents, ...recurringEvents]);
       } catch (error) {
         console.error("Error fetching events:", error);
         setEvents([
