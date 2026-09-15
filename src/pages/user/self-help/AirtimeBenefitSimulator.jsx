@@ -389,6 +389,17 @@ const AirtimeBenefitSimulator = ({
     [contractCalculations]
   );
 
+  // Display total: billable package + contract monthly payment (device PMT).
+  const totalVsAllowance = useMemo(
+    () =>
+      contractCalculations.reduce(
+        (total, item) =>
+          total + (item.billablePackageCost || 0) + (item.deviceCost || 0),
+        0
+      ),
+    [contractCalculations]
+  );
+
   const totalTopUp = useMemo(
     () => contractCalculations.reduce((total, item) => total + item.topUp, 0),
     [contractCalculations]
@@ -719,7 +730,9 @@ const AirtimeBenefitSimulator = ({
         <p style="text-align:left;margin:0;"><strong>Package price:</strong> ${formatCurrency(calc.packageCost)}</p>
         <p style="text-align:left;margin:0;"><strong>Device price:</strong> ${formatCurrency(devicePrice)}</p>
         <p style="text-align:left;margin:0;"><strong>Contract monthly payment (PMT):</strong> ${formatCurrency(calc.deviceCost || 0)}</p>
-        <p style="text-align:left;margin:0;"><strong>Total vs allowance:</strong> ${formatCurrency(calc.monthly)}</p>
+        <p style="text-align:left;margin:0;"><strong>Total vs allowance (package + contract monthly):</strong> ${formatCurrency(
+          (calc.billablePackageCost || 0) + (calc.deviceCost || 0)
+        )}</p>
         <p style="text-align:left;margin:0;"><strong>Top-up:</strong> ${formatCurrency(calc.topUp || 0)}</p>
       `,
       showCancelButton: true,
@@ -1389,19 +1402,8 @@ const AirtimeBenefitSimulator = ({
                 <strong>{formatCurrency(limitBudget)}</strong>
               </div>
               <div className="summary-row">
-                <span>Device PMT (contract monthly)</span>
-                <strong>
-                  {formatCurrency(
-                    contractCalculations.reduce(
-                      (total, item) => total + (item.deviceCost || 0),
-                      0
-                    )
-                  )}
-                </strong>
-              </div>
-              <div className="summary-row">
-                <span>Total vs allowance (package + device ÷ months)</span>
-                <strong>{formatCurrency(monthlyPayment)}</strong>
+                <span>Total (package + contract monthly payment)</span>
+                <strong>{formatCurrency(totalVsAllowance)}</strong>
               </div>
               <div
                 className={`summary-row ${
