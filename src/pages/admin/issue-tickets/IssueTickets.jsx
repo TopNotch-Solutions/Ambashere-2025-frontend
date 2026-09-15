@@ -25,6 +25,7 @@ import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
 import ScheduleOutlinedIcon from "@mui/icons-material/ScheduleOutlined";
 import { DataGrid } from "@mui/x-data-grid";
 import Swal from "sweetalert2";
+import { fireSwal } from "../../../utils/swalHelpers";
 import { useSelector } from "react-redux";
 import axiosInstance from "../../../utils/axiosInstance";
 import { tokens } from "../../../theme";
@@ -183,7 +184,10 @@ const IssueTickets = () => {
     const isDirectComplete =
       currentStatus === "pending" && nextStatus === "completed";
 
-    const result = await Swal.fire({
+    // Close detail dialog so it does not sit behind the confirm popup.
+    setViewTicket(null);
+
+    const result = await fireSwal({
       icon: "question",
       title: isDirectComplete
         ? "Mark ticket as completed?"

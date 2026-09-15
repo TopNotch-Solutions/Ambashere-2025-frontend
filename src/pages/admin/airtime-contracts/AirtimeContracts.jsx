@@ -17,6 +17,7 @@ import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import { DataGrid } from "@mui/x-data-grid";
 import Swal from "sweetalert2";
 import { confirmAdminAction } from "../../../utils/adminConfirm";
+import { fireSwal } from "../../../utils/swalHelpers";
 import { useSelector } from "react-redux";
 import InfoBox from "../../../components/admin/charts/InfoBox";
 import AirtimeSubmissionsYoYChart from "../../../components/admin/charts/AirtimeSubmissionsYoYChart";
@@ -132,6 +133,9 @@ const AdminAirtimeContracts = () => {
       return;
     }
 
+    // Close detail dialog so it does not sit behind the confirm popup.
+    setViewSubmission(null);
+
     const confirmed = await confirmAdminAction({
       title:
         currentStatus === "pending"
@@ -203,7 +207,10 @@ const AdminAirtimeContracts = () => {
       return;
     }
 
-    const result = await Swal.fire({
+    // Close detail dialog so it does not sit behind the confirm popup.
+    setViewSubmission(null);
+
+    const result = await fireSwal({
       icon: "warning",
       title: "Cancel this airtime submission?",
       html: `

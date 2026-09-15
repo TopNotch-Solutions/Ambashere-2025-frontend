@@ -14,6 +14,7 @@ import {
 import { useSelector } from "react-redux";
 import axiosInstance from "../../../utils/axiosInstance";
 import Swal from "sweetalert2";
+import { fireSwal } from "../../../utils/swalHelpers";
 import DevicesOtherIcon from "@mui/icons-material/DevicesOther";
 import AssignmentIcon from "@mui/icons-material/Assignment";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
@@ -188,7 +189,7 @@ const Support = () => {
       return;
     }
 
-    const confirmResult = await Swal.fire({
+    const confirmResult = await fireSwal({
       icon: "question",
       title: "Submit support ticket?",
       text: "Please confirm that you want to submit this support request.",
@@ -204,7 +205,7 @@ const Support = () => {
       setIsSubmitting(true);
       const response = await axiosInstance.post("/support-tickets", formData);
       if (response.data.success) {
-        Swal.fire({
+        await fireSwal({
           icon: "success",
           title: "Ticket Submitted",
           text: `Your support ticket ${response.data.ticket?.ticketNumber || ""} has been submitted. You will receive a confirmation email and notification.`,
@@ -217,14 +218,14 @@ const Support = () => {
         setTicketPage(1);
         await fetchTickets(1);
       } else {
-        Swal.fire({
+        await fireSwal({
           icon: "error",
           title: "Failed",
           text: "Failed to submit ticket. Please try again!",
         });
       }
     } catch (error) {
-      Swal.fire({
+      await fireSwal({
         icon: "error",
         title: "Error",
         text:
@@ -238,7 +239,7 @@ const Support = () => {
   };
 
   const handleCancelTicket = async (ticket) => {
-    const confirmResult = await Swal.fire({
+    const confirmResult = await fireSwal({
       icon: "warning",
       title: "Cancel support ticket?",
       html: `Ticket <strong>${ticket.ticketNumber}</strong> will be cancelled. This action cannot be undone.`,
@@ -254,7 +255,7 @@ const Support = () => {
     try {
       setCancellingId(ticket.id);
       await axiosInstance.put(`/support-tickets/${ticket.id}/cancel`);
-      Swal.fire({
+      await fireSwal({
         icon: "success",
         title: "Ticket Cancelled",
         text: "Your support ticket has been cancelled. Admins have been notified.",
@@ -263,7 +264,7 @@ const Support = () => {
       });
       await fetchTickets(ticketPage);
     } catch (error) {
-      Swal.fire({
+      await fireSwal({
         icon: "error",
         title: "Cancellation failed",
         text:

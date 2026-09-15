@@ -24,6 +24,8 @@ import {
   isValidAirtimeMsisdn,
   normalizeAirtimeMsisdn,
 } from "../../../utils/airtimeMsisdn";
+import { calculatePmt } from "../../../utils/calculatePmt";
+import { fireSwal } from "../../../utils/swalHelpers";
 
 const AirtimeBenefitSimulator = ({
   embedded = false,
@@ -226,48 +228,48 @@ const AirtimeBenefitSimulator = ({
       ? 0
       : getPackageMonthlyCost(contract);
 
-  const getDeviceMonthlyCost = (contract) => {
-    const selectedPkg = packages.find(
-      (pkg) => pkg.PackageID === contract.selectedPackage
-    );
-    const durationMatch = selectedPkg?.PackageName.match(/\((\d+)\)/);
-    const duration = durationMatch ? parseInt(durationMatch[1], 10) : 0;
-
-    const monthlyDevicePayment = duration
-      ? (parseFloat(contract.devicePrice) || 0) / duration
-      : 0;
-    const additionalDevicePayment = duration
-      ? (parseFloat(contract.additionalDevicePrice) || 0) / duration
-      : 0;
-
-    return monthlyDevicePayment + additionalDevicePayment;
-  };
-
   const getPackageDuration = (contract) => {
     const selectedPkg = packages.find(
       (pkg) => pkg.PackageID === contract.selectedPackage
     );
-    const durationMatch = selectedPkg?.PackageName?.match(/\((\d+)\)/);
+    if (!selectedPkg) return 0;
+
+    const fromPaymentPeriod = parseInt(
+      String(selectedPkg.PaymentPeriod || selectedPkg.ContractDuration || "")
+        .replace(/\s*months?/i, "")
+        .trim(),
+      10
+    );
+    if (!Number.isNaN(fromPaymentPeriod) && fromPaymentPeriod > 0) {
+      return fromPaymentPeriod;
+    }
+
+    const durationMatch =
+      String(selectedPkg.PackageName || "").match(/\((\d+)\)/) ||
+      String(selectedPkg.PackageName || "").match(/(\d+)\s*months?/i);
     return durationMatch ? parseInt(durationMatch[1], 10) : 0;
   };
 
-  const getContractMonthlyPayment = (contract) =>
-    getBillablePackageMonthlyCost(contract) + getDeviceMonthlyCost(contract);
+  // Device PMT for display as Contract Monthly Payment (cdrlive amount, 10% p.a.).
+  const getDevicePmtCost = (contract) => {
+    const duration = getPackageDuration(contract);
 
-  const limitBudget = useMemo(() => {
-    const available =
-      availableAllowance !== null
-        ? parseFloat(availableAllowance) || 0
-        : 0.7 * (parseFloat(airtimeAllocation) || 0);
-    return available + (isEditing ? pendingMonthly : 0);
-  }, [availableAllowance, airtimeAllocation, isEditing, pendingMonthly]);
+    return (
+      calculatePmt(parseFloat(contract.devicePrice) || 0, duration) +
+      calculatePmt(parseFloat(contract.additionalDevicePrice) || 0, duration)
+    );
+  };
 
-  const getRemainingBeforeContract = (index, data = contractData) => {
-    let remaining = limitBudget;
-    for (let i = 0; i < index; i++) {
-      remaining = Math.max(0, remaining - getContractMonthlyPayment(data[i]));
-    }
-    return remaining;
+  // Simple amortization for allowance / top-up only (not affected by PMT interest).
+  const getDeviceAmortizedMonthlyCost = (contract) => {
+    const duration = getPackageDuration(contract);
+    if (duration <= 0) return 0;
+
+    const totalDevicePrice =
+      (parseFloat(contract.devicePrice) || 0) +
+      (parseFloat(contract.additionalDevicePrice) || 0);
+
+    return totalDevicePrice / duration;
   };
 
   const isPackageWithinLimit = (packagePrice, remaining) =>
@@ -282,6 +284,34 @@ const AirtimeBenefitSimulator = ({
       pkg.AllowsDevice === "1" ||
       pkg.AllowsDevice === "true"
     );
+  };
+
+  // Allowance monthly = billable package + amortized device (excludes PMT interest).
+  const getContractAllowanceMonthly = (contract) => {
+    const packageCost = getBillablePackageMonthlyCost(contract);
+    const selectedPkg = packages.find(
+      (pkg) => pkg.PackageID === contract.selectedPackage
+    );
+    const deviceCost = packageAllowsDevice(selectedPkg)
+      ? getDeviceAmortizedMonthlyCost(contract)
+      : 0;
+    return Number((packageCost + deviceCost).toFixed(2));
+  };
+
+  const limitBudget = useMemo(() => {
+    const available =
+      availableAllowance !== null
+        ? parseFloat(availableAllowance) || 0
+        : 0.7 * (parseFloat(airtimeAllocation) || 0);
+    return available + (isEditing ? pendingMonthly : 0);
+  }, [availableAllowance, airtimeAllocation, isEditing, pendingMonthly]);
+
+  const getRemainingBeforeContract = (index, data = contractData) => {
+    let remaining = limitBudget;
+    for (let i = 0; i < index; i++) {
+      remaining = Math.max(0, remaining - getContractAllowanceMonthly(data[i]));
+    }
+    return remaining;
   };
 
   const packageHasDeviceLimit = (pkg) => {
@@ -316,12 +346,16 @@ const AirtimeBenefitSimulator = ({
       const displayPackageCost = getPackageMonthlyCost(contract);
       const packageCost = getBillablePackageMonthlyCost(contract);
       const allowsDevice = packageAllowsDevice(selectedPkg);
-      const deviceCost = allowsDevice ? getDeviceMonthlyCost(contract) : 0;
-      const monthly = packageCost + deviceCost;
+      const devicePmt = allowsDevice ? getDevicePmtCost(contract) : 0;
+      const deviceAmortized = allowsDevice
+        ? getDeviceAmortizedMonthlyCost(contract)
+        : 0;
+      // Allowance / top-up use amortized device cost — not PMT.
+      const monthly = Number((packageCost + deviceAmortized).toFixed(2));
       const packageWithinLimit = isPackageWithinLimit(packageCost, remaining);
 
       // Top-up only when package itself is within limit but device pushes over.
-      // Total top-up = monthly excess × package duration.
+      // Total top-up = monthly excess × package duration (based on price ÷ months).
       let topUp = 0;
       if (packageWithinLimit && allowsDevice && monthly > remaining) {
         const monthlyExcess = monthly - remaining;
@@ -338,7 +372,8 @@ const AirtimeBenefitSimulator = ({
         monthly,
         packageCost: displayPackageCost,
         billablePackageCost: packageCost,
-        deviceCost,
+        deviceCost: devicePmt,
+        deviceAmortized,
         packageWithinLimit,
         allowsDevice,
         topUp,
@@ -602,7 +637,7 @@ const AirtimeBenefitSimulator = ({
     };
 
     if (totalTopUp > 0) {
-      const result = await Swal.fire({
+      const result = await fireSwal({
         icon: "warning",
         title: "Top-up Required",
         html: `
@@ -664,16 +699,15 @@ const AirtimeBenefitSimulator = ({
       return;
     }
 
-    const durationMatch = selectedPkg?.PackageName?.match(/\((\d+)\)/);
     const duration =
-      durationMatch
-        ? parseInt(durationMatch[1], 10)
-        : Math.trunc(Number(editingSubmission?.contract_duration)) || 0;
+      getPackageDuration(contract) ||
+      Math.trunc(Number(editingSubmission?.contract_duration)) ||
+      0;
     const devicePrice = parseFloat(contract.devicePrice) || 0;
-    const monthlyDeviceCost = duration ? devicePrice / duration : 0;
+    const monthlyDeviceCost = calculatePmt(devicePrice, duration);
     const calc = contractCalculations[0] || {};
 
-    const result = await Swal.fire({
+    const result = await fireSwal({
       icon: "question",
       title: "Update airtime benefit request?",
       html: `
@@ -684,7 +718,8 @@ const AirtimeBenefitSimulator = ({
         <p style="text-align:left;margin:0;"><strong>MSISDN:</strong> ${msisdn || "-"}</p>
         <p style="text-align:left;margin:0;"><strong>Package price:</strong> ${formatCurrency(calc.packageCost)}</p>
         <p style="text-align:left;margin:0;"><strong>Device price:</strong> ${formatCurrency(devicePrice)}</p>
-        <p style="text-align:left;margin:0;"><strong>Monthly payment:</strong> ${formatCurrency(calc.monthly)}</p>
+        <p style="text-align:left;margin:0;"><strong>Contract monthly payment (PMT):</strong> ${formatCurrency(calc.deviceCost || 0)}</p>
+        <p style="text-align:left;margin:0;"><strong>Total vs allowance:</strong> ${formatCurrency(calc.monthly)}</p>
         <p style="text-align:left;margin:0;"><strong>Top-up:</strong> ${formatCurrency(calc.topUp || 0)}</p>
       `,
       showCancelButton: true,
@@ -697,7 +732,7 @@ const AirtimeBenefitSimulator = ({
     if (!result.isConfirmed) return;
 
     if ((calc.topUp || 0) > 0) {
-      const topUpResult = await Swal.fire({
+      const topUpResult = await fireSwal({
         icon: "warning",
         title: "Top-up Required",
         html: `
@@ -741,7 +776,7 @@ const AirtimeBenefitSimulator = ({
           : null,
       });
 
-      Swal.fire({
+      await fireSwal({
         icon: "success",
         title: "Request updated",
         text: "Your pending airtime benefit request has been updated.",
@@ -751,7 +786,7 @@ const AirtimeBenefitSimulator = ({
         }
       });
     } catch (error) {
-      Swal.fire({
+      await fireSwal({
         icon: "error",
         title: "Update failed",
         text:
@@ -1304,9 +1339,10 @@ const AirtimeBenefitSimulator = ({
                       <TextField
                         name={`ContractMonthlyPayment-${index}`}
                         label="Contract Monthly Payment"
-                        value={formatCurrency(calc.monthly || 0)}
+                        value={formatCurrency(calc.deviceCost || 0)}
                         fullWidth
                         margin="normal"
+                        helperText="Select a device to calculate PMT"
                         InputProps={{ readOnly: true }}
                       />
                     </div>
@@ -1353,7 +1389,18 @@ const AirtimeBenefitSimulator = ({
                 <strong>{formatCurrency(limitBudget)}</strong>
               </div>
               <div className="summary-row">
-                <span>Monthly payment (simulated)</span>
+                <span>Device PMT (contract monthly)</span>
+                <strong>
+                  {formatCurrency(
+                    contractCalculations.reduce(
+                      (total, item) => total + (item.deviceCost || 0),
+                      0
+                    )
+                  )}
+                </strong>
+              </div>
+              <div className="summary-row">
+                <span>Total vs allowance (package + device ÷ months)</span>
                 <strong>{formatCurrency(monthlyPayment)}</strong>
               </div>
               <div
@@ -1386,7 +1433,8 @@ const AirtimeBenefitSimulator = ({
               <p className="simulator-tip mb-0">
                 Packages over the remaining allowance cannot be selected and
                 cannot use top-up. Top-up only applies when the package is
-                within limit but the device pushes the total over.
+                within limit but the device pushes the total over. Top-up uses
+                device price ÷ months — it is not affected by the device PMT.
               </p>
             </div>
 

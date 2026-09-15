@@ -22,6 +22,8 @@ import {
   isValidAirtimeMsisdn,
   normalizeAirtimeMsisdn,
 } from "../../utils/airtimeMsisdn";
+import { calculatePmt } from "../../utils/calculatePmt";
+import { fireSwal } from "../../utils/swalHelpers";
 
 const BenefitVoucher = ({
   open,
@@ -583,7 +585,8 @@ const BenefitVoucher = ({
       if (!devicePrice) return sum;
 
       const duration = getContractDurationForDeviceRow(updatedRows, row.id);
-      const monthlyDeviceCost = duration > 0 ? devicePrice / duration : 0;
+      const monthlyDeviceCost =
+        duration > 0 ? devicePrice / duration : 0;
       const upfrontPayment = parseFloat(row.column5) || 0;
 
       return sum + monthlyDeviceCost + upfrontPayment;
@@ -681,7 +684,8 @@ const BenefitVoucher = ({
     // --- 1. Initial Limit Check (remains first) ---
     if (!(withinLimit || (topUpEligible && topUpConfirmed))) {
       if (topUpEligible && !topUpConfirmed) {
-        const result = await Swal.fire({
+        handleClose();
+        const result = await fireSwal({
           icon: "warning",
           title: "Top-up Confirmation Required",
           html: `This application exceeds your available allowance.<br/><br/>Total top-up required: <strong>${formatCurrency(
@@ -699,7 +703,7 @@ const BenefitVoucher = ({
         }
         return;
       }
-      Swal.fire({
+      await fireSwal({
         icon: "error",
         title: "Limit Exceeded",
         text: "The new allowance is not within the allowed limit (70% of Airtime Allocation).",
@@ -710,7 +714,8 @@ const BenefitVoucher = ({
     if (isSubmitting) return;
 
     if (!topUpConfirmed) {
-      const confirmResult = await Swal.fire({
+      handleClose();
+      const confirmResult = await fireSwal({
         icon: "question",
         title: "Submit airtime contract?",
         text: "Please confirm that you want to submit this airtime contract application.",
@@ -878,16 +883,22 @@ const BenefitVoucher = ({
           );
         }
 
-        const monthlyDeviceCost =
-          device.DevicePrice / packageDet.ContractDuration;
+        const devicePmt = calculatePmt(
+          device.DevicePrice,
+          packageDet.ContractDuration
+        );
+        const duration = Number(packageDet.ContractDuration) || 0;
+        const deviceAmortized =
+          duration > 0 ? device.DevicePrice / duration : 0;
 
         packageDet.DeviceAssigned = {
           DeviceName: device.DeviceName,
           DevicePrice: device.DevicePrice,
           UpfrontPayment: device.UpfrontPayment,
-          MonthlyDeviceCost: monthlyDeviceCost,
+          MonthlyDeviceCost: devicePmt,
         };
-        packageDet.AdjustedMonthlyPrice += monthlyDeviceCost;
+        // Allowance uses amortized device cost so top-up is not inflated by PMT interest.
+        packageDet.AdjustedMonthlyPrice += deviceAmortized;
       });
 
       // --- 6. Extract Other Global Details ---
@@ -944,7 +955,8 @@ const BenefitVoucher = ({
       }
 
       if (userData.available - totalPackagesMonthlyCost < 0 && !topUpConfirmed) {
-        const result = await Swal.fire({
+        handleClose();
+        const result = await fireSwal({
           icon: "warning",
           title: "Top-up Confirmation Required",
           html: `Device costs exceed your available allowance.<br/><br/>Total top-up required: <strong>${formatCurrency(
@@ -999,7 +1011,7 @@ const BenefitVoucher = ({
       );
       if (response.status === 201 || response.status === 200) {
         handleClose();
-        Swal.fire({
+        await fireSwal({
           icon: "success",
           title: "Contract Application Submitted!",
           text: "Your application has been successfully received.",
@@ -1015,7 +1027,7 @@ const BenefitVoucher = ({
         error.response?.data?.message ||
         error.message ||
         "Error saving contract. Please try again.";
-      Swal.fire({
+      await fireSwal({
         icon: "error",
         title: "Saving Error",
         text: apiMessage,

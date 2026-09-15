@@ -7,6 +7,7 @@ import { DataGrid } from "@mui/x-data-grid";
 import { useSelector } from "react-redux";
 import axiosInstance from "../../../utils/axiosInstance";
 import Swal from "sweetalert2";
+import { fireSwal } from "../../../utils/swalHelpers";
 import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
 import RoleSwitcher from "../../../components/admin/RoleSwitcher";
 import UserCalendar from "../calendar/Calendar";
@@ -144,7 +145,7 @@ const UserDashboard = () => {
   };
 
   const handleMarkReceived = async (type, submissionId) => {
-    const confirmResult = await Swal.fire({
+    const confirmResult = await fireSwal({
       icon: "question",
       title:
         type === "airtime"
@@ -167,7 +168,7 @@ const UserDashboard = () => {
           ? `/contracts/submissions/${submissionId}/received`
           : `/handsets/submissions/${submissionId}/received`;
       await axiosInstance.put(endpoint);
-      Swal.fire({
+      await fireSwal({
         icon: "success",
         title: "Marked as received",
         timer: 2800,
@@ -179,7 +180,7 @@ const UserDashboard = () => {
         await fetchHandsetData();
       }
     } catch (error) {
-      Swal.fire({
+      await fireSwal({
         icon: "error",
         title: "Update failed",
         text:

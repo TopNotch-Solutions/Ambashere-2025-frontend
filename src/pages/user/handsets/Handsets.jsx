@@ -27,6 +27,7 @@ import ShareIMEIModal from "../../../components/user/ShareIMEIModal";
 import formatDate from "../../../components/global/dateFormatter";
 import { formatMoney } from "../../../utils/formatMoney";
 import Swal from "sweetalert2";
+import { fireSwal } from "../../../utils/swalHelpers";
 import HandsetBenfitSimulator from "../self-help/HandsetBenefitSimulator";
 import "../../../assets/style/global/handsetBenefitSimulator.css";
 import "../../../assets/style/global/benefits.css";
@@ -233,7 +234,7 @@ const UserHandsets = () => {
   };
 
   const handleCancelHandsetSubmission = async (submissionId) => {
-    const confirmResult = await Swal.fire({
+    const confirmResult = await fireSwal({
       icon: "warning",
       title: "Cancel handset request?",
       text: "Your pending staff handset request will be cancelled. Admins will be notified.",
@@ -249,7 +250,7 @@ const UserHandsets = () => {
     try {
       setCancellingSubmissionId(submissionId);
       await axiosInstance.put(`/handsets/submissions/${submissionId}/cancel`);
-      Swal.fire({
+      await fireSwal({
         icon: "success",
         title: "Request cancelled",
         text: "Your request was cancelled. You can submit a new staff handset request if you are eligible.",
@@ -258,7 +259,7 @@ const UserHandsets = () => {
       });
       await refreshHandsetData();
     } catch (error) {
-      Swal.fire({
+      await fireSwal({
         icon: "error",
         title: "Cancellation failed",
         text:
@@ -278,7 +279,7 @@ const UserHandsets = () => {
   };
 
   const handleMarkHandsetReceived = async (submissionId) => {
-    const confirmResult = await Swal.fire({
+    const confirmResult = await fireSwal({
       icon: "question",
       title: "Mark this handset as received?",
       text: "Confirm that you have received this staff handset.",
@@ -294,7 +295,7 @@ const UserHandsets = () => {
     try {
       setReceivingSubmissionId(submissionId);
       await axiosInstance.put(`/handsets/submissions/${submissionId}/received`);
-      Swal.fire({
+      await fireSwal({
         icon: "success",
         title: "Marked as received",
         text: "Your staff handset has been marked as received.",
@@ -303,7 +304,7 @@ const UserHandsets = () => {
       });
       await refreshHandsetData();
     } catch (error) {
-      Swal.fire({
+      await fireSwal({
         icon: "error",
         title: "Update failed",
         text:

@@ -15,6 +15,7 @@ import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import axiosInstance from "../../../utils/axiosInstance";
 import Swal from "sweetalert2";
+import { fireSwal } from "../../../utils/swalHelpers";
 import formatDate from "../../../components/global/dateFormatter";
 import { formatMoney } from "../../../utils/formatMoney";
 import { formatPlanPeriod } from "../../../utils/planPeriod";
@@ -109,7 +110,7 @@ const UserBenefits = () => {
   };
 
   const handleCancelAirtimeSubmission = async (submissionId) => {
-    const confirmResult = await Swal.fire({
+    const confirmResult = await fireSwal({
       icon: "warning",
       title: "Cancel airtime benefit request?",
       text: "Your pending airtime benefit request will be cancelled. Admins will be notified.",
@@ -127,7 +128,7 @@ const UserBenefits = () => {
       await axiosInstance.put(`/contracts/submissions/${submissionId}/cancel`);
       setEditingSubmission(null);
       setShowSimulator(false);
-      Swal.fire({
+      await fireSwal({
         icon: "success",
         title: "Request cancelled",
         text: "Your request was cancelled. You can submit a new airtime benefit request if you are eligible.",
@@ -136,7 +137,7 @@ const UserBenefits = () => {
       });
       await refreshBenefitsData();
     } catch (error) {
-      Swal.fire({
+      await fireSwal({
         icon: "error",
         title: "Cancellation failed",
         text:
@@ -149,7 +150,7 @@ const UserBenefits = () => {
   };
 
   const handleMarkAirtimeReceived = async (submissionId) => {
-    const confirmResult = await Swal.fire({
+    const confirmResult = await fireSwal({
       icon: "question",
       title: "Mark this contract as received?",
       text: "Confirm that you have received this airtime contract.",
@@ -165,7 +166,7 @@ const UserBenefits = () => {
     try {
       setReceivingSubmissionId(submissionId);
       await axiosInstance.put(`/contracts/submissions/${submissionId}/received`);
-      Swal.fire({
+      await fireSwal({
         icon: "success",
         title: "Marked as received",
         text: "Your airtime contract has been marked as received.",
@@ -174,7 +175,7 @@ const UserBenefits = () => {
       });
       await refreshBenefitsData();
     } catch (error) {
-      Swal.fire({
+      await fireSwal({
         icon: "error",
         title: "Update failed",
         text:

@@ -5,6 +5,7 @@ import { useTheme } from "@emotion/react";
 import logo from "../../assets/Img/image 1.png";
 import Swal from "sweetalert2";
 import { confirmAdminAction } from "../../utils/adminConfirm";
+import { fireSwal } from "../../utils/swalHelpers";
 import { addNotification } from "../../store/reducers/notificationReducer";
 import { useDispatch, useSelector } from "react-redux";
 import axiosInstance from "../../utils/axiosInstance";
@@ -169,6 +170,9 @@ const HandsetAdminVoucher = ({ open, handleClose, userData, role }) => {
       status: status, 
     };
 
+    // Close voucher modal before confirm so popups do not stack.
+    handleClose();
+
     const confirmed = await confirmAdminAction({
       title: "Save handset voucher changes?",
       text: `Update collection details for ${employeeCode}?`,
@@ -185,19 +189,15 @@ const HandsetAdminVoucher = ({ open, handleClose, userData, role }) => {
 
       if (response.status === 200) {
         setHasChanges(false);
-        Swal.fire({
+        await fireSwal({
           icon: "success",
           title: "Success",
           text: `Handset voucher successfully updated!`,
         });
-        handleClose();
         window.location.reload()
-        // Optionally, reset editable fields to their new state or clear if the modal closes.
-        // For an update form, usually you'd just close it and let the parent re-fetch data.
       } else {
-        handleClose();
         setHasChanges(false);
-        Swal.fire({
+        await fireSwal({
           icon: "error",
           title: "Update Failed",
           text: `An unexpected error occurred: ${
@@ -206,10 +206,9 @@ const HandsetAdminVoucher = ({ open, handleClose, userData, role }) => {
         });
       }
     } catch (error) {
-      handleClose();
       setHasChanges(false);
       console.error("Error updating handset voucher:", error);
-      Swal.fire({
+      await fireSwal({
         icon: "error",
         title: "Update Failed",
         text: `Failed to update voucher. Error: ${

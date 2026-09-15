@@ -1,4 +1,4 @@
-import Swal from "sweetalert2";
+import { fireSwal } from "./swalHelpers";
 
 const DEFAULT_OPTIONS = {
   confirmButtonColor: "#0096D6",
@@ -9,15 +9,16 @@ const DEFAULT_OPTIONS = {
 export async function confirmAdminAction({
   title = "Are you sure?",
   text = "",
+  html,
   icon = "question",
   confirmButtonText = "Confirm",
   cancelButtonText = "Cancel",
 } = {}) {
-  const result = await Swal.fire({
+  const result = await fireSwal({
     ...DEFAULT_OPTIONS,
     icon,
     title,
-    text,
+    ...(html ? { html } : { text }),
     confirmButtonText,
     cancelButtonText,
   });
