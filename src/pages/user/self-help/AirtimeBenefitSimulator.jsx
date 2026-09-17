@@ -222,9 +222,19 @@ const AirtimeBenefitSimulator = ({
     return packageTotal;
   };
 
-  // Renewal: package already running — only device is deducted from allowance.
+  // Renewal + MSISDN from active contracts: package already running — only device
+  // is deducted from allowance. Renewal without a listed MSISDN still bills package.
+  const isMsisdnFromActiveContracts = (msisdn) => {
+    const normalized = normalizeAirtimeMsisdn(msisdn);
+    return renewalMsisdnOptions.some((option) => option.msisdn === normalized);
+  };
+
+  const isPackageWaivedForRenewal = (contract) =>
+    isRenewalTransaction(contract.subscriptionType) &&
+    isMsisdnFromActiveContracts(contract.msisdn);
+
   const getBillablePackageMonthlyCost = (contract) =>
-    isRenewalTransaction(contract.subscriptionType)
+    isPackageWaivedForRenewal(contract)
       ? 0
       : getPackageMonthlyCost(contract);
 
@@ -450,30 +460,55 @@ const AirtimeBenefitSimulator = ({
       if (field === "subscriptionType") {
         if (!isRenewalTransaction(value)) {
           updatedContract.msisdn = "";
-          const packagePrice = getPackageMonthlyCost(updatedContract);
-          if (
-            updatedContract.selectedPackage &&
-            !isPackageWithinLimit(packagePrice, remaining)
-          ) {
-            updatedContract = clearDeviceSelection({
-              ...updatedContract,
-              selectedPackage: "",
-              packagePrice: "",
-              showNetOption: false,
-              netOption: "",
-              netAdditionalRow: false,
-              packageError: `This package (${formatCurrency(
-                packagePrice
-              )}) exceeds your remaining allowance (${formatCurrency(
-                remaining
-              )}). Choose a cheaper package — top-up cannot cover package overage.`,
-            });
-          }
+        }
+        const packagePrice = getPackageMonthlyCost(updatedContract);
+        const billablePackagePrice = isPackageWaivedForRenewal(updatedContract)
+          ? 0
+          : packagePrice;
+        if (
+          updatedContract.selectedPackage &&
+          !isPackageWithinLimit(billablePackagePrice, remaining)
+        ) {
+          updatedContract = clearDeviceSelection({
+            ...updatedContract,
+            selectedPackage: "",
+            packagePrice: "",
+            showNetOption: false,
+            netOption: "",
+            netAdditionalRow: false,
+            packageError: `This package (${formatCurrency(
+              packagePrice
+            )}) exceeds your remaining allowance (${formatCurrency(
+              remaining
+            )}). Choose a cheaper package — top-up cannot cover package overage.`,
+          });
         }
       }
 
       if (field === "msisdn") {
         updatedContract.msisdn = normalizeAirtimeMsisdn(value).slice(0, 9);
+        const packagePrice = getPackageMonthlyCost(updatedContract);
+        const billablePackagePrice = isPackageWaivedForRenewal(updatedContract)
+          ? 0
+          : packagePrice;
+        if (
+          updatedContract.selectedPackage &&
+          !isPackageWithinLimit(billablePackagePrice, remaining)
+        ) {
+          updatedContract = clearDeviceSelection({
+            ...updatedContract,
+            selectedPackage: "",
+            packagePrice: "",
+            showNetOption: false,
+            netOption: "",
+            netAdditionalRow: false,
+            packageError: `This package (${formatCurrency(
+              packagePrice
+            )}) exceeds your remaining allowance (${formatCurrency(
+              remaining
+            )}). Choose a cheaper package — top-up cannot cover package overage.`,
+          });
+        }
       }
 
       if (field === "selectedPackage") {
@@ -490,8 +525,8 @@ const AirtimeBenefitSimulator = ({
           } else {
           const selectedPkg = packages.find((pkg) => pkg.PackageID === value);
           const packagePrice = parseFloat(selectedPkg?.MonthlyPrice) || 0;
-          const billablePackagePrice = isRenewalTransaction(
-            updatedContract.subscriptionType
+          const billablePackagePrice = isPackageWaivedForRenewal(
+            updatedContract
           )
             ? 0
             : packagePrice;
@@ -822,8 +857,10 @@ const AirtimeBenefitSimulator = ({
       const packagePriceWithNet =
         value === "Yes" ? basePackagePrice + 50 : basePackagePrice;
       const remaining = getRemainingBeforeContract(index, updatedData);
+      const tentative = { ...current, netOption: value };
+      const billablePackagePrice = getBillablePackageMonthlyCost(tentative);
 
-      if (!isPackageWithinLimit(packagePriceWithNet, remaining)) {
+      if (!isPackageWithinLimit(billablePackagePrice, remaining)) {
         updatedData[index] = {
           ...current,
           netOption: "No",
@@ -1099,9 +1136,11 @@ const AirtimeBenefitSimulator = ({
                         margin="normal"
                         InputProps={{ readOnly: true }}
                         helperText={
-                          isRenewalTransaction(contract.subscriptionType)
+                          isPackageWaivedForRenewal(contract)
                             ? "Already running — not deducted from allowance"
-                            : undefined
+                            : isRenewalTransaction(contract.subscriptionType)
+                              ? "Select an MSISDN from active contracts to waive package from allowance"
+                              : undefined
                         }
                       />
                     </div>

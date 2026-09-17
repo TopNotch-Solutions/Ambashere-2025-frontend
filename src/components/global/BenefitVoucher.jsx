@@ -562,16 +562,40 @@ const BenefitVoucher = ({
     return 0;
   };
 
+  const getPackageRowMsisdn = (packageRow, updatedRows) => {
+    const equipmentRow = updatedRows?.find(
+      (row) => row.id === packageRow.id + 5
+    );
+    const prefill = prefillData?.[packageRow.id - 1];
+    return normalizeAirtimeMsisdn(
+      prefill?.msisdn ||
+        packageRow.column4 ||
+        equipmentRow?.column4 ||
+        msisdnRef.current[packageRow.id + 5]?.value
+    );
+  };
+
+  // Renewal + valid MSISDN: package already running — do not deduct from allowance
+  // (same rule as simulator / handleSave).
+  const isPackageWaivedForRenewal = (packageRow, updatedRows) =>
+    isRenewalTransaction(packageRow.column6) &&
+    isValidAirtimeMsisdn(getPackageRowMsisdn(packageRow, updatedRows));
+
+  const getBillablePackageMonthly = (packageRow, updatedRows) => {
+    if (isPackageWaivedForRenewal(packageRow, updatedRows)) return 0;
+    return parseFloat(packageRow.column2) || 0;
+  };
+
   const calculateMUL = (updatedRows) => {
     // Guard clause: Don't calculate if userData is not available
     if (!userData || userData.available == null) {
       return updatedRows;
     }
 
-    // Package rows 1-5: column2 is already monthly package price
+    // Package rows 1-5: billable monthly (waived for Renewal + MSISDN)
     const packageMonthlyTotal = updatedRows.reduce((sum, row) => {
       if (row.id >= 1 && row.id <= 5) {
-        return sum + (parseFloat(row.column2) || 0);
+        return sum + getBillablePackageMonthly(row, updatedRows);
       }
       return sum;
     }, 0);
@@ -799,6 +823,8 @@ const BenefitVoucher = ({
           }
 
           const isRenewal = isRenewalTransaction(packageRow.column6);
+          const isRenewalPackageWaived =
+            isRenewal && isValidAirtimeMsisdn(packageMsisdn);
           selectedPackagesDetails.push({
             id: packageRow.id,
             PackageID: packageID,
@@ -807,8 +833,9 @@ const BenefitVoucher = ({
             ContractDuration: contractDuration,
             DisplayName: packageRow.dropdown,
             DeviceAssigned: null,
-            // Renewal: package already running — only device is billed against allowance.
-            AdjustedMonthlyPrice: isRenewal ? 0 : monthlyPrice,
+            // Renewal + active-contract MSISDN: package already running — only device
+            // is billed against allowance.
+            AdjustedMonthlyPrice: isRenewalPackageWaived ? 0 : monthlyPrice,
             MSISDN: packageMsisdn || null,
           });
         }
@@ -940,7 +967,8 @@ const BenefitVoucher = ({
       const packageOnlyMonthlyCost = selectedPackagesDetails.reduce(
         (sum, pkg) =>
           sum +
-          (isRenewalTransaction(pkg.SubscriptionStatus)
+          (isRenewalTransaction(pkg.SubscriptionStatus) &&
+          isValidAirtimeMsisdn(pkg.MSISDN)
             ? 0
             : pkg.BaseMonthlyPrice),
         0
