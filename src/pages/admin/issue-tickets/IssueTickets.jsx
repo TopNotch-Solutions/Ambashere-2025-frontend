@@ -30,24 +30,11 @@ import Swal from "sweetalert2";
 import { fireSwal } from "../../../utils/swalHelpers";
 import { useSelector } from "react-redux";
 import axiosInstance from "../../../utils/axiosInstance";
-import { ensureHttpsUrl } from "../../../utils/ensureHttpsUrl";
 import { tokens } from "../../../theme";
 import formatDate from "../../../components/global/dateFormatter";
 import "../../../assets/style/global/handsetBenefitSimulator.css";
 import "../../../assets/style/global/adminDashboard.css";
 import "../../../assets/style/global/support.css";
-
-const API_BASE_URL = ensureHttpsUrl(
-  process.env.REACT_APP_API_URL || "https://ambaspherebackend.mtc.com.na"
-);
-
-const getAttachmentUrl = (imagePath) => {
-  if (!imagePath) return "";
-  if (/^https?:\/\//i.test(imagePath)) return ensureHttpsUrl(imagePath);
-  const normalized = String(imagePath).replace(/^\/+/, "");
-  // Saved under public/subscriptions and served from API root
-  return `${API_BASE_URL}/${normalized}`;
-};
 
 const ALLOWED_NEXT_STATUSES = {
   pending: ["in progress", "completed"],
@@ -135,16 +122,18 @@ const IssueTickets = () => {
   }, [debouncedSearch]);
 
   const handleDownloadAttachment = async (ticket) => {
-    if (!ticket?.image) return;
+    if (!ticket?.id || !ticket?.image) return;
 
     const fileName =
       String(ticket.image).split("/").pop() || "support-id-attachment.pdf";
 
     try {
       setDownloadingAttachment(true);
-      const response = await axiosInstance.get(getAttachmentUrl(ticket.image), {
-        responseType: "blob",
-      });
+      const response = await axiosInstance.get(
+        `/support-tickets/${ticket.id}/attachment`,
+        { responseType: "blob" }
+      );
+
       const pdfBlob =
         response.data?.type === "application/pdf"
           ? response.data
@@ -159,10 +148,25 @@ const IssueTickets = () => {
       URL.revokeObjectURL(objectUrl);
     } catch (error) {
       console.error("Error downloading attachment:", error);
+      let message = "Unable to download the ID attachment. Please try again.";
+      const data = error.response?.data;
+      if (data instanceof Blob) {
+        try {
+          const parsed = JSON.parse(await data.text());
+          if (parsed?.message) message = parsed.message;
+        } catch (_) {
+          // keep default message
+        }
+      } else if (data?.message) {
+        message = data.message;
+      } else if (error.message) {
+        message = error.message;
+      }
+
       await fireSwal({
         icon: "error",
         title: "Download failed",
-        text: "Unable to download the ID attachment. Please try again.",
+        text: message,
         confirmButtonColor: "#0096D6",
       });
     } finally {
