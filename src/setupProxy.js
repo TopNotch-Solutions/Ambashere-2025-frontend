@@ -70,7 +70,7 @@ function buildCspHeader({ isDev = false } = {}) {
     "manifest-src 'self'",
     getConnectSrc(),
     "object-src 'none'",
-    "frame-src 'none'",
+    "frame-src 'self' blob:",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",

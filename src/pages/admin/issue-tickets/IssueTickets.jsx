@@ -23,16 +23,31 @@ import CloseIcon from "@mui/icons-material/Close";
 import SubjectOutlinedIcon from "@mui/icons-material/SubjectOutlined";
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
 import ScheduleOutlinedIcon from "@mui/icons-material/ScheduleOutlined";
+import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
+import PictureAsPdfOutlinedIcon from "@mui/icons-material/PictureAsPdfOutlined";
 import { DataGrid } from "@mui/x-data-grid";
 import Swal from "sweetalert2";
 import { fireSwal } from "../../../utils/swalHelpers";
 import { useSelector } from "react-redux";
 import axiosInstance from "../../../utils/axiosInstance";
+import { ensureHttpsUrl } from "../../../utils/ensureHttpsUrl";
 import { tokens } from "../../../theme";
 import formatDate from "../../../components/global/dateFormatter";
 import "../../../assets/style/global/handsetBenefitSimulator.css";
 import "../../../assets/style/global/adminDashboard.css";
 import "../../../assets/style/global/support.css";
+
+const API_BASE_URL = ensureHttpsUrl(
+  process.env.REACT_APP_API_URL || "https://ambaspherebackend.mtc.com.na"
+);
+
+const getAttachmentUrl = (imagePath) => {
+  if (!imagePath) return "";
+  if (/^https?:\/\//i.test(imagePath)) return ensureHttpsUrl(imagePath);
+  const normalized = String(imagePath).replace(/^\/+/, "");
+  // Saved under public/subscriptions and served from API root
+  return `${API_BASE_URL}/${normalized}`;
+};
 
 const ALLOWED_NEXT_STATUSES = {
   pending: ["in progress", "completed"],
@@ -106,6 +121,7 @@ const IssueTickets = () => {
   const [page, setPage] = useState(0);
   const [rowCount, setRowCount] = useState(0);
   const [viewTicket, setViewTicket] = useState(null);
+  const [downloadingAttachment, setDownloadingAttachment] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -117,6 +133,42 @@ const IssueTickets = () => {
   useEffect(() => {
     setPage(0);
   }, [debouncedSearch]);
+
+  const handleDownloadAttachment = async (ticket) => {
+    if (!ticket?.image) return;
+
+    const fileName =
+      String(ticket.image).split("/").pop() || "support-id-attachment.pdf";
+
+    try {
+      setDownloadingAttachment(true);
+      const response = await axiosInstance.get(getAttachmentUrl(ticket.image), {
+        responseType: "blob",
+      });
+      const pdfBlob =
+        response.data?.type === "application/pdf"
+          ? response.data
+          : new Blob([response.data], { type: "application/pdf" });
+      const objectUrl = URL.createObjectURL(pdfBlob);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch (error) {
+      console.error("Error downloading attachment:", error);
+      await fireSwal({
+        icon: "error",
+        title: "Download failed",
+        text: "Unable to download the ID attachment. Please try again.",
+        confirmButtonColor: "#0096D6",
+      });
+    } finally {
+      setDownloadingAttachment(false);
+    }
+  };
 
   const fetchAnalytics = useCallback(async () => {
     try {
@@ -727,6 +779,52 @@ const IssueTickets = () => {
                 </h4>
                 <p className="support-ticket-view-message">{viewTicket.message}</p>
               </Box>
+
+              {viewTicket.image && (
+                <Box className="support-ticket-view-section">
+                  <h4 className="support-ticket-view-section-title">
+                    <PictureAsPdfOutlinedIcon />
+                    ID attachment (PDF)
+                  </h4>
+                  <div className="support-ticket-attachment">
+                    <div className="support-ticket-attachment-actions">
+                      <span className="support-ticket-attachment-name">
+                        {String(viewTicket.image).split("/").pop() || "ID scan.pdf"}
+                      </span>
+                      <Button
+                        type="button"
+                        onClick={() => handleDownloadAttachment(viewTicket)}
+                        disabled={downloadingAttachment}
+                        startIcon={
+                          downloadingAttachment ? (
+                            <CircularProgress size={16} sx={{ color: "#fff" }} />
+                          ) : (
+                            <DownloadOutlinedIcon />
+                          )
+                        }
+                        className="support-ticket-download-btn"
+                        sx={{
+                          color: "#fff",
+                          background:
+                            "linear-gradient(to right, #1A69AC, #00AAE9)",
+                          textTransform: "none",
+                          fontWeight: 700,
+                          "&:hover": {
+                            background:
+                              "linear-gradient(to right, #155a94, #0096d0)",
+                          },
+                          "&.Mui-disabled": {
+                            color: "#fff",
+                            opacity: 0.75,
+                          },
+                        }}
+                      >
+                        {downloadingAttachment ? "Downloading..." : "Download PDF"}
+                      </Button>
+                    </div>
+                  </div>
+                </Box>
+              )}
 
               <Box className="support-ticket-view-section">
                 <h4 className="support-ticket-view-section-title">

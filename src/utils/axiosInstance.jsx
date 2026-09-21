@@ -26,6 +26,16 @@ axiosInstance.interceptors.request.use(
     if (config.csrfToken) {
       config.headers['X-CSRF-Token'] = config.csrfToken;
     }
+
+    // Let the browser set multipart boundary for file uploads
+    if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+      if (config.headers && typeof config.headers.delete === 'function') {
+        config.headers.delete('Content-Type');
+      } else if (config.headers) {
+        delete config.headers['Content-Type'];
+        delete config.headers['content-type'];
+      }
+    }
     
     return config;
   },
