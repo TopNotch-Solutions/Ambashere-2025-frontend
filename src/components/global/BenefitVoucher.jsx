@@ -650,8 +650,8 @@ const BenefitVoucher = ({
       return sum;
     }, 0);
 
-    // Equipment rows 6-8: column2 is the full device price — amortize over
-    // the linked package duration (same as handleSave / simulator)
+    // Equipment rows 6-8: column2 is the full device price — use PMT over
+    // the linked package duration (same as simulator remaining / top-up).
     const deviceMonthlyTotal = updatedRows.reduce((sum, row) => {
       if (row.id < 6 || row.id > 8) return sum;
 
@@ -659,8 +659,7 @@ const BenefitVoucher = ({
       if (!devicePrice) return sum;
 
       const duration = getContractDurationForDeviceRow(updatedRows, row.id);
-      const monthlyDeviceCost =
-        duration > 0 ? devicePrice / duration : 0;
+      const monthlyDeviceCost = calculatePmt(devicePrice, duration);
       const upfrontPayment = parseFloat(row.column5) || 0;
 
       return sum + monthlyDeviceCost + upfrontPayment;
@@ -977,9 +976,6 @@ const BenefitVoucher = ({
           device.DevicePrice,
           packageDet.ContractDuration
         );
-        const duration = Number(packageDet.ContractDuration) || 0;
-        const deviceAmortized =
-          duration > 0 ? device.DevicePrice / duration : 0;
 
         packageDet.DeviceAssigned = {
           DeviceName: device.DeviceName,
@@ -987,8 +983,8 @@ const BenefitVoucher = ({
           UpfrontPayment: device.UpfrontPayment,
           MonthlyDeviceCost: devicePmt,
         };
-        // Allowance uses amortized device cost so top-up is not inflated by PMT interest.
-        packageDet.AdjustedMonthlyPrice += deviceAmortized;
+        // Allowance / remaining use package + device PMT.
+        packageDet.AdjustedMonthlyPrice += devicePmt;
       });
 
       // --- 6. Extract Other Global Details ---

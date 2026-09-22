@@ -288,7 +288,7 @@ const AirtimeBenefitSimulator = ({
     return durationMatch ? parseInt(durationMatch[1], 10) : 0;
   };
 
-  // Device PMT for display as Contract Monthly Payment (cdrlive amount, 10% p.a.).
+  // Device PMT (cdrlive amount, 10% p.a.) — used for display and allowance / remaining / top-up.
   const getDevicePmtCost = (contract) => {
     const duration = getPackageDuration(contract);
 
@@ -296,18 +296,6 @@ const AirtimeBenefitSimulator = ({
       calculatePmt(parseFloat(contract.devicePrice) || 0, duration) +
       calculatePmt(parseFloat(contract.additionalDevicePrice) || 0, duration)
     );
-  };
-
-  // Simple amortization for allowance / top-up only (not affected by PMT interest).
-  const getDeviceAmortizedMonthlyCost = (contract) => {
-    const duration = getPackageDuration(contract);
-    if (duration <= 0) return 0;
-
-    const totalDevicePrice =
-      (parseFloat(contract.devicePrice) || 0) +
-      (parseFloat(contract.additionalDevicePrice) || 0);
-
-    return totalDevicePrice / duration;
   };
 
   const isPackageWithinLimit = (packagePrice, remaining) =>
@@ -324,14 +312,14 @@ const AirtimeBenefitSimulator = ({
     );
   };
 
-  // Allowance monthly = billable package + amortized device (excludes PMT interest).
+  // Allowance monthly = billable package + device PMT.
   const getContractAllowanceMonthly = (contract) => {
     const packageCost = getBillablePackageMonthlyCost(contract);
     const selectedPkg = packages.find(
       (pkg) => pkg.PackageID === contract.selectedPackage
     );
     const deviceCost = packageAllowsDevice(selectedPkg)
-      ? getDeviceAmortizedMonthlyCost(contract)
+      ? getDevicePmtCost(contract)
       : 0;
     return Number((packageCost + deviceCost).toFixed(2));
   };
@@ -402,15 +390,12 @@ const AirtimeBenefitSimulator = ({
       const packageCost = getBillablePackageMonthlyCost(contract);
       const allowsDevice = packageAllowsDevice(selectedPkg);
       const devicePmt = allowsDevice ? getDevicePmtCost(contract) : 0;
-      const deviceAmortized = allowsDevice
-        ? getDeviceAmortizedMonthlyCost(contract)
-        : 0;
-      // Allowance / top-up use amortized device cost — not PMT.
-      const monthly = Number((packageCost + deviceAmortized).toFixed(2));
+      // Allowance / remaining / top-up use package + device PMT.
+      const monthly = Number((packageCost + devicePmt).toFixed(2));
       const packageWithinLimit = isPackageWithinLimit(packageCost, remaining);
 
       // Top-up only when package itself is within limit but device pushes over.
-      // Total top-up = monthly excess × package duration (based on price ÷ months).
+      // Total top-up = monthly excess × package duration.
       let topUp = 0;
       if (packageWithinLimit && allowsDevice && monthly > remaining) {
         const monthlyExcess = monthly - remaining;
@@ -429,7 +414,6 @@ const AirtimeBenefitSimulator = ({
         billablePackageCost: packageCost,
         packageCredit,
         deviceCost: devicePmt,
-        deviceAmortized,
         packageWithinLimit,
         allowsDevice,
         topUp,
@@ -1528,8 +1512,8 @@ const AirtimeBenefitSimulator = ({
               <p className="simulator-tip mb-0">
                 Packages over the remaining allowance cannot be selected and
                 cannot use top-up. Top-up only applies when the package is
-                within limit but the device pushes the total over. Top-up uses
-                device price ÷ months — it is not affected by the device PMT.
+                within limit but the device pushes the total over. Remaining
+                and top-up use package price + device PMT (10% p.a.).
               </p>
             </div>
 
