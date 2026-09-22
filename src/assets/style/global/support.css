@@ -593,9 +593,12 @@
   padding: 1.25rem;
   background: #d32f2f;
   border: 1px solid #b71c1c;
+  border-radius: 12px;
 }
 
 .support-cancellation-tip-title {
+  display: flex;
+  align-items: center;
   color: #ffffff;
   font-weight: 700;
   margin-bottom: 0.45rem;

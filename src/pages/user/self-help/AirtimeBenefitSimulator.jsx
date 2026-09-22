@@ -24,6 +24,13 @@ import {
   isValidAirtimeMsisdn,
   normalizeAirtimeMsisdn,
 } from "../../../utils/airtimeMsisdn";
+import {
+  buildRenewalContractMap,
+  getBillableRenewalPackageMonthly,
+  getRenewalContractForMsisdn,
+  getRenewalPackageCredit,
+  isRenewalSamePackageWaived,
+} from "../../../utils/renewalPackageAllowance";
 import { calculatePmt } from "../../../utils/calculatePmt";
 import { fireSwal } from "../../../utils/swalHelpers";
 
@@ -163,38 +170,19 @@ const AirtimeBenefitSimulator = ({
     fetchAvailableAllowance();
   }, [employeeCode]);
 
+  const renewalContractMap = useMemo(
+    () => buildRenewalContractMap(currentContracts),
+    [currentContracts]
+  );
+
   const renewalMsisdnOptions = useMemo(() => {
-    const seen = new Set();
-    return (currentContracts || [])
-      .filter((contract) => !contract.isSubmission)
-      .map((contract) => {
-        const msisdn = normalizeAirtimeMsisdn(
-          contract.msisdn || contract.MSISDN || contract.staff_msisdn
-        );
-        const status = String(
-          contract.subscription_status || contract.SubscriptionStatus || ""
-        )
-          .trim()
-          .toLowerCase();
-        return {
-          msisdn,
-          packageName: contract.package || contract.PackageName || "",
-          status,
-        };
-      })
-      .filter(
-        (contract) =>
-          isValidAirtimeMsisdn(contract.msisdn) &&
-          contract.status !== "cancelled" &&
-          contract.status !== "canceled" &&
-          contract.status !== "done"
-      )
-      .filter((contract) => {
-        if (seen.has(contract.msisdn)) return false;
-        seen.add(contract.msisdn);
-        return true;
-      });
-  }, [currentContracts]);
+    return Array.from(renewalContractMap.values()).map((entry) => ({
+      msisdn: entry.msisdn,
+      packageName: entry.packageName,
+      packageMonthly: entry.packageMonthly,
+      status: entry.status,
+    }));
+  }, [renewalContractMap]);
 
   useEffect(() => {
     if (!isEditing) return;
@@ -222,21 +210,61 @@ const AirtimeBenefitSimulator = ({
     return packageTotal;
   };
 
-  // Renewal + MSISDN from active contracts: package already running — only device
-  // is deducted from allowance. Renewal without a listed MSISDN still bills package.
-  const isMsisdnFromActiveContracts = (msisdn) => {
-    const normalized = normalizeAirtimeMsisdn(msisdn);
-    return renewalMsisdnOptions.some((option) => option.msisdn === normalized);
+  const getSelectedPackageName = (contract) => {
+    const selectedPkg = packages.find(
+      (pkg) => pkg.PackageID === contract.selectedPackage
+    );
+    return selectedPkg?.PackageName || "";
   };
 
   const isPackageWaivedForRenewal = (contract) =>
-    isRenewalTransaction(contract.subscriptionType) &&
-    isMsisdnFromActiveContracts(contract.msisdn);
+    isRenewalSamePackageWaived({
+      subscriptionType: contract.subscriptionType,
+      msisdn: contract.msisdn,
+      selectedPackageName: getSelectedPackageName(contract),
+      renewalMap: renewalContractMap,
+    });
+
+  const getPackageCreditForRenewal = (contract) =>
+    getRenewalPackageCredit({
+      subscriptionType: contract.subscriptionType,
+      msisdn: contract.msisdn,
+      selectedPackageName: getSelectedPackageName(contract),
+      renewalMap: renewalContractMap,
+    });
 
   const getBillablePackageMonthlyCost = (contract) =>
-    isPackageWaivedForRenewal(contract)
-      ? 0
-      : getPackageMonthlyCost(contract);
+    getBillableRenewalPackageMonthly({
+      subscriptionType: contract.subscriptionType,
+      msisdn: contract.msisdn,
+      selectedPackageName: getSelectedPackageName(contract),
+      packageMonthly: getPackageMonthlyCost(contract),
+      renewalMap: renewalContractMap,
+    });
+
+  const getRenewalHelperText = (contract) => {
+    if (!isRenewalTransaction(contract.subscriptionType)) return undefined;
+    if (!getRenewalContractForMsisdn(renewalContractMap, contract.msisdn)) {
+      return "Select an MSISDN from active contracts to apply renewal package rules";
+    }
+    if (isPackageWaivedForRenewal(contract)) {
+      return "Same package — already running, not deducted from allowance";
+    }
+    if (contract.selectedPackage) {
+      const credit = getPackageCreditForRenewal(contract);
+      return credit > 0
+        ? `Different package — existing ${formatCurrency(
+            credit
+          )} credited back; new package deducted from allowance`
+        : "Different package — new package deducted from allowance";
+    }
+    const credit = getPackageCreditForRenewal(contract);
+    return credit > 0
+      ? `Existing package ${formatCurrency(
+          credit
+        )} will be credited when you select a different package`
+      : undefined;
+  };
 
   const getPackageDuration = (contract) => {
     const selectedPkg = packages.find(
@@ -308,7 +336,7 @@ const AirtimeBenefitSimulator = ({
     return Number((packageCost + deviceCost).toFixed(2));
   };
 
-  const limitBudget = useMemo(() => {
+  const baseLimitBudget = useMemo(() => {
     const available =
       availableAllowance !== null
         ? parseFloat(availableAllowance) || 0
@@ -316,11 +344,26 @@ const AirtimeBenefitSimulator = ({
     return available + (isEditing ? pendingMonthly : 0);
   }, [availableAllowance, airtimeAllocation, isEditing, pendingMonthly]);
 
+  const totalRenewalPackageCredits = useMemo(
+    () =>
+      contractData.reduce(
+        (sum, contract) => sum + getPackageCreditForRenewal(contract),
+        0
+      ),
+    [contractData, packages, renewalContractMap]
+  );
+
+  // Available after existing contracts, plus credits when renewing onto a different package.
+  const limitBudget = baseLimitBudget + totalRenewalPackageCredits;
+
   const getRemainingBeforeContract = (index, data = contractData) => {
-    let remaining = limitBudget;
+    let remaining = baseLimitBudget;
     for (let i = 0; i < index; i++) {
-      remaining = Math.max(0, remaining - getContractAllowanceMonthly(data[i]));
+      remaining += getPackageCreditForRenewal(data[i]);
+      remaining -= getContractAllowanceMonthly(data[i]);
     }
+    // Include this row's renewal credit before checking package affordability.
+    remaining += getPackageCreditForRenewal(data[index] || {});
     return remaining;
   };
 
@@ -347,13 +390,15 @@ const AirtimeBenefitSimulator = ({
   };
 
   const contractCalculations = useMemo(() => {
-    let remaining = limitBudget;
+    let remaining = baseLimitBudget;
 
     return contractData.map((contract) => {
       const selectedPkg = packages.find(
         (pkg) => pkg.PackageID === contract.selectedPackage
       );
       const displayPackageCost = getPackageMonthlyCost(contract);
+      const packageCredit = getPackageCreditForRenewal(contract);
+      remaining += packageCredit;
       const packageCost = getBillablePackageMonthlyCost(contract);
       const allowsDevice = packageAllowsDevice(selectedPkg);
       const devicePmt = allowsDevice ? getDevicePmtCost(contract) : 0;
@@ -376,12 +421,13 @@ const AirtimeBenefitSimulator = ({
             : monthlyExcess;
       }
 
-      remaining = Math.max(0, remaining - monthly);
+      remaining = remaining - monthly;
 
       return {
         monthly,
         packageCost: displayPackageCost,
         billablePackageCost: packageCost,
+        packageCredit,
         deviceCost: devicePmt,
         deviceAmortized,
         packageWithinLimit,
@@ -391,7 +437,7 @@ const AirtimeBenefitSimulator = ({
           packageWithinLimit && !!contract.selectedPackage && allowsDevice,
       };
     });
-  }, [contractData, packages, limitBudget]);
+  }, [contractData, packages, baseLimitBudget, renewalContractMap]);
 
   const monthlyPayment = useMemo(
     () =>
@@ -455,19 +501,22 @@ const AirtimeBenefitSimulator = ({
     setContractData((prevData) => {
       const updatedData = [...prevData];
       let updatedContract = { ...updatedData[index], [field]: value };
-      const remaining = getRemainingBeforeContract(index, updatedData);
 
       if (field === "subscriptionType") {
         if (!isRenewalTransaction(value)) {
           updatedContract.msisdn = "";
         }
+        const remainingWithCredit = getRemainingBeforeContract(index, [
+          ...updatedData.slice(0, index),
+          updatedContract,
+          ...updatedData.slice(index + 1),
+        ]);
+        const billablePackagePrice =
+          getBillablePackageMonthlyCost(updatedContract);
         const packagePrice = getPackageMonthlyCost(updatedContract);
-        const billablePackagePrice = isPackageWaivedForRenewal(updatedContract)
-          ? 0
-          : packagePrice;
         if (
           updatedContract.selectedPackage &&
-          !isPackageWithinLimit(billablePackagePrice, remaining)
+          !isPackageWithinLimit(billablePackagePrice, remainingWithCredit)
         ) {
           updatedContract = clearDeviceSelection({
             ...updatedContract,
@@ -479,7 +528,7 @@ const AirtimeBenefitSimulator = ({
             packageError: `This package (${formatCurrency(
               packagePrice
             )}) exceeds your remaining allowance (${formatCurrency(
-              remaining
+              remainingWithCredit
             )}). Choose a cheaper package — top-up cannot cover package overage.`,
           });
         }
@@ -487,13 +536,17 @@ const AirtimeBenefitSimulator = ({
 
       if (field === "msisdn") {
         updatedContract.msisdn = normalizeAirtimeMsisdn(value).slice(0, 9);
+        const remainingWithCredit = getRemainingBeforeContract(index, [
+          ...updatedData.slice(0, index),
+          updatedContract,
+          ...updatedData.slice(index + 1),
+        ]);
+        const billablePackagePrice =
+          getBillablePackageMonthlyCost(updatedContract);
         const packagePrice = getPackageMonthlyCost(updatedContract);
-        const billablePackagePrice = isPackageWaivedForRenewal(updatedContract)
-          ? 0
-          : packagePrice;
         if (
           updatedContract.selectedPackage &&
-          !isPackageWithinLimit(billablePackagePrice, remaining)
+          !isPackageWithinLimit(billablePackagePrice, remainingWithCredit)
         ) {
           updatedContract = clearDeviceSelection({
             ...updatedContract,
@@ -505,7 +558,7 @@ const AirtimeBenefitSimulator = ({
             packageError: `This package (${formatCurrency(
               packagePrice
             )}) exceeds your remaining allowance (${formatCurrency(
-              remaining
+              remainingWithCredit
             )}). Choose a cheaper package — top-up cannot cover package overage.`,
           });
         }
@@ -525,13 +578,15 @@ const AirtimeBenefitSimulator = ({
           } else {
           const selectedPkg = packages.find((pkg) => pkg.PackageID === value);
           const packagePrice = parseFloat(selectedPkg?.MonthlyPrice) || 0;
-          const billablePackagePrice = isPackageWaivedForRenewal(
-            updatedContract
-          )
-            ? 0
-            : packagePrice;
+          const tentative = { ...updatedContract, selectedPackage: value };
+          const remainingWithCredit = getRemainingBeforeContract(index, [
+            ...updatedData.slice(0, index),
+            tentative,
+            ...updatedData.slice(index + 1),
+          ]);
+          const billablePackagePrice = getBillablePackageMonthlyCost(tentative);
 
-          if (!isPackageWithinLimit(billablePackagePrice, remaining)) {
+          if (!isPackageWithinLimit(billablePackagePrice, remainingWithCredit)) {
             // Package alone exceeds limit — cannot select, no top-up allowed
             updatedContract = clearDeviceSelection({
               ...updatedData[index],
@@ -543,7 +598,7 @@ const AirtimeBenefitSimulator = ({
               packageError: `This package (${formatCurrency(
                 packagePrice
               )}) exceeds your remaining allowance (${formatCurrency(
-                remaining
+                remainingWithCredit
               )}). Choose a cheaper package — top-up cannot cover package overage.`,
             });
           } else {
@@ -808,7 +863,7 @@ const AirtimeBenefitSimulator = ({
         PackageID: selectedPkg.PackageID,
         DisplayName: selectedPkg.PackageName,
         BaseMonthlyPrice: calc.packageCost,
-        AdjustedMonthlyPrice: calc.monthly,
+        AdjustedMonthlyPrice: calc.billablePackageCost,
         ContractDuration: duration,
         SubscriptionStatus: subscriptionType,
         MSISDN: msisdn || null,
@@ -856,8 +911,12 @@ const AirtimeBenefitSimulator = ({
       const basePackagePrice = parseFloat(selectedPkg?.MonthlyPrice) || 0;
       const packagePriceWithNet =
         value === "Yes" ? basePackagePrice + 50 : basePackagePrice;
-      const remaining = getRemainingBeforeContract(index, updatedData);
       const tentative = { ...current, netOption: value };
+      const remaining = getRemainingBeforeContract(index, [
+        ...updatedData.slice(0, index),
+        tentative,
+        ...updatedData.slice(index + 1),
+      ]);
       const billablePackagePrice = getBillablePackageMonthlyCost(tentative);
 
       if (!isPackageWithinLimit(billablePackagePrice, remaining)) {
@@ -1135,13 +1194,7 @@ const AirtimeBenefitSimulator = ({
                         fullWidth
                         margin="normal"
                         InputProps={{ readOnly: true }}
-                        helperText={
-                          isPackageWaivedForRenewal(contract)
-                            ? "Already running — not deducted from allowance"
-                            : isRenewalTransaction(contract.subscriptionType)
-                              ? "Select an MSISDN from active contracts to waive package from allowance"
-                              : undefined
-                        }
+                        helperText={getRenewalHelperText(contract)}
                       />
                     </div>
                   </div>
@@ -1440,6 +1493,7 @@ const AirtimeBenefitSimulator = ({
                 <span>Available (after existing contracts)</span>
                 <strong>{formatCurrency(limitBudget)}</strong>
               </div>
+            
               <div className="summary-row">
                 <span>Total (package + contract monthly payment)</span>
                 <strong>{formatCurrency(totalVsAllowance)}</strong>

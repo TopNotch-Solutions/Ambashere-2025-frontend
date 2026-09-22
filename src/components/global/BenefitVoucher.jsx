@@ -22,6 +22,12 @@ import {
   isValidAirtimeMsisdn,
   normalizeAirtimeMsisdn,
 } from "../../utils/airtimeMsisdn";
+import {
+  buildRenewalContractMap,
+  getBillableRenewalPackageMonthly,
+  getRenewalPackageCredit,
+  isRenewalSamePackageWaived,
+} from "../../utils/renewalPackageAllowance";
 import { calculatePmt } from "../../utils/calculatePmt";
 import { fireSwal } from "../../utils/swalHelpers";
 
@@ -36,6 +42,7 @@ const BenefitVoucher = ({
   const [rows, setRows] = useState([]);
   const theme = useTheme();
   const [userData, setUserData] = useState(null);
+  const [renewalContracts, setRenewalContracts] = useState([]);
   const colors = tokens(theme.palette.mode);
   const [contractData, setContractData] = useState(null);
   const [editedRows, setEditedRows] = useState(new Set());
@@ -71,16 +78,24 @@ const BenefitVoucher = ({
     const handle = async () => {
       try {
         setIsUserDataLoading(true);
-        const response = await axiosInstance.get(
-          `/staffmember/allocation/${currentUser.EmployeeCode}`
-        );
-        if (response.status === 200) {
-          setUserData(response.data); // Assuming you want the first element in the array
+        const [allocationResponse, contractsResponse] = await Promise.all([
+          axiosInstance.get(
+            `/staffmember/allocation/${currentUser.EmployeeCode}`
+          ),
+          axiosInstance.get(`/contracts/${currentUser.EmployeeCode}`),
+        ]);
+        if (allocationResponse.status === 200) {
+          setUserData(allocationResponse.data);
         } else {
-          console.error("Unexpected response format:", response.data);
+          console.error("Unexpected response format:", allocationResponse.data);
         }
+        const contracts = Array.isArray(contractsResponse.data?.contracts)
+          ? contractsResponse.data.contracts
+          : [];
+        setRenewalContracts(contracts);
       } catch (error) {
         console.error("Error fetching user data:", error);
+        setRenewalContracts([]);
       } finally {
         setIsUserDataLoading(false);
       }
@@ -90,6 +105,7 @@ const BenefitVoucher = ({
     } else if (!open) {
       // Reset data when modal closes
       setUserData(null);
+      setRenewalContracts([]);
       setRows([]);
       setWithinLimit(null);
       setTopUpEligible(false);
@@ -575,16 +591,43 @@ const BenefitVoucher = ({
     );
   };
 
-  // Renewal + valid MSISDN: package already running — do not deduct from allowance
-  // (same rule as simulator / handleSave).
-  const isPackageWaivedForRenewal = (packageRow, updatedRows) =>
-    isRenewalTransaction(packageRow.column6) &&
-    isValidAirtimeMsisdn(getPackageRowMsisdn(packageRow, updatedRows));
+  const renewalContractMap = buildRenewalContractMap(renewalContracts);
 
-  const getBillablePackageMonthly = (packageRow, updatedRows) => {
-    if (isPackageWaivedForRenewal(packageRow, updatedRows)) return 0;
-    return parseFloat(packageRow.column2) || 0;
+  const getPackageRowSelectedName = (packageRow) => {
+    if (
+      packageRow?.dropdown &&
+      packageRow.dropdown !== "Select Package"
+    ) {
+      return packageRow.dropdown;
+    }
+    return "";
   };
+
+  // Same package + listed MSISDN: waive. Different package: credit old in MUL.
+  const isPackageWaivedForRenewal = (packageRow, updatedRows) =>
+    isRenewalSamePackageWaived({
+      subscriptionType: packageRow.column6,
+      msisdn: getPackageRowMsisdn(packageRow, updatedRows),
+      selectedPackageName: getPackageRowSelectedName(packageRow),
+      renewalMap: renewalContractMap,
+    });
+
+  const getPackageCreditForRenewal = (packageRow, updatedRows) =>
+    getRenewalPackageCredit({
+      subscriptionType: packageRow.column6,
+      msisdn: getPackageRowMsisdn(packageRow, updatedRows),
+      selectedPackageName: getPackageRowSelectedName(packageRow),
+      renewalMap: renewalContractMap,
+    });
+
+  const getBillablePackageMonthly = (packageRow, updatedRows) =>
+    getBillableRenewalPackageMonthly({
+      subscriptionType: packageRow.column6,
+      msisdn: getPackageRowMsisdn(packageRow, updatedRows),
+      selectedPackageName: getPackageRowSelectedName(packageRow),
+      packageMonthly: parseFloat(packageRow.column2) || 0,
+      renewalMap: renewalContractMap,
+    });
 
   const calculateMUL = (updatedRows) => {
     // Guard clause: Don't calculate if userData is not available
@@ -592,10 +635,17 @@ const BenefitVoucher = ({
       return updatedRows;
     }
 
-    // Package rows 1-5: billable monthly (waived for Renewal + MSISDN)
+    // Package rows 1-5: billable monthly (waived for same-package Renewal)
     const packageMonthlyTotal = updatedRows.reduce((sum, row) => {
       if (row.id >= 1 && row.id <= 5) {
         return sum + getBillablePackageMonthly(row, updatedRows);
+      }
+      return sum;
+    }, 0);
+
+    const renewalPackageCredits = updatedRows.reduce((sum, row) => {
+      if (row.id >= 1 && row.id <= 5) {
+        return sum + getPackageCreditForRenewal(row, updatedRows);
       }
       return sum;
     }, 0);
@@ -616,7 +666,8 @@ const BenefitVoucher = ({
       return sum + monthlyDeviceCost + upfrontPayment;
     }, 0);
 
-    const baseAvailableAmount = parseFloat(userData.available) || 0;
+    const baseAvailableAmount =
+      (parseFloat(userData.available) || 0) + renewalPackageCredits;
     const totalMonthlyCost = packageMonthlyTotal + deviceMonthlyTotal;
     const newAllowance = parseFloat(
       (baseAvailableAmount - totalMonthlyCost).toFixed(2)
@@ -822,9 +873,20 @@ const BenefitVoucher = ({
             );
           }
 
-          const isRenewal = isRenewalTransaction(packageRow.column6);
-          const isRenewalPackageWaived =
-            isRenewal && isValidAirtimeMsisdn(packageMsisdn);
+          const isRenewalPackageWaived = isPackageWaivedForRenewal(
+            {
+              ...packageRow,
+              column4: packageMsisdn,
+            },
+            rows
+          );
+          const packageCredit = getPackageCreditForRenewal(
+            {
+              ...packageRow,
+              column4: packageMsisdn,
+            },
+            rows
+          );
           selectedPackagesDetails.push({
             id: packageRow.id,
             PackageID: packageID,
@@ -833,9 +895,10 @@ const BenefitVoucher = ({
             ContractDuration: contractDuration,
             DisplayName: packageRow.dropdown,
             DeviceAssigned: null,
-            // Renewal + active-contract MSISDN: package already running — only device
-            // is billed against allowance.
+            // Same-package renewal: 0. Different-package renewal: full new price
+            // (existing package credited in MUL / available checks).
             AdjustedMonthlyPrice: isRenewalPackageWaived ? 0 : monthlyPrice,
+            RenewalPackageCredit: packageCredit,
             MSISDN: packageMsisdn || null,
           });
         }
@@ -964,17 +1027,18 @@ const BenefitVoucher = ({
         (sum, pkg) => sum + pkg.AdjustedMonthlyPrice,
         0
       );
+      const totalRenewalCredits = selectedPackagesDetails.reduce(
+        (sum, pkg) => sum + (parseFloat(pkg.RenewalPackageCredit) || 0),
+        0
+      );
+      const effectiveAvailable =
+        (parseFloat(userData.available) || 0) + totalRenewalCredits;
       const packageOnlyMonthlyCost = selectedPackagesDetails.reduce(
-        (sum, pkg) =>
-          sum +
-          (isRenewalTransaction(pkg.SubscriptionStatus) &&
-          isValidAirtimeMsisdn(pkg.MSISDN)
-            ? 0
-            : pkg.BaseMonthlyPrice),
+        (sum, pkg) => sum + (parseFloat(pkg.AdjustedMonthlyPrice) || 0),
         0
       );
 
-      if (userData.available - packageOnlyMonthlyCost < 0) {
+      if (effectiveAvailable - packageOnlyMonthlyCost < 0) {
         throw new Error(
           `The total monthly package cost exceeds the allowed limit (${userData.staffWithAirtimeAllocation[0].AirtimeAllocation.toFixed(
             2
@@ -982,7 +1046,7 @@ const BenefitVoucher = ({
         );
       }
 
-      if (userData.available - totalPackagesMonthlyCost < 0 && !topUpConfirmed) {
+      if (effectiveAvailable - totalPackagesMonthlyCost < 0 && !topUpConfirmed) {
         handleClose();
         const result = await fireSwal({
           icon: "warning",

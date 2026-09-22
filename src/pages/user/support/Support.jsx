@@ -24,6 +24,8 @@ import LightbulbOutlinedIcon from "@mui/icons-material/LightbulbOutlined";
 import CancelScheduleSendOutlinedIcon from "@mui/icons-material/CancelScheduleSendOutlined";
 import SendIcon from "@mui/icons-material/Send";
 import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import PictureAsPdfOutlinedIcon from "@mui/icons-material/PictureAsPdfOutlined";
 import formatDate from "../../../components/global/dateFormatter";
 import "../../../assets/style/global/handsetBenefitSimulator.css";
 import "../../../assets/style/global/support.css";
@@ -88,7 +90,7 @@ const regularSupportTopics = [
     title: "Subscription Cancellation",
     value: SUBSCRIPTION_CANCELLATION,
     description:
-      "Cancel an active free-device subscription (device price N$ 0.00). Attach a scanned ID PDF.",
+      "Cancel an active subscription plan. Attach a scanned ID.",
   },
 ];
 
@@ -119,6 +121,9 @@ const isActiveContract = (contract) =>
     .toLowerCase() === "active";
 
 const buildCancellationMessage = (contract) => {
+  if (!contract) {
+    return "I request cancellation of my active subscription.";
+  }
   const msisdn = contract?.msisdn || contract?.MSISDN || "-";
   return `I request cancellation of my active subscription. MSISDN linked: ${msisdn}`;
 };
@@ -126,8 +131,7 @@ const buildCancellationMessage = (contract) => {
 const getContractLabel = (contract) => {
   const msisdn = contract?.msisdn || contract?.MSISDN || "Unknown MSISDN";
   const pkg = contract?.package || contract?.PackageName || "Package";
-  const device = contract?.device || contract?.DeviceName || "Device";
-  return `${msisdn} · ${pkg} · ${device}`;
+  return `${msisdn} · ${pkg}`;
 };
 
 const Support = () => {
@@ -240,6 +244,8 @@ const Support = () => {
     [cancellableContracts, formData.contractId]
   );
 
+  const canSubmitCancellation = Boolean(attachment);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
 
@@ -249,7 +255,7 @@ const Support = () => {
         ...prev,
         subject: value,
         contractId: "",
-        message: nextIsCancellation ? "" : prev.message,
+        message: nextIsCancellation ? buildCancellationMessage(null) : prev.message,
       }));
       setAttachment(null);
       setErrors({});
@@ -263,7 +269,7 @@ const Support = () => {
       setFormData((prev) => ({
         ...prev,
         contractId: value,
-        message: contract ? buildCancellationMessage(contract) : "",
+        message: buildCancellationMessage(contract || null),
       }));
       setErrors((prev) => ({
         ...prev,
@@ -287,15 +293,14 @@ const Support = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const mime = String(file.type || "").toLowerCase();
     const isPdf =
-      mime === "application/pdf" ||
+      String(file.type || "").toLowerCase() === "application/pdf" ||
       String(file.name || "").toLowerCase().endsWith(".pdf");
 
     if (!isPdf) {
       setErrors((prev) => ({
         ...prev,
-        attachment: "Please upload your scanned ID as a PDF file.",
+        attachment: "Please upload a PDF of your scanned ID.",
       }));
       e.target.value = "";
       return;
@@ -305,35 +310,18 @@ const Support = () => {
     setErrors((prev) => ({ ...prev, attachment: undefined }));
   };
 
-  const canSubmitCancellation =
-    Boolean(formData.contractId) &&
-    Boolean(selectedContract) &&
-    Boolean(attachment) &&
-    cancellableContracts.length > 0;
-
   const validateForm = () => {
     const validationErrors = {};
     if (!formData.subject) validationErrors.subject = "Subject is required";
 
     if (isCancellation) {
-      if (!cancellableContracts.length) {
-        validationErrors.contractId =
-          "No eligible active free-device contracts were found for cancellation";
-      } else if (!formData.contractId || !selectedContract) {
-        validationErrors.contractId =
-          "Select an active contract with a device price of N$ 0.00";
-      }
-
       if (!attachment) {
         validationErrors.attachment =
-          "Attach a scanned ID PDF to continue";
+          "Attach a scanned copy of your ID to continue";
       }
 
-      if (!formData.message && selectedContract) {
+      if (!formData.message) {
         validationErrors.message = "Message is required";
-      } else if (!formData.message && !selectedContract) {
-        validationErrors.message =
-          "Select an active contract to generate the cancellation message";
       }
     } else if (!formData.message) {
       validationErrors.message = "Message is required";
@@ -348,34 +336,14 @@ const Support = () => {
 
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
-
-      if (isCancellation) {
-        const missing = [];
-        if (!cancellableContracts.length || !formData.contractId || !selectedContract) {
-          missing.push("an active free-device contract");
-        }
-        if (!attachment) {
-          missing.push("a scanned ID attachment");
-        }
-        await fireSwal({
-          icon: "warning",
-          title: "Cannot submit cancellation",
-          text:
-            missing.length > 0
-              ? `Please provide ${missing.join(" and ")} before submitting.`
-              : "Please complete all required fields before submitting.",
-          confirmButtonColor: "#0096D6",
-        });
-      }
       return;
     }
 
     if (isCancellation && !canSubmitCancellation) {
-      await fireSwal({
-        icon: "warning",
-        title: "Cannot submit cancellation",
-        text: "An active contract and scanned ID attachment are required.",
-        confirmButtonColor: "#0096D6",
+      setErrors({
+        attachment: !attachment
+          ? "Attach a scanned copy of your ID to continue"
+          : undefined,
       });
       return;
     }
@@ -386,7 +354,7 @@ const Support = () => {
         ? "Submit subscription cancellation?"
         : "Submit support ticket?",
       text: isCancellation
-        ? "Your cancellation request and scanned ID will be sent to the support team."
+        ? "Your cancellation request and scanned ID PDF will be sent to the support team."
         : "Please confirm that you want to submit this support request.",
       showCancelButton: true,
       confirmButtonColor: "#0096D6",
@@ -404,17 +372,14 @@ const Support = () => {
       payload.append("subject", formData.subject);
       payload.append("message", formData.message);
       if (isCancellation) {
-        if (!formData.contractId || !attachment) {
-          throw new Error(
-            "An active contract and scanned ID attachment are required."
-          );
+        if (formData.contractId) {
+          payload.append("contractId", formData.contractId);
         }
-        payload.append("contractId", formData.contractId);
         payload.append("subscription-image", attachment);
       }
 
       const response = await axiosInstance.post("/support-tickets", payload, {
-        headers: { "Content-Type": undefined },
+        headers: { "Content-Type": "multipart/form-data" },
       });
 
       if (response.data.success) {
@@ -514,9 +479,7 @@ const Support = () => {
         <div className="col-12 col-xl-8">
           <form className="handset-form-card shadow-sm support-form-card" onSubmit={handleSubmit}>
             <div className="form-header mb-1">
-              <h5 className="mb-1">
-                {isTemporary ? "Staff Support Form" : "Support Form"}
-              </h5>
+              <h5 className="mb-1">Staff Support Form</h5>
               <p className="mb-0">
                 Complete the form below and your request will be routed to the
                 Ambasphere support team.
@@ -561,13 +524,16 @@ const Support = () => {
                   error={!!errors.contractId}
                   disabled={contractsLoading}
                 >
-                  <InputLabel>Active free-device contract</InputLabel>
+                  <InputLabel>Select Active contract (optional)</InputLabel>
                   <Select
                     name="contractId"
                     value={formData.contractId}
                     onChange={handleInputChange}
-                    label="Active free-device contract"
+                    label="Select Active contract (optional)"
                   >
+                    <MenuItem value="">
+                      <em>None</em>
+                    </MenuItem>
                     {cancellableContracts.map((contract) => (
                       <MenuItem key={contract.id} value={String(contract.id)}>
                         {getContractLabel(contract)}
@@ -579,14 +545,17 @@ const Support = () => {
                       (contractsLoading
                         ? "Loading eligible contracts..."
                         : cancellableContracts.length
-                          ? "Select the active contract you want to cancel."
-                          : "No active free-device contracts are available for cancellation.")}
+                          ? "Optional — select the active free-device contract if applicable."
+                          : "No eligible free-device contracts found. You can still submit with your ID.")}
                   </FormHelperText>
                 </FormControl>
 
                 <div className="support-attachment-field">
-                  <label htmlFor="support-id-attachment" className="support-attachment-label">
-                    Certified scanned ID attachment (PDF only)
+                  <label
+                    htmlFor="support-id-attachment"
+                    className="support-attachment-label"
+                  >
+                    Scanned ID attachment (PDF)
                   </label>
                   <input
                     id="support-id-attachment"
@@ -600,7 +569,10 @@ const Support = () => {
                   )}
                   {attachment && (
                     <div className="support-attachment-preview support-attachment-preview-pdf">
-                      <span className="support-attachment-pdf-badge">PDF</span>
+                      <span className="support-attachment-pdf-badge">
+                        <PictureAsPdfOutlinedIcon fontSize="small" />
+                        PDF
+                      </span>
                       <span>{attachment.name}</span>
                     </div>
                   )}
@@ -612,22 +584,37 @@ const Support = () => {
               label="Message"
               name="message"
               value={formData.message}
-              onChange={handleInputChange}
+              onChange={isCancellation ? undefined : handleInputChange}
               fullWidth
               margin="normal"
               multiline
               minRows={5}
               placeholder={
                 isCancellation
-                  ? "A cancellation message will be generated when you select a contract. You can add extra notes if needed."
+                  ? "Cancellation message is prepared automatically."
                   : "Describe your issue or question in as much detail as possible..."
               }
               error={!!errors.message}
               helperText={
                 errors.message ||
-                (isCancellation && selectedContract
-                  ? "Custom cancellation message prepared from your selected contract."
+                (isCancellation
+                  ? selectedContract
+                    ? "This message is read-only and prepared from your selected contract."
+                    : "This message is read-only. Optionally select a contract to include the MSISDN."
                   : "")
+              }
+              inputProps={{
+                readOnly: isCancellation,
+              }}
+              sx={
+                isCancellation
+                  ? {
+                      "& .MuiInputBase-root": {
+                        backgroundColor: "#F3F4F6",
+                        cursor: "default",
+                      },
+                    }
+                  : undefined
               }
             />
 
@@ -692,7 +679,8 @@ const Support = () => {
                           </td>
                           <td>{formatDate(ticket.createdAt)}</td>
                           <td>
-                            {String(ticket.status || "").toLowerCase() === "pending" ? (
+                            {String(ticket.status || "").toLowerCase() ===
+                            "pending" ? (
                               <button
                                 type="button"
                                 className="support-cancel-btn"
@@ -700,7 +688,10 @@ const Support = () => {
                                 disabled={cancellingId === ticket.id}
                               >
                                 {cancellingId === ticket.id ? (
-                                  <CircularProgress size={14} sx={{ color: "#991B1B" }} />
+                                  <CircularProgress
+                                    size={14}
+                                    sx={{ color: "#991B1B" }}
+                                  />
                                 ) : (
                                   <>
                                     <CancelOutlinedIcon sx={{ fontSize: 16 }} />
@@ -719,9 +710,12 @@ const Support = () => {
                 </div>
                 {ticketPagination.totalPages > 1 && (
                   <div className="support-ticket-pagination">
-                    <Typography variant="body2" className="support-ticket-pagination-label">
-                      Showing page {ticketPage} of {ticketPagination.totalPages} (
-                      {ticketPagination.total} tickets)
+                    <Typography
+                      variant="body2"
+                      className="support-ticket-pagination-label"
+                    >
+                      Showing page {ticketPage} of {ticketPagination.totalPages}{" "}
+                      ({ticketPagination.total} tickets)
                     </Typography>
                     <Pagination
                       count={ticketPagination.totalPages}
@@ -738,40 +732,43 @@ const Support = () => {
         </div>
 
         <div className="col-12 col-xl-4">
-          <div className="support-sidebar-stack">
-            <div className="support-topics-sidebar handset-form-card shadow-sm">
-              <h6 className="support-topics-heading">Choose a topic</h6>
-              <p className="support-topics-copy mb-0">
-                Select a category to pre-fill your support reason.
-              </p>
-              <div className="support-topics-list">
-                {supportTopics.map((topic) => (
-                  <button
-                    key={topic.value}
-                    type="button"
-                    className={`support-topic-card${
-                      formData.subject === topic.value ? " is-selected" : ""
-                    }`}
-                    onClick={() => handleTopicSelect(topic.value)}
-                  >
-                    <span className="support-topic-icon" aria-hidden="true">
-                      {topic.icon}
+          <div className="support-topics-sidebar handset-form-card shadow-sm">
+            <h6 className="support-topics-heading">Choose a topic</h6>
+            <p className="support-topics-copy mb-0">
+              Select a category to pre-fill your support reason.
+            </p>
+            <div className="support-topics-list">
+              {supportTopics.map((topic) => (
+                <button
+                  key={topic.value}
+                  type="button"
+                  className={`support-topic-card${
+                    formData.subject === topic.value ? " is-selected" : ""
+                  }`}
+                  onClick={() => handleTopicSelect(topic.value)}
+                >
+                  <span className="support-topic-icon" aria-hidden="true">
+                    {topic.icon}
+                  </span>
+                  <span className="support-topic-content">
+                    <span className="support-topic-title">{topic.title}</span>
+                    <span className="support-topic-copy">
+                      {topic.description}
                     </span>
-                    <span className="support-topic-content">
-                      <span className="support-topic-title">{topic.title}</span>
-                      <span className="support-topic-copy">{topic.description}</span>
-                    </span>
-                  </button>
-                ))}
-              </div>
+                  </span>
+                </button>
+              ))}
             </div>
+
             {isCancellation && (
-              <div className="support-cancellation-tip-card handset-form-card shadow-sm">
-                <h6 className="support-cancellation-tip-title">Tip</h6>
+              <div className="support-cancellation-tip-card mt-3">
+                <div className="support-cancellation-tip-title">
+                  <InfoOutlinedIcon sx={{ fontSize: 18, mr: 0.75 }} />
+                  Tip
+                </div>
                 <p className="support-cancellation-tip-copy mb-0">
-                  Attach a clear certified scanned PDF of your ID with this
-                  subscription cancellation request. Without an active
-                  subscription, your ticket cannot be processed.
+                  Attach a clear PDF scan of your ID so the support team can
+                  verify your subscription cancellation.
                 </p>
               </div>
             )}
