@@ -1512,8 +1512,7 @@ const AirtimeBenefitSimulator = ({
               <p className="simulator-tip mb-0">
                 Packages over the remaining allowance cannot be selected and
                 cannot use top-up. Top-up only applies when the package is
-                within limit but the device pushes the total over. Remaining
-                and top-up use package price + device PMT (10% p.a.).
+                within limit but the device pushes the total over.
               </p>
             </div>
 
