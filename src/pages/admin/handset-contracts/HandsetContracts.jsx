@@ -7,6 +7,7 @@ import {
   InputLabel,
   MenuItem,
   Select,
+  Typography,
   Tooltip,
   useMediaQuery,
   useTheme,
@@ -19,8 +20,6 @@ import Swal from "sweetalert2";
 import { confirmAdminAction } from "../../../utils/adminConfirm";
 import { fireSwal } from "../../../utils/swalHelpers";
 import { useSelector } from "react-redux";
-import InfoBox from "../../../components/admin/charts/InfoBox";
-import AirtimeSubmissionsYoYChart from "../../../components/admin/charts/AirtimeSubmissionsYoYChart";
 import SubmissionViewDialog from "../../../components/admin/SubmissionViewDialog";
 import axiosInstance from "../../../utils/axiosInstance";
 import { tokens } from "../../../theme";
@@ -47,6 +46,30 @@ const normalizeCode = (code) =>
     .replace(/[-\s]/g, "")
     .toUpperCase();
 
+const formatDurationMinutes = (minutes) => {
+  if (minutes == null || Number.isNaN(minutes)) return "—";
+  if (minutes < 60) return `${minutes} min`;
+  if (minutes < 1440) return `${(minutes / 60).toFixed(1)} hrs`;
+  return `${(minutes / 1440).toFixed(1)} days`;
+};
+
+const StatCard = ({ title, value, subtitle }) => (
+  <div className="card w-100 h-100">
+    <div className="card-body d-flex flex-column justify-content-center">
+      <Typography variant="subtitle2" sx={{ color: "#64748b", fontWeight: 600 }}>
+        {title}
+      </Typography>
+      <Typography variant="h4" sx={{ color: "#0096D6", fontWeight: 700 }}>
+        {value ?? "—"}
+      </Typography>
+      {subtitle && (
+        <Typography variant="caption" sx={{ color: "#94a3b8" }}>
+          {subtitle}
+        </Typography>
+      )}
+    </div>
+  </div>
+);
 const mapHandsetSubmissionRow = (item, index) => ({
   id: item.id ?? `submission-${index}`,
   employeeCode: item.employeeCode || "-",
@@ -74,6 +97,19 @@ const AdminHandsetContracts = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchText, setSearchText] = useState("");
   const [viewSubmission, setViewSubmission] = useState(null);
+  const [analytics, setAnalytics] = useState(null);
+
+  const fetchAnalytics = useCallback(async () => {
+    try {
+      const analyticsRes = await axiosInstance.get(
+        "/handsets/submissions/analytics"
+      );
+      setAnalytics(analyticsRes.data);
+    } catch (error) {
+      console.error("Error fetching handset submission analytics:", error);
+      setAnalytics(null);
+    }
+  }, []);
 
   const fetchActiveSubmissions = useCallback(async () => {
     try {
@@ -90,7 +126,8 @@ const AdminHandsetContracts = () => {
 
   useEffect(() => {
     fetchActiveSubmissions();
-  }, [fetchActiveSubmissions]);
+    fetchAnalytics();
+  }, [fetchActiveSubmissions, fetchAnalytics]);
 
   useEffect(() => {
     if (!viewSubmission) return;
@@ -147,7 +184,7 @@ const AdminHandsetContracts = () => {
       await axiosInstance.put(`/handsets/submissions/${row.id}/status`, {
         subscription_status: nextStatus,
       });
-      await fetchActiveSubmissions();
+      await Promise.all([fetchActiveSubmissions(), fetchAnalytics()]);
       Swal.fire({
         icon: "success",
         title: "Updated",
@@ -239,7 +276,7 @@ const AdminHandsetContracts = () => {
       await axiosInstance.put(`/handsets/submissions/${row.id}/admin-cancel`, {
         reason,
       });
-      await fetchActiveSubmissions();
+      await Promise.all([fetchActiveSubmissions(), fetchAnalytics()]);
       Swal.fire({
         icon: "success",
         title: "Cancelled",
@@ -352,9 +389,8 @@ const AdminHandsetContracts = () => {
         <div>
           <h2 className="handset-title">New Handset Contracts</h2>
           <p className="handset-subtitle mb-0">
-            Track staff handset requests, compare yearly volume, and advance
-            applications through pending and in progress. Completed requests
-            leave this list for processing elsewhere.
+            Review handset contract submissions, assign contracts to yourself when
+            starting work, and track pickup and resolution times in analytics.
           </p>
         </div>
       </div>
@@ -363,40 +399,82 @@ const AdminHandsetContracts = () => {
         className="admin-dashboard-grid"
         display="grid"
         gridTemplateColumns={isSmallScreen ? "repeat(1, 1fr)" : "repeat(12, 1fr)"}
-        gridAutoRows="140px"
+        gridAutoRows="120px"
         gap="20px"
+        mb="20px"
       >
-        <Box
-          className="shadow admin-dashboard-card"
-          gridColumn={isSmallScreen ? "span 12" : "span 3"}
-          display="flex"
-          alignItems="center"
-          justifyContent="center"
-        >
-          <InfoBox
-            title="Total Submissions"
-            endpoint="/handsets/submissions/total"
-            subtitle="All time"
+        <Box gridColumn={isSmallScreen ? "span 12" : "span 3"}>
+          <StatCard title="Total Submissions" value={analytics?.total} subtitle="All time" />
+        </Box>
+        <Box gridColumn={isSmallScreen ? "span 12" : "span 3"}>
+          <StatCard title="Pending" value={analytics?.pending} subtitle="Awaiting action" />
+        </Box>
+        <Box gridColumn={isSmallScreen ? "span 12" : "span 3"}>
+          <StatCard title="In Progress" value={analytics?.inProgress} subtitle="Being handled" />
+        </Box>
+        <Box gridColumn={isSmallScreen ? "span 12" : "span 3"}>
+          <StatCard title="Completed" value={analytics?.completed} subtitle="Processed" />
+        </Box>
+        <Box gridColumn={isSmallScreen ? "span 12" : "span 3"}>
+          <StatCard title="Cancelled" value={analytics?.cancelled} subtitle="Withdrawn" />
+        </Box>
+        <Box gridColumn={isSmallScreen ? "span 12" : "span 3"}>
+          <StatCard
+            title="Avg Pickup Time"
+            value={formatDurationMinutes(analytics?.avgPickupMinutes)}
+            subtitle="Pending → in progress"
           />
         </Box>
-
-        <Box
-          className="shadow admin-dashboard-card"
-          gridColumn="span 12"
-          gridRow="span 3"
-        >
-          <AirtimeSubmissionsYoYChart
-            endpoint="/handsets/submissions/perMonth"
-            titlePrefix="Handset submissions"
+        <Box gridColumn={isSmallScreen ? "span 12" : "span 3"}>
+          <StatCard
+            title="Avg Resolution Time"
+            value={formatDurationMinutes(analytics?.avgResolutionMinutes)}
+            subtitle="In progress → completed"
           />
         </Box>
+        <Box gridColumn={isSmallScreen ? "span 12" : "span 3"}>
+          <StatCard
+            title="Avg Total Time"
+            value={formatDurationMinutes(analytics?.avgTotalMinutes)}
+            subtitle="Submitted → completed"
+          />
+        </Box>
+      </Box>
 
+      {analytics?.byAssignee?.length > 0 && (
         <Box
-          className="shadow admin-dashboard-card handset-form-card"
-          gridColumn="span 12"
-          gridRow="span 4"
-          sx={{ p: 2, minHeight: 420 }}
+          className="shadow admin-dashboard-card handset-form-card mb-4"
+          sx={{ p: 2 }}
         >
+          <h6 className="summary-title mb-3">Performance by Assignee</h6>
+          <div className="row g-2">
+            {analytics.byAssignee.map((item) => (
+              <div
+                className="col-12 col-md-6 col-lg-4"
+                key={item.assignedAdminCode}
+              >
+                <div className="support-reason-stat">
+                  <span className="support-reason-stat-label">
+                    {item.assignedAdminName}
+                  </span>
+                  <span className="support-reason-stat-count">
+                    {item.ticketCount} assigned · {item.completedCount} completed
+                  </span>
+                  <Typography variant="caption" sx={{ color: "#64748b" }}>
+                    Avg resolution:{" "}
+                    {formatDurationMinutes(item.avgResolutionMinutes)}
+                  </Typography>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Box>
+      )}
+
+      <Box
+        className="shadow admin-dashboard-card handset-form-card"
+        sx={{ p: 2, minHeight: 580 }}
+      >
           <Box
             className="d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between gap-2 mb-3"
           >
@@ -448,7 +526,7 @@ const AdminHandsetContracts = () => {
             </Box>
           ) : (
             <Box
-              height="360px"
+              height="520px"
               sx={{
                 "& .MuiDataGrid-root": { border: "none" },
                 "& .MuiDataGrid-cell": { borderBottom: "none" },
@@ -475,7 +553,6 @@ const AdminHandsetContracts = () => {
             </Box>
           )}
         </Box>
-      </Box>
 
       <SubmissionViewDialog
         open={Boolean(viewSubmission)}

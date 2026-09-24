@@ -620,7 +620,7 @@ const IssueTickets = () => {
 
       <Box
         className="shadow admin-dashboard-card handset-form-card"
-        sx={{ p: 2, minHeight: 420 }}
+        sx={{ p: 2, minHeight: 580 }}
       >
         <Box className="d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between gap-2 mb-3">
           <h6 className="summary-title mb-0">Support Tickets</h6>
@@ -668,7 +668,7 @@ const IssueTickets = () => {
           </Box>
         ) : (
           <Box
-            height="420px"
+            height="520px"
             sx={{
               "& .MuiDataGrid-root": { border: "none" },
               "& .MuiDataGrid-cell": { borderBottom: "none" },
