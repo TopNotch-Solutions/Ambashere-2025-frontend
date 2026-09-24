@@ -1029,8 +1029,15 @@ const BenefitVoucher = ({
       );
       const effectiveAvailable =
         (parseFloat(userData.available) || 0) + totalRenewalCredits;
+      // Package-only cost must exclude device PMT (already folded into
+      // AdjustedMonthlyPrice). Top-up covers device overage only.
       const packageOnlyMonthlyCost = selectedPackagesDetails.reduce(
-        (sum, pkg) => sum + (parseFloat(pkg.AdjustedMonthlyPrice) || 0),
+        (sum, pkg) => {
+          const withDevice = parseFloat(pkg.AdjustedMonthlyPrice) || 0;
+          const devicePmt =
+            parseFloat(pkg.DeviceAssigned?.MonthlyDeviceCost) || 0;
+          return sum + Math.max(0, withDevice - devicePmt);
+        },
         0
       );
 
