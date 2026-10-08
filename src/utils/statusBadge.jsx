@@ -18,8 +18,10 @@ export function getStatusStyle(status) {
   if (normalized === "in progress") {
     return { background: "#DBEAFE", color: "#1E40AF", border: "#3B82F6" };
   }
+  if (normalized === "completed") {
+    return { background: "#D1FAE5", color: "#065F46", border: "#10B981" };
+  }
   if (
-    normalized === "completed" ||
     normalized === "expired" ||
     normalized === "rejected" ||
     normalized === "cancelled" ||

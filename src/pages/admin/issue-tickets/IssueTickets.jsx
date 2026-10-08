@@ -32,6 +32,7 @@ import { useSelector } from "react-redux";
 import axiosInstance from "../../../utils/axiosInstance";
 import { tokens } from "../../../theme";
 import formatDate from "../../../components/global/dateFormatter";
+import AdminCommentsSection from "../../../components/admin/AdminCommentsSection";
 import "../../../assets/style/global/handsetBenefitSimulator.css";
 import "../../../assets/style/global/adminDashboard.css";
 import "../../../assets/style/global/support.css";
@@ -871,6 +872,11 @@ const IssueTickets = () => {
                   )}
                 </div>
               </Box>
+
+              <AdminCommentsSection
+                entityId={viewTicket.id}
+                listEndpoint={`/support-tickets/${viewTicket.id}/comments`}
+              />
             </>
           )}
         </DialogContent>

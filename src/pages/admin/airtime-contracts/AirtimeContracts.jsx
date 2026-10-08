@@ -17,10 +17,10 @@ import SearchIcon from "@mui/icons-material/Search";
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import { DataGrid } from "@mui/x-data-grid";
 import Swal from "sweetalert2";
-import { confirmAdminAction } from "../../../utils/adminConfirm";
 import { fireSwal } from "../../../utils/swalHelpers";
 import { useSelector } from "react-redux";
 import SubmissionViewDialog from "../../../components/admin/SubmissionViewDialog";
+import AdminCommentsSection from "../../../components/admin/AdminCommentsSection";
 import axiosInstance from "../../../utils/axiosInstance";
 import { tokens } from "../../../theme";
 import { formatMoney } from "../../../utils/formatMoney";
@@ -173,31 +173,55 @@ const AdminAirtimeContracts = () => {
     // Close detail dialog so it does not sit behind the confirm popup.
     setViewSubmission(null);
 
-    const confirmed = await confirmAdminAction({
+    const result = await fireSwal({
+      icon: "question",
       title:
         currentStatus === "pending"
           ? "Assign this contract to you?"
           : "Mark as completed?",
-      text:
-        currentStatus === "pending"
-          ? "This will move the contract to in progress and assign it to you. Only you will be able to mark it as completed."
-          : `Change status from "${currentStatus}" to "${nextStatus}"?`,
+      html: `
+        <p style="margin:0 0 12px;color:#475569;text-align:left;">
+          ${
+            currentStatus === "pending"
+              ? "This will move the contract to <strong>in progress</strong> and assign it to you. Only you will be able to mark it as completed."
+              : `Change status from <strong>${currentStatus}</strong> to <strong>${nextStatus}</strong>?`
+          }
+        </p>
+      `,
+      input: "textarea",
+      inputLabel: "Comment (optional)",
+      inputPlaceholder:
+        "Add a note for the status trail (shown on the view popup)...",
+      inputAttributes: {
+        "aria-label": "Optional status comment",
+        rows: 4,
+      },
+      showCancelButton: true,
+      confirmButtonColor: "#0096D6",
+      cancelButtonColor: "#6c757d",
       confirmButtonText:
         currentStatus === "pending" ? "Assign & start" : "Mark completed",
+      cancelButtonText: "Cancel",
+      reverseButtons: true,
     });
 
-    if (!confirmed) return;
+    if (!result.isConfirmed) return;
+
+    const customMessage = String(result.value || "").trim();
 
     try {
       setUpdatingId(row.id);
       await axiosInstance.put(`/contracts/submissions/${row.id}/status`, {
         subscription_status: nextStatus,
+        ...(customMessage ? { message: customMessage } : {}),
       });
       await Promise.all([fetchActiveSubmissions(), fetchAnalytics()]);
       Swal.fire({
         icon: "success",
         title: "Updated",
-        text: `Status changed to "${nextStatus}".`,
+        text: customMessage
+          ? `Status changed to "${nextStatus}" with your comment.`
+          : `Status changed to "${nextStatus}".`,
         timer: 1600,
         showConfirmButton: false,
       });
@@ -682,6 +706,14 @@ const AdminAirtimeContracts = () => {
           viewSubmission
             ? [{ label: "Submitted", date: viewSubmission.contract_submitted_date }]
             : []
+        }
+        extraContent={
+          viewSubmission ? (
+            <AdminCommentsSection
+              entityId={viewSubmission.id}
+              listEndpoint={`/contracts/submissions/${viewSubmission.id}/comments`}
+            />
+          ) : null
         }
         actions={
           <Box display="flex" alignItems="center" gap={1}>

@@ -30,6 +30,7 @@ const SubmissionViewDialog = ({
   metaCards = [],
   sections = [],
   timeline = [],
+  extraContent = null,
   actions,
 }) => {
   if (!profile) return null;
@@ -134,6 +135,8 @@ const SubmissionViewDialog = ({
             </div>
           </Box>
         )}
+
+        {extraContent}
       </DialogContent>
 
       <DialogActions className="support-ticket-view-footer" sx={{ p: 0 }}>
