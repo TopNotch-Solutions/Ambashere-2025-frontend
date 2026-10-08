@@ -10,6 +10,7 @@ import {
   CircularProgress,
   Pagination,
   Typography,
+  Tooltip,
 } from "@mui/material";
 import { useSelector } from "react-redux";
 import axiosInstance from "../../../utils/axiosInstance";
@@ -26,6 +27,8 @@ import SendIcon from "@mui/icons-material/Send";
 import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import PictureAsPdfOutlinedIcon from "@mui/icons-material/PictureAsPdfOutlined";
+import PhoneAndroidOutlinedIcon from "@mui/icons-material/PhoneAndroidOutlined";
+import CellTowerOutlinedIcon from "@mui/icons-material/CellTowerOutlined";
 import formatDate from "../../../components/global/dateFormatter";
 import "../../../assets/style/global/handsetBenefitSimulator.css";
 import "../../../assets/style/global/support.css";
@@ -38,6 +41,25 @@ const STATUS_COLORS = {
 };
 
 const SUBSCRIPTION_CANCELLATION = "Subscription Cancellation";
+const MISSING_DEVICE_AIRTIME = "Staff Airtime submission - Device not appearing, but reservation exists";
+const MISSING_DEVICE_HANDSET = "Staff Handset submission - Device not appearing, but reservation exists";
+
+const MISSING_DEVICE_TIP = {
+  airtime: {
+    title: MISSING_DEVICE_AIRTIME,
+    description:
+      "Use this when you want to apply for a device on airtime, a reservation exists, but the device does not appear in airtime price details.",
+    useCase:
+      "Example: you have a reserved device and want to submit an airtime application, but the model is not showing in the airtime price list.",
+  },
+  handset: {
+    title: MISSING_DEVICE_HANDSET,
+    description:
+      "Use this when you want to apply for a device on handset, a reservation exists, but the device does not appear in handset price details.",
+    useCase:
+      "Example: you have a reserved device and want to submit a handset application, but the model is not showing in the handset price list.",
+  },
+};
 
 const tempSupportTopics = [
   {
@@ -84,6 +106,20 @@ const regularSupportTopics = [
     title: "Suggestion",
     value: "Suggestion",
     description: "Share feedback or ideas to improve the platform.",
+  },
+  {
+    icon: <CellTowerOutlinedIcon />,
+    title: MISSING_DEVICE_AIRTIME,
+    value: MISSING_DEVICE_AIRTIME,
+    description:
+      "Apply for a reserved device that is not appearing in airtime price details.",
+  },
+  {
+    icon: <PhoneAndroidOutlinedIcon />,
+    title: MISSING_DEVICE_HANDSET,
+    value: MISSING_DEVICE_HANDSET,
+    description:
+      "Apply for a reserved device that is not appearing in handset price details.",
   },
   {
     icon: <CancelScheduleSendOutlinedIcon />,
@@ -173,12 +209,22 @@ const Support = () => {
     { value: "Inquiry", label: "Inquiry" },
     { value: "Complaint", label: "Complaint" },
     { value: "Suggestion", label: "Suggestion" },
+    { value: MISSING_DEVICE_AIRTIME, label: MISSING_DEVICE_AIRTIME },
+    { value: MISSING_DEVICE_HANDSET, label: MISSING_DEVICE_HANDSET },
     { value: SUBSCRIPTION_CANCELLATION, label: SUBSCRIPTION_CANCELLATION },
   ];
 
   const supportTopics = isTemporary ? tempSupportTopics : regularSupportTopics;
   const supportOptions = isTemporary ? tempSupportOptions : regularSupportOptions;
   const isCancellation = formData.subject === SUBSCRIPTION_CANCELLATION;
+  const isMissingDeviceAirtime = formData.subject === MISSING_DEVICE_AIRTIME;
+  const isMissingDeviceHandset = formData.subject === MISSING_DEVICE_HANDSET;
+  const isMissingDeviceTopic = isMissingDeviceAirtime || isMissingDeviceHandset;
+  const activeMissingDeviceTip = isMissingDeviceAirtime
+    ? MISSING_DEVICE_TIP.airtime
+    : isMissingDeviceHandset
+      ? MISSING_DEVICE_TIP.handset
+      : null;
 
   const fetchTickets = useCallback(async (pageNum = 1) => {
     try {
@@ -255,7 +301,7 @@ const Support = () => {
         ...prev,
         subject: value,
         contractId: "",
-        message: nextIsCancellation ? buildCancellationMessage(null) : prev.message,
+        message: nextIsCancellation ? buildCancellationMessage(null) : "",
       }));
       setAttachment(null);
       setErrors({});
@@ -732,43 +778,65 @@ const Support = () => {
         </div>
 
         <div className="col-12 col-xl-4">
-          <div className="support-topics-sidebar handset-form-card shadow-sm">
-            <h6 className="support-topics-heading">Choose a topic</h6>
-            <p className="support-topics-copy mb-0">
-              Select a category to pre-fill your support reason.
-            </p>
-            <div className="support-topics-list">
-              {supportTopics.map((topic) => (
-                <button
-                  key={topic.value}
-                  type="button"
-                  className={`support-topic-card${
-                    formData.subject === topic.value ? " is-selected" : ""
-                  }`}
-                  onClick={() => handleTopicSelect(topic.value)}
-                >
-                  <span className="support-topic-icon" aria-hidden="true">
-                    {topic.icon}
-                  </span>
-                  <span className="support-topic-content">
-                    <span className="support-topic-title">{topic.title}</span>
-                    <span className="support-topic-copy">
-                      {topic.description}
+          <div className="support-sidebar-stack">
+            <div className="support-topics-sidebar handset-form-card shadow-sm">
+              <h6 className="support-topics-heading">Choose a topic</h6>
+              <p className="support-topics-copy mb-0">
+                Select a category to pre-fill your support reason.
+              </p>
+
+              <div className="support-topics-list">
+                {supportTopics.map((topic) => (
+                  <button
+                    key={topic.value}
+                    type="button"
+                    className={`support-topic-card${
+                      formData.subject === topic.value ? " is-selected" : ""
+                    }`}
+                    onClick={() => handleTopicSelect(topic.value)}
+                  >
+                    <span className="support-topic-icon" aria-hidden="true">
+                      {topic.icon}
                     </span>
-                  </span>
-                </button>
-              ))}
+                    <span className="support-topic-content">
+                      <span className="support-topic-title">{topic.title}</span>
+                      <span className="support-topic-copy">
+                        {topic.description}
+                      </span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              {isCancellation && (
+                <div className="support-cancellation-tip-card mt-3">
+                  <div className="support-cancellation-tip-title">
+                    <InfoOutlinedIcon sx={{ fontSize: 18, mr: 0.75 }} />
+                    Tip
+                  </div>
+                  <p className="support-cancellation-tip-copy mb-0">
+                    Attach a clear PDF scan of your ID so the support team can
+                    verify your subscription cancellation.
+                  </p>
+                </div>
+              )}
             </div>
 
-            {isCancellation && (
-              <div className="support-cancellation-tip-card mt-3">
-                <div className="support-cancellation-tip-title">
-                  <InfoOutlinedIcon sx={{ fontSize: 18, mr: 0.75 }} />
-                  Tip
+            {isMissingDeviceTopic && activeMissingDeviceTip && (
+              <div className="support-topics-tip support-topics-tip--alert">
+                <div className="support-topics-tip-title">
+                  <Tooltip
+                    arrow
+                    placement="top"
+                    title="Include the device model/name and reservation details so support can help you apply."
+                  >
+                    <InfoOutlinedIcon sx={{ fontSize: 18, mr: 0.75 }} />
+                  </Tooltip>
+                  {activeMissingDeviceTip.title}
                 </div>
-                <p className="support-cancellation-tip-copy mb-0">
-                  Attach a clear PDF scan of your ID so the support team can
-                  verify your subscription cancellation.
+                <p className="mb-1">{activeMissingDeviceTip.description}</p>
+                <p className="support-topics-tip-usecase mb-0">
+                  Use case: {activeMissingDeviceTip.useCase}
                 </p>
               </div>
             )}

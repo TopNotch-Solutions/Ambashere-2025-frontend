@@ -52,6 +52,37 @@
   margin-bottom: 1rem;
 }
 
+.support-topics-tip {
+  padding: 1.25rem;
+  border-radius: 12px;
+  background: #d32f2f;
+  border: 1px solid #b71c1c;
+}
+
+.support-topics-tip--alert .support-topics-tip-title {
+  display: flex;
+  align-items: center;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.95rem;
+  margin-bottom: 0.45rem;
+}
+
+.support-topics-tip--alert .support-topics-tip-title svg {
+  cursor: help;
+}
+
+.support-topics-tip--alert p {
+  color: #ffffff;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.support-topics-tip-usecase {
+  font-style: italic;
+  opacity: 0.95;
+}
+
 .support-topics-list {
   display: flex;
   flex-direction: column;
