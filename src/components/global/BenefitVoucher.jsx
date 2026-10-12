@@ -18,9 +18,10 @@ import "../../assets/style/global/voucher.css";
 import UploadVoucher from "../../pages/admin/upload/UploadVoucher";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import {
+  isOwnershipTransferInTransaction,
   isOwnershipTransferTransaction,
   isRenewalTransaction,
-  requiresListedMsisdn,
+  requiresMsisdn,
   isValidAirtimeMsisdn,
   normalizeAirtimeMsisdn,
 } from "../../utils/airtimeMsisdn";
@@ -862,16 +863,23 @@ const BenefitVoucher = ({
           );
 
           if (
-            requiresListedMsisdn(packageRow.column6) &&
+            requiresMsisdn(packageRow.column6) &&
             !isValidAirtimeMsisdn(packageMsisdn)
           ) {
             const typeLabel = isRenewalTransaction(packageRow.column6)
               ? "Renewal"
-              : isOwnershipTransferTransaction(packageRow.column6)
-                ? "Ownership Transfer"
-                : "Package Change";
+              : isOwnershipTransferInTransaction(packageRow.column6)
+                ? "Ownership Transfer In"
+                : isOwnershipTransferTransaction(packageRow.column6)
+                  ? "Ownership Transfer Out"
+                  : "Package Change";
+            const actionHint = isOwnershipTransferInTransaction(
+              packageRow.column6
+            )
+              ? "entering a valid MSISDN"
+              : "selecting an MSISDN from your current contracts";
             throw new Error(
-              `${typeLabel} requires selecting an MSISDN from your current contracts ${
+              `${typeLabel} requires ${actionHint} ${
                 packageRow.dropdown && packageRow.dropdown !== "Select Package"
                   ? `for Package: ${packageRow.dropdown}`
                   : `in row ${packageRow.id}`

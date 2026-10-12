@@ -1,7 +1,7 @@
 import {
   isRenewalTransaction,
   isPackageChangeTransaction,
-  isOwnershipTransferTransaction,
+  isOwnershipTransferOutTransaction,
   requiresListedMsisdn,
   normalizeAirtimeMsisdn,
   isValidAirtimeMsisdn,
@@ -96,7 +96,8 @@ export const doesSelectedPackageMatchRenewalContract = (
  * MSISDN options for the selected transaction type.
  * - Package Change: only MSISDNs whose assigned device is 0.00 or null
  * - Renewal: MSISDNs with a billed device (price > 0)
- * - Ownership Transfer In/Out: all listed MSISDNs
+ * - Ownership Transfer Out: all listed MSISDNs
+ * - Ownership Transfer In: none (typed manually)
  * - Other: none
  */
 export const getMsisdnOptionsForTransactionType = (
@@ -113,7 +114,7 @@ export const getMsisdnOptionsForTransactionType = (
     return entries.filter((entry) => !entry.isFreeDevice);
   }
 
-  if (isOwnershipTransferTransaction(subscriptionType)) {
+  if (isOwnershipTransferOutTransaction(subscriptionType)) {
     return entries;
   }
 

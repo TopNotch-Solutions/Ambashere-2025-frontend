@@ -20,11 +20,16 @@ import "../../../assets/style/global/handsetBenefitSimulator.css";
 import {
   AIRTIME_MSISDN_HELPER,
   AIRTIME_TRANSACTION_TYPES,
+  OWNERSHIP_TRANSFER_IN_MSISDN_HELPER,
   PACKAGE_CHANGE_MSISDN_HELPER,
+  isOwnershipTransferInTransaction,
   isOwnershipTransferTransaction,
   isPackageChangeTransaction,
+  isValidAirtimeMsisdn,
   normalizeAirtimeMsisdn,
   requiresListedMsisdn,
+  requiresMsisdn,
+  requiresTypedMsisdn,
 } from "../../../utils/airtimeMsisdn";
 import {
   buildRenewalContractMap,
@@ -257,9 +262,6 @@ const AirtimeBenefitSimulator = ({
       if (isPackageChangeTransaction(contract.subscriptionType)) {
         return "Select an MSISDN with a free device (N$ 0.00 or not set) to apply package-change rules";
       }
-      if (isOwnershipTransferTransaction(contract.subscriptionType)) {
-        return "Select an MSISDN from active contracts for ownership transfer";
-      }
       return "Select an MSISDN from active contracts to apply renewal package rules";
     }
     if (isPackageWaivedForRenewal(contract)) {
@@ -282,6 +284,9 @@ const AirtimeBenefitSimulator = ({
   };
 
   const getMsisdnFieldHelper = (contract) => {
+    if (isOwnershipTransferInTransaction(contract.subscriptionType)) {
+      return OWNERSHIP_TRANSFER_IN_MSISDN_HELPER;
+    }
     if (isPackageChangeTransaction(contract.subscriptionType)) {
       return PACKAGE_CHANGE_MSISDN_HELPER;
     }
@@ -517,7 +522,10 @@ const AirtimeBenefitSimulator = ({
       let updatedContract = { ...updatedData[index], [field]: value };
 
       if (field === "subscriptionType") {
-        if (!requiresListedMsisdn(value)) {
+        if (requiresTypedMsisdn(value)) {
+          // Ownership Transfer In: typed MSISDN — clear any listed selection.
+          updatedContract.msisdn = "";
+        } else if (!requiresListedMsisdn(value)) {
           updatedContract.msisdn = "";
         } else {
           const allowed = getMsisdnOptionsForTransactionType(
@@ -716,8 +724,11 @@ const AirtimeBenefitSimulator = ({
     .filter((contract) => !!contract.selectedPackage)
     .every((contract) => {
       if (!contract.subscriptionType) return false;
+      const msisdn = normalizeAirtimeMsisdn(contract.msisdn);
+      if (requiresTypedMsisdn(contract.subscriptionType)) {
+        return isValidAirtimeMsisdn(msisdn);
+      }
       if (requiresListedMsisdn(contract.subscriptionType)) {
-        const msisdn = normalizeAirtimeMsisdn(contract.msisdn);
         return getMsisdnOptionsForContract(contract.subscriptionType).some(
           (option) => option.msisdn === msisdn
         );
@@ -753,7 +764,7 @@ const AirtimeBenefitSimulator = ({
           deviceName: ownershipTransfer ? "" : contract.deviceName || "",
           devicePrice: ownershipTransfer ? "" : contract.devicePrice || "",
           subscriptionType: contract.subscriptionType || "New",
-          msisdn: requiresListedMsisdn(contract.subscriptionType)
+          msisdn: requiresMsisdn(contract.subscriptionType)
             ? normalizeAirtimeMsisdn(contract.msisdn)
             : "",
           topUp,
@@ -815,9 +826,18 @@ const AirtimeBenefitSimulator = ({
     }
 
     const subscriptionType = contract.subscriptionType || "New";
-    const msisdn = requiresListedMsisdn(subscriptionType)
+    const msisdn = requiresMsisdn(subscriptionType)
       ? normalizeAirtimeMsisdn(contract.msisdn)
       : "";
+
+    if (requiresTypedMsisdn(subscriptionType) && !isValidAirtimeMsisdn(msisdn)) {
+      Swal.fire({
+        icon: "info",
+        title: "MSISDN required",
+        text: OWNERSHIP_TRANSFER_IN_MSISDN_HELPER,
+      });
+      return;
+    }
 
     if (
       requiresListedMsisdn(subscriptionType) &&
@@ -1264,6 +1284,36 @@ const AirtimeBenefitSimulator = ({
                         </Select>
                       </FormControl>
                     </div>
+                    {requiresTypedMsisdn(contract.subscriptionType) && (
+                      <div className="col-md-6">
+                        <TextField
+                          label={isEditing ? "New MSISDN" : "MSISDN"}
+                          value={contract.msisdn || ""}
+                          onChange={(event) =>
+                            handleContractChange(
+                              index,
+                              "msisdn",
+                              event.target.value
+                            )
+                          }
+                          fullWidth
+                          margin="normal"
+                          placeholder="81XXXXXXX"
+                          inputProps={{ maxLength: 9, inputMode: "numeric" }}
+                          error={
+                            !!contract.msisdn &&
+                            !isValidAirtimeMsisdn(contract.msisdn)
+                          }
+                          helperText={
+                            !!contract.msisdn &&
+                            !isValidAirtimeMsisdn(contract.msisdn)
+                              ? "Enter a valid MSISDN starting with 81 (9 digits)"
+                              : getMsisdnFieldHelper(contract)
+                          }
+                        />
+                      </div>
+                    )}
+
                     {requiresListedMsisdn(contract.subscriptionType) && (
                       <div className="col-md-6">
                         <FormControl fullWidth margin="normal">

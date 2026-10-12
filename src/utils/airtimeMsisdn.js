@@ -15,19 +15,32 @@ export const isRenewalTransaction = (value) =>
 export const isPackageChangeTransaction = (value) =>
   String(value || "").trim().toLowerCase() === "package change";
 
-export const isOwnershipTransferTransaction = (value) => {
-  const normalized = String(value || "").trim().toLowerCase();
-  return (
-    normalized === "ownership transfer in" ||
-    normalized === "ownership transfer out"
-  );
-};
+export const isOwnershipTransferInTransaction = (value) =>
+  String(value || "").trim().toLowerCase() === "ownership transfer in";
 
-/** Renewal, Package Change, and Ownership Transfer require an MSISDN. */
+export const isOwnershipTransferOutTransaction = (value) =>
+  String(value || "").trim().toLowerCase() === "ownership transfer out";
+
+export const isOwnershipTransferTransaction = (value) =>
+  isOwnershipTransferInTransaction(value) ||
+  isOwnershipTransferOutTransaction(value);
+
+/**
+ * MSISDN must come from the user's current contracts list.
+ * Ownership Transfer In is excluded — that number is typed in.
+ */
 export const requiresListedMsisdn = (value) =>
   isRenewalTransaction(value) ||
   isPackageChangeTransaction(value) ||
-  isOwnershipTransferTransaction(value);
+  isOwnershipTransferOutTransaction(value);
+
+/** Ownership Transfer In: user types the MSISDN being added to their contracts. */
+export const requiresTypedMsisdn = (value) =>
+  isOwnershipTransferInTransaction(value);
+
+/** Any transaction that needs an MSISDN (listed or typed). */
+export const requiresMsisdn = (value) =>
+  requiresListedMsisdn(value) || requiresTypedMsisdn(value);
 
 /** Ownership transfers are package-only — no device / PMT required. */
 export const isDeviceOptionalTransaction = (value) =>
@@ -47,3 +60,6 @@ export const AIRTIME_MSISDN_HELPER =
 
 export const PACKAGE_CHANGE_MSISDN_HELPER =
   "Package Change applies when the device on the selected MSISDN is free (N$ 0.00 or not set).";
+
+export const OWNERSHIP_TRANSFER_IN_MSISDN_HELPER =
+  "Enter the MSISDN being transferred into your contracts (e.g. 81XXXXXXX).";
