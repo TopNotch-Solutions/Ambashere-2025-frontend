@@ -20,14 +20,16 @@ import "../../../assets/style/global/handsetBenefitSimulator.css";
 import {
   AIRTIME_MSISDN_HELPER,
   AIRTIME_TRANSACTION_TYPES,
-  isRenewalTransaction,
-  isValidAirtimeMsisdn,
+  PACKAGE_CHANGE_MSISDN_HELPER,
+  isOwnershipTransferTransaction,
+  isPackageChangeTransaction,
   normalizeAirtimeMsisdn,
+  requiresListedMsisdn,
 } from "../../../utils/airtimeMsisdn";
 import {
   buildRenewalContractMap,
   getBillableRenewalPackageMonthly,
-  getRenewalContractForMsisdn,
+  getMsisdnOptionsForTransactionType,
   getRenewalPackageCredit,
   isRenewalSamePackageWaived,
 } from "../../../utils/renewalPackageAllowance";
@@ -69,7 +71,7 @@ const AirtimeBenefitSimulator = ({
   const editingSubmissionId =
     editingSubmission?.submissionId ?? editingSubmission?.id;
   const pendingMonthly = isEditing
-    ? (isRenewalTransaction(
+    ? (requiresListedMsisdn(
         editingSubmission?.transaction_type ||
           editingSubmission?.TransactionType
       )
@@ -175,14 +177,17 @@ const AirtimeBenefitSimulator = ({
     [currentContracts]
   );
 
-  const renewalMsisdnOptions = useMemo(() => {
-    return Array.from(renewalContractMap.values()).map((entry) => ({
-      msisdn: entry.msisdn,
-      packageName: entry.packageName,
-      packageMonthly: entry.packageMonthly,
-      status: entry.status,
-    }));
-  }, [renewalContractMap]);
+  const getMsisdnOptionsForContract = (subscriptionType) =>
+    getMsisdnOptionsForTransactionType(renewalContractMap, subscriptionType).map(
+      (entry) => ({
+        msisdn: entry.msisdn,
+        packageName: entry.packageName,
+        packageMonthly: entry.packageMonthly,
+        deviceInitialCost: entry.deviceInitialCost,
+        isFreeDevice: entry.isFreeDevice,
+        status: entry.status,
+      })
+    );
 
   useEffect(() => {
     if (!isEditing) return;
@@ -243,8 +248,18 @@ const AirtimeBenefitSimulator = ({
     });
 
   const getRenewalHelperText = (contract) => {
-    if (!isRenewalTransaction(contract.subscriptionType)) return undefined;
-    if (!getRenewalContractForMsisdn(renewalContractMap, contract.msisdn)) {
+    if (!requiresListedMsisdn(contract.subscriptionType)) return undefined;
+    const msisdnOptions = getMsisdnOptionsForContract(contract.subscriptionType);
+    const listedOnType = msisdnOptions.some(
+      (option) => option.msisdn === normalizeAirtimeMsisdn(contract.msisdn)
+    );
+    if (!listedOnType) {
+      if (isPackageChangeTransaction(contract.subscriptionType)) {
+        return "Select an MSISDN with a free device (N$ 0.00 or not set) to apply package-change rules";
+      }
+      if (isOwnershipTransferTransaction(contract.subscriptionType)) {
+        return "Select an MSISDN from active contracts for ownership transfer";
+      }
       return "Select an MSISDN from active contracts to apply renewal package rules";
     }
     if (isPackageWaivedForRenewal(contract)) {
@@ -264,6 +279,13 @@ const AirtimeBenefitSimulator = ({
           credit
         )} will be credited when you select a different package`
       : undefined;
+  };
+
+  const getMsisdnFieldHelper = (contract) => {
+    if (isPackageChangeTransaction(contract.subscriptionType)) {
+      return PACKAGE_CHANGE_MSISDN_HELPER;
+    }
+    return AIRTIME_MSISDN_HELPER;
   };
 
   const getPackageDuration = (contract) => {
@@ -388,7 +410,11 @@ const AirtimeBenefitSimulator = ({
       const packageCredit = getPackageCreditForRenewal(contract);
       remaining += packageCredit;
       const packageCost = getBillablePackageMonthlyCost(contract);
-      const allowsDevice = packageAllowsDevice(selectedPkg);
+      const ownershipTransfer = isOwnershipTransferTransaction(
+        contract.subscriptionType
+      );
+      const allowsDevice =
+        !ownershipTransfer && packageAllowsDevice(selectedPkg);
       const devicePmt = allowsDevice ? getDevicePmtCost(contract) : 0;
       // Allowance / remaining / top-up use package + device PMT.
       const monthly = Number((packageCost + devicePmt).toFixed(2));
@@ -416,9 +442,13 @@ const AirtimeBenefitSimulator = ({
         deviceCost: devicePmt,
         packageWithinLimit,
         allowsDevice,
+        ownershipTransfer,
         topUp,
         canSelectDevice:
-          packageWithinLimit && !!contract.selectedPackage && allowsDevice,
+          !ownershipTransfer &&
+          packageWithinLimit &&
+          !!contract.selectedPackage &&
+          allowsDevice,
       };
     });
   }, [contractData, packages, baseLimitBudget, renewalContractMap]);
@@ -487,8 +517,20 @@ const AirtimeBenefitSimulator = ({
       let updatedContract = { ...updatedData[index], [field]: value };
 
       if (field === "subscriptionType") {
-        if (!isRenewalTransaction(value)) {
+        if (!requiresListedMsisdn(value)) {
           updatedContract.msisdn = "";
+        } else {
+          const allowed = getMsisdnOptionsForTransactionType(
+            renewalContractMap,
+            value
+          );
+          const current = normalizeAirtimeMsisdn(updatedContract.msisdn);
+          if (!allowed.some((option) => option.msisdn === current)) {
+            updatedContract.msisdn = "";
+          }
+        }
+        if (isOwnershipTransferTransaction(value)) {
+          updatedContract = clearDeviceSelection(updatedContract);
         }
         const remainingWithCredit = getRemainingBeforeContract(index, [
           ...updatedData.slice(0, index),
@@ -674,9 +716,11 @@ const AirtimeBenefitSimulator = ({
     .filter((contract) => !!contract.selectedPackage)
     .every((contract) => {
       if (!contract.subscriptionType) return false;
-      if (isRenewalTransaction(contract.subscriptionType)) {
+      if (requiresListedMsisdn(contract.subscriptionType)) {
         const msisdn = normalizeAirtimeMsisdn(contract.msisdn);
-        return renewalMsisdnOptions.some((option) => option.msisdn === msisdn);
+        return getMsisdnOptionsForContract(contract.subscriptionType).some(
+          (option) => option.msisdn === msisdn
+        );
       }
       return true;
     });
@@ -699,14 +743,17 @@ const AirtimeBenefitSimulator = ({
         const selectedPkg = packages.find(
           (pkg) => pkg.PackageID === contract.selectedPackage
         );
+        const ownershipTransfer = isOwnershipTransferTransaction(
+          contract.subscriptionType
+        );
         return {
           packageName: selectedPkg?.PackageName || "",
           packageID: contract.selectedPackage,
           packagePrice: contract.packagePrice,
-          deviceName: contract.deviceName || "",
-          devicePrice: contract.devicePrice || "",
+          deviceName: ownershipTransfer ? "" : contract.deviceName || "",
+          devicePrice: ownershipTransfer ? "" : contract.devicePrice || "",
           subscriptionType: contract.subscriptionType || "New",
-          msisdn: isRenewalTransaction(contract.subscriptionType)
+          msisdn: requiresListedMsisdn(contract.subscriptionType)
             ? normalizeAirtimeMsisdn(contract.msisdn)
             : "",
           topUp,
@@ -768,18 +815,20 @@ const AirtimeBenefitSimulator = ({
     }
 
     const subscriptionType = contract.subscriptionType || "New";
-    const msisdn = isRenewalTransaction(subscriptionType)
+    const msisdn = requiresListedMsisdn(subscriptionType)
       ? normalizeAirtimeMsisdn(contract.msisdn)
       : "";
 
     if (
-      isRenewalTransaction(subscriptionType) &&
-      !renewalMsisdnOptions.some((option) => option.msisdn === msisdn)
+      requiresListedMsisdn(subscriptionType) &&
+      !getMsisdnOptionsForContract(subscriptionType).some(
+        (option) => option.msisdn === msisdn
+      )
     ) {
       Swal.fire({
         icon: "info",
         title: "MSISDN required",
-        text: AIRTIME_MSISDN_HELPER,
+        text: getMsisdnFieldHelper(contract),
       });
       return;
     }
@@ -853,14 +902,16 @@ const AirtimeBenefitSimulator = ({
         MSISDN: msisdn || null,
         LimitCheck: calc.packageWithinLimit ? "Within Limit" : checkLimit,
         TopUpAmount: calc.topUp || 0,
-        DeviceAssigned: contract.deviceName
-          ? {
-              DeviceName: contract.deviceName,
-              DevicePrice: devicePrice,
-              MonthlyDeviceCost: monthlyDeviceCost,
-              UpfrontPayment: 0,
-            }
-          : null,
+        DeviceAssigned:
+          !isOwnershipTransferTransaction(subscriptionType) &&
+          contract.deviceName
+            ? {
+                DeviceName: contract.deviceName,
+                DevicePrice: devicePrice,
+                MonthlyDeviceCost: monthlyDeviceCost,
+                UpfrontPayment: 0,
+              }
+            : null,
       });
 
       await fireSwal({
@@ -1213,7 +1264,7 @@ const AirtimeBenefitSimulator = ({
                         </Select>
                       </FormControl>
                     </div>
-                    {isRenewalTransaction(contract.subscriptionType) && (
+                    {requiresListedMsisdn(contract.subscriptionType) && (
                       <div className="col-md-6">
                         <FormControl fullWidth margin="normal">
                           <InputLabel>
@@ -1221,7 +1272,9 @@ const AirtimeBenefitSimulator = ({
                           </InputLabel>
                           <Select
                             value={
-                              renewalMsisdnOptions.some(
+                              getMsisdnOptionsForContract(
+                                contract.subscriptionType
+                              ).some(
                                 (option) => option.msisdn === contract.msisdn
                               )
                                 ? contract.msisdn || ""
@@ -1237,17 +1290,27 @@ const AirtimeBenefitSimulator = ({
                             }
                             error={
                               !!contract.msisdn &&
-                              !renewalMsisdnOptions.some(
+                              !getMsisdnOptionsForContract(
+                                contract.subscriptionType
+                              ).some(
                                 (option) => option.msisdn === contract.msisdn
                               )
                             }
                           >
                             <MenuItem value="">
-                              {renewalMsisdnOptions.length
+                              {getMsisdnOptionsForContract(
+                                contract.subscriptionType
+                              ).length
                                 ? "Select MSISDN"
-                                : "No current contracts found"}
+                                : isPackageChangeTransaction(
+                                    contract.subscriptionType
+                                  )
+                                  ? "No free-device contracts found"
+                                  : "No current contracts found"}
                             </MenuItem>
-                            {renewalMsisdnOptions.map((option) => (
+                            {getMsisdnOptionsForContract(
+                              contract.subscriptionType
+                            ).map((option) => (
                               <MenuItem key={option.msisdn} value={option.msisdn}>
                                 {option.packageName
                                   ? `${option.msisdn} — ${option.packageName}`
@@ -1263,125 +1326,44 @@ const AirtimeBenefitSimulator = ({
                             fontSize: "0.75rem",
                             color:
                               !!contract.msisdn &&
-                              !renewalMsisdnOptions.some(
+                              !getMsisdnOptionsForContract(
+                                contract.subscriptionType
+                              ).some(
                                 (option) => option.msisdn === contract.msisdn
                               )
                                 ? "#d32f2f"
                                 : "rgba(0, 0, 0, 0.6)",
                           }}
                         >
-                          {AIRTIME_MSISDN_HELPER}
+                          {getMsisdnFieldHelper(contract)}
                         </p>
                       </div>
                     )}
                   </div>
 
-                  <div className="row">
-                    <div className="col-md-6">
-                      <Autocomplete
-                        options={devicesForPackage}
-                        getOptionLabel={(option) => option?.device_name || ""}
-                        getOptionDisabled={(option) =>
-                          !isDeviceWithinPackageLimit(selectedPkg, option?.amount)
-                        }
-                        value={
-                          devicesForPackage.find(
-                            (device) => device.device_name === contract.deviceName
-                          ) || null
-                        }
-                        onChange={(_, selectedOption) =>
-                          handleContractChange(
-                            index,
-                            "deviceName",
-                            selectedOption?.device_name || ""
-                          )
-                        }
-                        isOptionEqualToValue={(option, value) =>
-                          option.device_name === value.device_name
-                        }
-                        disabled={!!devicesError || !canSelectDevice}
-                        renderInput={(params) => (
-                          <TextField
-                            {...params}
-                            label={isEditing ? "New Device Name" : "Device Name"}
-                            margin="normal"
-                            fullWidth
-                            helperText={
-                              packageBlocksDevice
-                                ? "This package does not allow a device"
-                                : deviceLimit !== null
-                                  ? `Device price cannot exceed ${formatCurrency(
-                                      deviceLimit
-                                    )} for this package`
-                                  : canSelectDevice
-                                    ? "Device selection allowed — package is within limit"
-                                    : "Select a package within limit before choosing a device"
-                            }
-                          />
-                        )}
-                      />
-                    </div>
-
-                    <div className="col-md-6">
-                      <TextField
-                        name="DevicePrice"
-                        label={isEditing ? "New Device Price" : "Device Price"}
-                        value={formatCurrency(contract.devicePrice)}
-                        fullWidth
-                        margin="normal"
-                        InputProps={{ readOnly: true }}
-                      />
-                    </div>
-                  </div>
-
-                  {contract.showNetOption && (
-                    <div className="row">
-                      <div className="col-md-6">
-                        <FormControl fullWidth margin="normal">
-                          <InputLabel>Net Package</InputLabel>
-                          <Select
-                            value={contract.netOption || ""}
-                            onChange={(e) =>
-                              handleNetOptionChange(index, e.target.value)
-                            }
-                            label="Net Package"
-                          >
-                            <MenuItem value="Yes">Yes</MenuItem>
-                            <MenuItem value="No">No</MenuItem>
-                          </Select>
-                        </FormControl>
-                      </div>
-                    </div>
-                  )}
-
-                  {contract.netAdditionalRow && (
+                  {!isOwnershipTransferTransaction(contract.subscriptionType) && (
                     <>
                       <div className="row">
-                        <div className="col-md-6">
-                          <TextField
-                            name="NetAdditionalPrice"
-                            label="Additional Net Price"
-                            value={formatCurrency(50)}
-                            fullWidth
-                            margin="normal"
-                            InputProps={{ readOnly: true }}
-                          />
-                        </div>
                         <div className="col-md-6">
                           <Autocomplete
                             options={devicesForPackage}
                             getOptionLabel={(option) => option?.device_name || ""}
+                            getOptionDisabled={(option) =>
+                              !isDeviceWithinPackageLimit(
+                                selectedPkg,
+                                option?.amount
+                              )
+                            }
                             value={
                               devicesForPackage.find(
                                 (device) =>
-                                  device.device_name ===
-                                  contract.additionalDeviceName
+                                  device.device_name === contract.deviceName
                               ) || null
                             }
                             onChange={(_, selectedOption) =>
                               handleContractChange(
                                 index,
-                                "additionalDeviceName",
+                                "deviceName",
                                 selectedOption?.device_name || ""
                               )
                             }
@@ -1392,70 +1374,169 @@ const AirtimeBenefitSimulator = ({
                             renderInput={(params) => (
                               <TextField
                                 {...params}
-                                label="Additional Device Name"
+                                label={
+                                  isEditing ? "New Device Name" : "Device Name"
+                                }
                                 margin="normal"
                                 fullWidth
                                 helperText={
-                                  deviceLimit !== null
-                                    ? `Device price cannot exceed ${formatCurrency(
-                                        deviceLimit
-                                      )} for this package`
-                                    : undefined
+                                  packageBlocksDevice
+                                    ? "This package does not allow a device"
+                                    : deviceLimit !== null
+                                      ? `Device price cannot exceed ${formatCurrency(
+                                          deviceLimit
+                                        )} for this package`
+                                      : canSelectDevice
+                                        ? "Device selection allowed — package is within limit"
+                                        : "Select a package within limit before choosing a device"
                                 }
                               />
                             )}
                           />
                         </div>
-                      </div>
 
-                      <div className="row">
                         <div className="col-md-6">
                           <TextField
-                            name="AdditionalDevicePrice"
-                            label="Additional Device Price"
-                            value={formatCurrency(contract.additionalDevicePrice)}
+                            name="DevicePrice"
+                            label={
+                              isEditing ? "New Device Price" : "Device Price"
+                            }
+                            value={formatCurrency(contract.devicePrice)}
                             fullWidth
                             margin="normal"
                             InputProps={{ readOnly: true }}
                           />
                         </div>
                       </div>
+
+                      {contract.showNetOption && (
+                        <div className="row">
+                          <div className="col-md-6">
+                            <FormControl fullWidth margin="normal">
+                              <InputLabel>Net Package</InputLabel>
+                              <Select
+                                value={contract.netOption || ""}
+                                onChange={(e) =>
+                                  handleNetOptionChange(index, e.target.value)
+                                }
+                                label="Net Package"
+                              >
+                                <MenuItem value="Yes">Yes</MenuItem>
+                                <MenuItem value="No">No</MenuItem>
+                              </Select>
+                            </FormControl>
+                          </div>
+                        </div>
+                      )}
+
+                      {contract.netAdditionalRow && (
+                        <>
+                          <div className="row">
+                            <div className="col-md-6">
+                              <TextField
+                                name="NetAdditionalPrice"
+                                label="Additional Net Price"
+                                value={formatCurrency(50)}
+                                fullWidth
+                                margin="normal"
+                                InputProps={{ readOnly: true }}
+                              />
+                            </div>
+                            <div className="col-md-6">
+                              <Autocomplete
+                                options={devicesForPackage}
+                                getOptionLabel={(option) =>
+                                  option?.device_name || ""
+                                }
+                                value={
+                                  devicesForPackage.find(
+                                    (device) =>
+                                      device.device_name ===
+                                      contract.additionalDeviceName
+                                  ) || null
+                                }
+                                onChange={(_, selectedOption) =>
+                                  handleContractChange(
+                                    index,
+                                    "additionalDeviceName",
+                                    selectedOption?.device_name || ""
+                                  )
+                                }
+                                isOptionEqualToValue={(option, value) =>
+                                  option.device_name === value.device_name
+                                }
+                                disabled={!!devicesError || !canSelectDevice}
+                                renderInput={(params) => (
+                                  <TextField
+                                    {...params}
+                                    label="Additional Device Name"
+                                    margin="normal"
+                                    fullWidth
+                                    helperText={
+                                      deviceLimit !== null
+                                        ? `Device price cannot exceed ${formatCurrency(
+                                            deviceLimit
+                                          )} for this package`
+                                        : undefined
+                                    }
+                                  />
+                                )}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="row">
+                            <div className="col-md-6">
+                              <TextField
+                                name="AdditionalDevicePrice"
+                                label="Additional Device Price"
+                                value={formatCurrency(
+                                  contract.additionalDevicePrice
+                                )}
+                                fullWidth
+                                margin="normal"
+                                InputProps={{ readOnly: true }}
+                              />
+                            </div>
+                          </div>
+                        </>
+                      )}
+
+                      <div className="row">
+                        <div className="col-md-6">
+                          <TextField
+                            name={`ContractMonthlyPayment-${index}`}
+                            label="Contract Monthly Payment"
+                            value={formatCurrency(calc.deviceCost || 0)}
+                            fullWidth
+                            margin="normal"
+                            helperText="Select a device to calculate PMT"
+                            InputProps={{ readOnly: true }}
+                          />
+                        </div>
+                        {(calc.topUp || 0) > 0 && (
+                          <div className="col-md-6">
+                            <TextField
+                              name={`Topup-${index}`}
+                              label="Top Up (amount × duration)"
+                              value={formatCurrency(calc.topUp || 0)}
+                              fullWidth
+                              margin="normal"
+                              helperText="Monthly device excess × package duration"
+                              sx={{
+                                "& .MuiInputBase-input": {
+                                  color: "#d32f2f",
+                                  WebkitTextFillColor: "#d32f2f",
+                                  fontWeight: 600,
+                                },
+                              }}
+                              InputProps={{ readOnly: true }}
+                            />
+                          </div>
+                        )}
+                      </div>
                     </>
                   )}
-
-                  <div className="row">
-                    <div className="col-md-6">
-                      <TextField
-                        name={`ContractMonthlyPayment-${index}`}
-                        label="Contract Monthly Payment"
-                        value={formatCurrency(calc.deviceCost || 0)}
-                        fullWidth
-                        margin="normal"
-                        helperText="Select a device to calculate PMT"
-                        InputProps={{ readOnly: true }}
-                      />
-                    </div>
-                    {(calc.topUp || 0) > 0 && (
-                      <div className="col-md-6">
-                        <TextField
-                          name={`Topup-${index}`}
-                          label="Top Up (amount × duration)"
-                          value={formatCurrency(calc.topUp || 0)}
-                          fullWidth
-                          margin="normal"
-                          helperText="Monthly device excess × package duration"
-                          sx={{
-                            "& .MuiInputBase-input": {
-                              color: "#d32f2f",
-                              WebkitTextFillColor: "#d32f2f",
-                              fontWeight: 600,
-                            },
-                          }}
-                          InputProps={{ readOnly: true }}
-                        />
-                      </div>
-                    )}
-                  </div>
                 </div>
                 );
               })}

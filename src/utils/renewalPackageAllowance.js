@@ -1,7 +1,11 @@
 import {
   isRenewalTransaction,
+  isPackageChangeTransaction,
+  isOwnershipTransferTransaction,
+  requiresListedMsisdn,
   normalizeAirtimeMsisdn,
   isValidAirtimeMsisdn,
+  isZeroOrNullDevicePrice,
 } from "./airtimeMsisdn";
 
 export const normalizePackageName = (value) =>
@@ -10,8 +14,15 @@ export const normalizePackageName = (value) =>
     .toLowerCase()
     .replace(/\s+/g, " ");
 
+const getContractDevicePrice = (contract) =>
+  contract?.device_initial_cost ??
+  contract?.device_initail_cost ??
+  contract?.DevicePrice ??
+  contract?.device_price ??
+  null;
+
 /**
- * Build MSISDN → active CDR contract map for renewal flows.
+ * Build MSISDN → active CDR contract map for renewal / package-change flows.
  * Prefers active status when duplicates exist.
  */
 export const buildRenewalContractMap = (contracts = []) => {
@@ -45,11 +56,14 @@ export const buildRenewalContractMap = (contracts = []) => {
             contract.PackageMonthlyPayment ??
             contract.package_price
         ) || 0;
+      const deviceInitialCost = getContractDevicePrice(contract);
 
       const entry = {
         msisdn,
         packageName,
         packageMonthly,
+        deviceInitialCost,
+        isFreeDevice: isZeroOrNullDevicePrice(deviceInitialCost),
         status,
         contract,
       };
@@ -79,8 +93,36 @@ export const doesSelectedPackageMatchRenewalContract = (
 };
 
 /**
- * Credit existing package monthly back into allowance when renewing onto a
- * different package (Available already had the old package deducted).
+ * MSISDN options for the selected transaction type.
+ * - Package Change: only MSISDNs whose assigned device is 0.00 or null
+ * - Renewal: MSISDNs with a billed device (price > 0)
+ * - Ownership Transfer In/Out: all listed MSISDNs
+ * - Other: none
+ */
+export const getMsisdnOptionsForTransactionType = (
+  renewalMap,
+  subscriptionType
+) => {
+  const entries = Array.from(renewalMap?.values?.() || []);
+
+  if (isPackageChangeTransaction(subscriptionType)) {
+    return entries.filter((entry) => entry.isFreeDevice);
+  }
+
+  if (isRenewalTransaction(subscriptionType)) {
+    return entries.filter((entry) => !entry.isFreeDevice);
+  }
+
+  if (isOwnershipTransferTransaction(subscriptionType)) {
+    return entries;
+  }
+
+  return [];
+};
+
+/**
+ * Credit existing package monthly back into allowance when renewing / changing
+ * package onto a different package (Available already had the old package deducted).
  */
 export const getRenewalPackageCredit = ({
   subscriptionType,
@@ -88,7 +130,7 @@ export const getRenewalPackageCredit = ({
   selectedPackageName,
   renewalMap,
 }) => {
-  if (!isRenewalTransaction(subscriptionType)) return 0;
+  if (!requiresListedMsisdn(subscriptionType)) return 0;
   const renewalContract = getRenewalContractForMsisdn(renewalMap, msisdn);
   if (!renewalContract) return 0;
 
@@ -116,7 +158,7 @@ export const isRenewalSamePackageWaived = ({
   selectedPackageName,
   renewalMap,
 }) => {
-  if (!isRenewalTransaction(subscriptionType)) return false;
+  if (!requiresListedMsisdn(subscriptionType)) return false;
   const renewalContract = getRenewalContractForMsisdn(renewalMap, msisdn);
   if (!renewalContract || !selectedPackageName) return false;
   return doesSelectedPackageMatchRenewalContract(
@@ -127,8 +169,8 @@ export const isRenewalSamePackageWaived = ({
 
 /**
  * Billable package monthly against allowance.
- * - Same package renewal: 0
- * - Different package renewal: full new package price (caller adds credit to Available)
+ * - Same package renewal / package change: 0
+ * - Different package: full new package price (caller adds credit to Available)
  * - Otherwise: full package price
  */
 export const getBillableRenewalPackageMonthly = ({

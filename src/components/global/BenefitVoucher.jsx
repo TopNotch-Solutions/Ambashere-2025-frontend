@@ -18,7 +18,9 @@ import "../../assets/style/global/voucher.css";
 import UploadVoucher from "../../pages/admin/upload/UploadVoucher";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import {
+  isOwnershipTransferTransaction,
   isRenewalTransaction,
+  requiresListedMsisdn,
   isValidAirtimeMsisdn,
   normalizeAirtimeMsisdn,
 } from "../../utils/airtimeMsisdn";
@@ -860,11 +862,16 @@ const BenefitVoucher = ({
           );
 
           if (
-            isRenewalTransaction(packageRow.column6) &&
+            requiresListedMsisdn(packageRow.column6) &&
             !isValidAirtimeMsisdn(packageMsisdn)
           ) {
+            const typeLabel = isRenewalTransaction(packageRow.column6)
+              ? "Renewal"
+              : isOwnershipTransferTransaction(packageRow.column6)
+                ? "Ownership Transfer"
+                : "Package Change";
             throw new Error(
-              `Renewal requires selecting an MSISDN from your current contracts ${
+              `${typeLabel} requires selecting an MSISDN from your current contracts ${
                 packageRow.dropdown && packageRow.dropdown !== "Select Package"
                   ? `for Package: ${packageRow.dropdown}`
                   : `in row ${packageRow.id}`
@@ -914,6 +921,17 @@ const BenefitVoucher = ({
 
       for (let i = 0; i < 3; i++) {
         const deviceIdx = 6 + i;
+        const linkedPackage = selectedPackagesDetails.find(
+          (pkg) => pkg.id + 5 === deviceIdx
+        );
+        // Ownership transfers do not require device name / price / PMT.
+        if (
+          linkedPackage &&
+          isOwnershipTransferTransaction(linkedPackage.SubscriptionStatus)
+        ) {
+          continue;
+        }
+
         const deviceRow = rows.find((row) => row.id === deviceIdx);
         const deviceName =
           deviceNameRef.current[deviceIdx]?.value ||
@@ -945,6 +963,12 @@ const BenefitVoucher = ({
 
       // --- 5. Assign Devices to Packages and Adjust Prices ---
       selectedPackagesDetails.forEach((packageDet) => {
+        // Ownership Transfer In/Out: device name, price, and PMT are not required.
+        if (isOwnershipTransferTransaction(packageDet.SubscriptionStatus)) {
+          packageDet.DeviceAssigned = null;
+          return;
+        }
+
         const device = selectedDevicesDetails.find(
           (item) => item.id === packageDet.id + 5
         );
