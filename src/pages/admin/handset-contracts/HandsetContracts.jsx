@@ -31,6 +31,7 @@ import {
   renderContractViewButton,
   renderContractCancelButton,
 } from "../../../utils/contractSubmissionActions";
+import ExportButton from "../../../components/admin/ExportButton";
 import "../../../assets/style/global/handsetBenefitSimulator.css";
 import "../../../assets/style/global/adminDashboard.css";
 import "../../../assets/style/global/support.css";
@@ -349,6 +350,29 @@ const AdminHandsetContracts = () => {
     return filtered.map(mapHandsetSubmissionRow);
   }, [submissions, statusFilter, searchText]);
 
+  const exportRows = useMemo(
+    () =>
+      rows.map((row) => ({
+        "Employee Code": row.employeeCode,
+        "Employee Name": row.fullName,
+        Device: row.device,
+        "Device Price": row.device_price,
+        "Excess Payment": row.excess_payment,
+        "Date Created": row.contract_submitted_date,
+        Status: row.subscription_status,
+        "Attended By": row.assignedAdminName,
+        Received: row.isReceived ? "Yes" : "No",
+      })),
+    [rows]
+  );
+
+  const exportFileName = useMemo(() => {
+    const parts = ["Handset Submissions"];
+    if (statusFilter !== "all") parts.push(statusFilter.replace(/\s+/g, "-"));
+    if (searchText.trim()) parts.push("filtered");
+    return parts.join("-");
+  }, [statusFilter, searchText]);
+
   const columns = [
     { field: "employeeCode", headerName: "Employee Code", width: 140 },
     { field: "fullName", headerName: "Employee Name", width: 200 },
@@ -537,6 +561,11 @@ const AdminHandsetContracts = () => {
                   <MenuItem value="cancelled">Cancelled</MenuItem>
                 </Select>
               </FormControl>
+              <ExportButton
+                data={exportRows}
+                fileName={exportFileName}
+                className="benefits-cta-btn"
+              />
             </Box>
           </Box>
           {loading ? (

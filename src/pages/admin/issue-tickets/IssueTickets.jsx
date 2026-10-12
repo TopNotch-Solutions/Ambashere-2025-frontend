@@ -33,6 +33,8 @@ import axiosInstance from "../../../utils/axiosInstance";
 import { tokens } from "../../../theme";
 import formatDate from "../../../components/global/dateFormatter";
 import AdminCommentsSection from "../../../components/admin/AdminCommentsSection";
+import * as XLSX from "xlsx/xlsx.mjs";
+import { FaDownload } from "react-icons/fa";
 import "../../../assets/style/global/handsetBenefitSimulator.css";
 import "../../../assets/style/global/adminDashboard.css";
 import "../../../assets/style/global/support.css";
@@ -110,6 +112,7 @@ const IssueTickets = () => {
   const [rowCount, setRowCount] = useState(0);
   const [viewTicket, setViewTicket] = useState(null);
   const [downloadingAttachment, setDownloadingAttachment] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -213,6 +216,69 @@ const IssueTickets = () => {
   useEffect(() => {
     fetchTickets();
   }, [fetchTickets]);
+
+  const exportFileName = useMemo(() => {
+    const parts = ["Issue Tickets"];
+    if (statusFilter !== "all") parts.push(statusFilter.replace(/\s+/g, "-"));
+    if (debouncedSearch) parts.push("filtered");
+    return parts.join("-");
+  }, [statusFilter, debouncedSearch]);
+
+  const handleExportXlsx = async () => {
+    try {
+      setExporting(true);
+      const exportLimit = 100;
+      let pageNum = 1;
+      let totalPages = 1;
+      const ticketsToExport = [];
+
+      while (pageNum <= totalPages) {
+        const response = await axiosInstance.get("/support-tickets", {
+          params: {
+            page: pageNum,
+            limit: exportLimit,
+            status: statusFilter,
+            ...(debouncedSearch ? { search: debouncedSearch } : {}),
+          },
+        });
+        ticketsToExport.push(...(response.data.tickets || []));
+        totalPages = response.data.pagination?.totalPages || 1;
+        pageNum += 1;
+      }
+
+      const exportRows = ticketsToExport.map((item) => ({
+        "Ticket #": item.ticketNumber || "-",
+        Employee: item.fullName || "-",
+        Code: item.employeeCode || "-",
+        Department: item.department || "-",
+        Email: item.email || "-",
+        Reason: item.reason || "-",
+        Message: item.message || "-",
+        Status: item.status || "-",
+        Submitted: formatDate(item.createdAt),
+        "Assigned To": item.assignedAdminName || "-",
+        Started: item.inProgressAt ? formatDate(item.inProgressAt) : "-",
+        Completed: item.completedAt ? formatDate(item.completedAt) : "-",
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(exportRows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Issue Tickets");
+      XLSX.writeFile(workbook, `${exportFileName}.xlsx`);
+    } catch (error) {
+      console.error("Error exporting issue tickets:", error);
+      await fireSwal({
+        icon: "error",
+        title: "Export failed",
+        text:
+          error.response?.data?.message ||
+          "Unable to download the Excel file. Please try again.",
+        confirmButtonColor: "#0096D6",
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const handleAdvanceStatus = async (row, targetStatus) => {
     const currentStatus = String(row.status || "").trim().toLowerCase();
@@ -660,6 +726,35 @@ const IssueTickets = () => {
                 <MenuItem value="cancelled">Cancelled</MenuItem>
               </Select>
             </FormControl>
+            <Button
+              className="benefits-cta-btn"
+              onClick={handleExportXlsx}
+              disabled={exporting || loading}
+              sx={{
+                minHeight: 40,
+                px: 2,
+                textTransform: "none",
+                fontWeight: 700,
+                background: "linear-gradient(to right, #1A69AC, #00AAE9)",
+                color: "#fff",
+                border: "1px solid #0f69ac",
+                "&:hover": {
+                  background: "linear-gradient(to right, #1A69AC, #00AAE9)",
+                  filter: "brightness(0.97)",
+                },
+                "&.Mui-disabled": {
+                  color: "#fff",
+                  opacity: 0.7,
+                },
+              }}
+            >
+              {exporting ? "Exporting..." : "Export"}
+              {exporting ? (
+                <CircularProgress size={16} sx={{ ml: 1, color: "#fff" }} />
+              ) : (
+                <FaDownload size={16} style={{ marginLeft: 10 }} />
+              )}
+            </Button>
           </Box>
         </Box>
 

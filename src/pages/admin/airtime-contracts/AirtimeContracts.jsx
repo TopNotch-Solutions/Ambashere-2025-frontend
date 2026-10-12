@@ -31,6 +31,7 @@ import {
   renderContractViewButton,
   renderContractCancelButton,
 } from "../../../utils/contractSubmissionActions";
+import ExportButton from "../../../components/admin/ExportButton";
 import "../../../assets/style/global/handsetBenefitSimulator.css";
 import "../../../assets/style/global/adminDashboard.css";
 import "../../../assets/style/global/support.css";
@@ -360,6 +361,36 @@ const AdminAirtimeContracts = () => {
     return filtered.map(mapAirtimeSubmissionRow);
   }, [submissions, statusFilter, searchText]);
 
+  const exportRows = useMemo(
+    () =>
+      rows.map((row) => ({
+        "Employee Code": row.employeeCode,
+        "Employee Name": row.fullName,
+        Package: row.package,
+        MSISDN: row.msisdn,
+        Device: row.device,
+        "Package Price": row.package_price,
+        "Device Cost": row.device_initail_cost,
+        Duration: row.contract_duration,
+        "Top-up": row.top_up_amount,
+        "Plan Monthly": row.serviceplan_monthly_price,
+        "Device Monthly": row.device_monthly_price,
+        Submitted: row.contract_submitted_date,
+        "Transaction Type": row.transaction_type,
+        Status: row.subscription_status,
+        "Attended By": row.assignedAdminName,
+        Received: row.isReceived ? "Yes" : "No",
+      })),
+    [rows]
+  );
+
+  const exportFileName = useMemo(() => {
+    const parts = ["Airtime Submissions"];
+    if (statusFilter !== "all") parts.push(statusFilter.replace(/\s+/g, "-"));
+    if (searchText.trim()) parts.push("filtered");
+    return parts.join("-");
+  }, [statusFilter, searchText]);
+
   const columns = [
     { field: "employeeCode", headerName: "Employee Code", width: 130 },
     { field: "fullName", headerName: "Employee Name", width: 180 },
@@ -599,6 +630,11 @@ const AdminAirtimeContracts = () => {
                   <MenuItem value="cancelled">Cancelled</MenuItem>
                 </Select>
               </FormControl>
+              <ExportButton
+                data={exportRows}
+                fileName={exportFileName}
+                className="benefits-cta-btn"
+              />
             </Box>
           </Box>
           {loading ? (
