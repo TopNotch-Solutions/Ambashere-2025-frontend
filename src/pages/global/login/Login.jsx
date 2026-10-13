@@ -204,16 +204,9 @@ const Login = () => {
         }, 0);
       } catch (error) {
         console.error("Login error:", error.response?.data || error.message);
-        if (error.response?.status === 403) {
-          setLoginError(
-            error.response?.data?.message ||
-              "Security validation failed. Please refresh and try again."
-          );
-          await fetchCsrfToken();
-        } else {
-          setLoginError("Password or Username is wrong");
-          await fetchCsrfToken();
-        }
+        setLoginError(
+          error.response?.data?.message || "Password or Username is wrong"
+        );
       } finally {
         setIsSubmitting(false);
       }
