@@ -32,6 +32,10 @@ import {
   renderContractCancelButton,
 } from "../../../utils/contractSubmissionActions";
 import ExportButton from "../../../components/admin/ExportButton";
+import {
+  isSpectraPackage,
+  SPECTRA_ACCOUNT_NUMBER_LABEL,
+} from "../../../utils/spectraPackages";
 import "../../../assets/style/global/handsetBenefitSimulator.css";
 import "../../../assets/style/global/adminDashboard.css";
 import "../../../assets/style/global/support.css";
@@ -89,6 +93,14 @@ const mapAirtimeSubmissionRow = (item, index) => ({
   contract_submitted_date: formatDate(item.contract_submitted_date),
   transaction_type: item.transaction_type || "-",
   subscription_status: item.subscription_status || "-",
+  line_of_sight_conducted:
+    item.line_of_sight_conducted === true || item.line_of_sight_conducted === 1
+      ? "Yes"
+      : item.line_of_sight_conducted === false ||
+          item.line_of_sight_conducted === 0
+        ? "No"
+        : "-",
+  installation_location: item.installation_location || "-",
   assignedAdminCode: item.assignedAdminCode || null,
   assignedAdminName: item.assignedAdminName || "-",
   isReceived: Boolean(item.isReceived),
@@ -395,7 +407,11 @@ const AdminAirtimeContracts = () => {
     { field: "employeeCode", headerName: "Employee Code", width: 130 },
     { field: "fullName", headerName: "Employee Name", width: 180 },
     { field: "package", headerName: "Package", width: 200 },
-    { field: "msisdn", headerName: "MSISDN", width: 130 },
+    {
+      field: "msisdn",
+      headerName: "MSISDN / Spectra Account No.",
+      width: 180,
+    },
     { field: "device", headerName: "Device", width: 180 },
     { field: "package_price", headerName: "Package Price", width: 130 },
     {
@@ -718,9 +734,26 @@ const AdminAirtimeContracts = () => {
                   icon: DescriptionOutlinedIcon,
                   fields: [
                     { label: "Package", value: viewSubmission.package },
-                    { label: "MSISDN", value: viewSubmission.msisdn },
+                    {
+                      label: isSpectraPackage(viewSubmission.package)
+                        ? SPECTRA_ACCOUNT_NUMBER_LABEL
+                        : "MSISDN",
+                      value: viewSubmission.msisdn,
+                    },
                     { label: "Device", value: viewSubmission.device },
                     { label: "Transaction type", value: viewSubmission.transaction_type },
+                    ...(isSpectraPackage(viewSubmission.package)
+                      ? [
+                          {
+                            label: "Line-of-sight assessment",
+                            value: viewSubmission.line_of_sight_conducted,
+                          },
+                          {
+                            label: "Installation location",
+                            value: viewSubmission.installation_location,
+                          },
+                        ]
+                      : []),
                     { label: "Package price", value: viewSubmission.package_price },
                     { label: "Device cost", value: viewSubmission.device_initail_cost },
                     {

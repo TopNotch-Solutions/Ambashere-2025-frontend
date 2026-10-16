@@ -29,6 +29,7 @@ import UserDashboard from "../pages/user/dashboard/Dashboard.jsx";
 import UserCalendar from "../pages/user/calendar/Calendar.jsx";
 import UserProfileCard from "../pages/user/profile/Profile.jsx";
 import UserBenefits from "../pages/user/benefits/Benefits.jsx";
+import SpectraBenefits from "../pages/user/benefits/SpectraBenefits.jsx";
 import UserHandsets from "../pages/user/handsets/Handsets.jsx";
 import UserAirtime from "../pages/user/airtime/Airtime.jsx";
 import SelfHelp from "../pages/user/self-help/SelfHelp.jsx";
@@ -152,6 +153,11 @@ const routes = [
   { path: "/user/LostForm", element: <LostForm />, roles: [1, 3, 8, 9, 10, 11] },
   { path: "/user/Info", element: <TempStaffInfo />, roles: [8] },
   { path: "/user/Benefits", element: <UserBenefits />, roles: [1, 3, 9, 10, 11] },
+  {
+    path: "/user/SpectraBenefits",
+    element: <SpectraBenefits />,
+    roles: [1, 3, 9, 10, 11],
+  },
   { path: "/user/SelfHelp", element: <SelfHelp />, roles: [1, 3, 9, 10, 11] },
   // {
   //   path: "/user/SelfHelp/Compensation",

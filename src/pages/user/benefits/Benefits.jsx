@@ -23,12 +23,17 @@ import {
   isActiveBenefitStatus,
   shouldConsiderUserAirtimeContract,
 } from "../../../utils/statusBadge";
+import {
+  filterContractsByMode,
+  filterPackagesByMode,
+  SPECTRA_ACCOUNT_NUMBER_LABEL,
+} from "../../../utils/spectraPackages";
 import AirtimeBenefitSimulator from "../self-help/AirtimeBenefitSimulator";
 import "../../../assets/style/global/handsetBenefitSimulator.css";
 import "../../../assets/style/global/benefits.css";
 import "../../../assets/style/global/support.css";
 
-const UserBenefits = () => {
+const UserBenefits = ({ packageMode = "airtime" }) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
   const [data, setData] = useState([]);
@@ -45,8 +50,13 @@ const UserBenefits = () => {
   const currentUser = useSelector((state) => state.auth.user);
   const { role } = useSelector((state) => state.auth);
   const isActiveStatus = (status) => isActiveBenefitStatus(status);
+  const isSpectraMode = packageMode === "spectra";
+  const benefitLabel = isSpectraMode ? "Spectra" : "Airtime";
 
-  const consideredContracts = data.filter(shouldConsiderUserAirtimeContract);
+  const consideredContracts = filterContractsByMode(
+    data.filter(shouldConsiderUserAirtimeContract),
+    packageMode
+  );
 
   const getStatusStyle = (status) => {
     const normalized = String(status || "").trim().toLowerCase();
@@ -102,7 +112,10 @@ const UserBenefits = () => {
         : null
     );
 
-    const packages = packagesResponse.data || [];
+    const packages = filterPackagesByMode(
+      packagesResponse.data || [],
+      packageMode
+    );
     const prices = packages
       .map((pkg) => parseFloat(pkg.MonthlyPrice))
       .filter((price) => !isNaN(price) && price > 0);
@@ -112,8 +125,8 @@ const UserBenefits = () => {
   const handleCancelAirtimeSubmission = async (submissionId) => {
     const confirmResult = await fireSwal({
       icon: "warning",
-      title: "Cancel airtime benefit request?",
-      text: "Your pending airtime benefit request will be cancelled. Admins will be notified.",
+      title: `Cancel ${benefitLabel.toLowerCase()} benefit request?`,
+      text: `Your pending ${benefitLabel.toLowerCase()} benefit request will be cancelled. Admins will be notified.`,
       showCancelButton: true,
       confirmButtonColor: "#DC2626",
       cancelButtonColor: "#6c757d",
@@ -131,7 +144,7 @@ const UserBenefits = () => {
       await fireSwal({
         icon: "success",
         title: "Request cancelled",
-        text: "Your request was cancelled. You can submit a new airtime benefit request if you are eligible.",
+        text: `Your request was cancelled. You can submit a new ${benefitLabel.toLowerCase()} benefit request if you are eligible.`,
         timer: 3200,
         showConfirmButton: false,
       });
@@ -142,7 +155,7 @@ const UserBenefits = () => {
         title: "Cancellation failed",
         text:
           error.response?.data?.message ||
-          "Unable to cancel this airtime benefit request. Please try again.",
+          `Unable to cancel this ${benefitLabel.toLowerCase()} benefit request. Please try again.`,
       });
     } finally {
       setCancellingSubmissionId(null);
@@ -153,7 +166,7 @@ const UserBenefits = () => {
     const confirmResult = await fireSwal({
       icon: "question",
       title: "Mark this contract as received?",
-      text: "Confirm that you have received this airtime contract.",
+      text: `Confirm that you have received this ${benefitLabel.toLowerCase()} contract.`,
       showCancelButton: true,
       confirmButtonColor: "#0D9488",
       cancelButtonColor: "#6c757d",
@@ -169,7 +182,7 @@ const UserBenefits = () => {
       await fireSwal({
         icon: "success",
         title: "Marked as received",
-        text: "Your airtime contract has been marked as received.",
+        text: `Your ${benefitLabel.toLowerCase()} contract has been marked as received.`,
         timer: 2800,
         showConfirmButton: false,
       });
@@ -180,7 +193,7 @@ const UserBenefits = () => {
         title: "Update failed",
         text:
           error.response?.data?.message ||
-          "Unable to mark this airtime contract as received. Please try again.",
+          `Unable to mark this ${benefitLabel.toLowerCase()} contract as received. Please try again.`,
       });
     } finally {
       setReceivingSubmissionId(null);
@@ -210,7 +223,7 @@ const UserBenefits = () => {
     if (currentUser?.EmployeeCode) {
       fetchData();
     }
-  }, [currentUser?.EmployeeCode]);
+  }, [currentUser?.EmployeeCode, packageMode]);
 
   const handleContractDelection = async (id) => {
   Swal.fire({
@@ -267,7 +280,11 @@ const UserBenefits = () => {
   const columns = [
     { field: "PackageName", headerName: "PACKAGE NAME", width: 220 },
     { field: "DeviceName", headerName: "DEVICE NAME", width: 220 },
-    { field: "MSISDN", headerName: "MSISDN", width: 180 },
+    {
+      field: "MSISDN",
+      headerName: isSpectraMode ? SPECTRA_ACCOUNT_NUMBER_LABEL : "MSISDN",
+      width: 180,
+    },
     { field: "DevicePrice", headerName: "DEVICE PRICE", width: 180 },
     { field: "ContractDuration", headerName: "PAYMENT DURATION", width: 180 },
     { field: "ServiceDuration", headerName: "SERVICE DURATION", width: 170 },
@@ -454,10 +471,15 @@ const UserBenefits = () => {
     <div className="container-main m-3 handset-simulator-page benefits-page">
       <div className="handset-hero mb-4 d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3">
         <div>
-          <h2 className="handset-title">My Staff Benefits</h2>
+          <h2 className="handset-title">
+            {isSpectraMode
+              ? "My Staff Spectra Benefits"
+              : "My Staff Device Benefits"}
+          </h2>
           <p className="handset-subtitle mb-0">
-            View and manage your airtime benefits, monitor active
-            contracts, and simulate new contract applications.
+            {isSpectraMode
+              ? "View and manage your Spectra benefits, monitor active Spectra contracts, and simulate new Spectra applications."
+              : "View and manage your airtime benefits, monitor active contracts, and simulate new contract applications."}
           </p>
         </div>
         <Button
@@ -467,7 +489,13 @@ const UserBenefits = () => {
             setShowSimulator((prev) => !prev);
           }}
         >
-          {showSimulator ? "Back to My Staff Benefits" : "Simulate Staff Airtime Benefit"}
+          {showSimulator
+            ? isSpectraMode
+              ? "Back to My Staff Spectra Benefits"
+              : "Back to My Staff Device Benefits"
+            : isSpectraMode
+              ? "Simulate Spectra Benefit"
+              : "Simulate Staff Airtime Benefit"}
         </Button>
       </div>
 
@@ -476,6 +504,7 @@ const UserBenefits = () => {
         handleClose={handleClose}
         userData={userData}
         role={role}
+        packageMode={packageMode}
         prefillData={simulationPrefill}
         simulationMeta={simulationMeta}
       />
@@ -483,6 +512,7 @@ const UserBenefits = () => {
       {showSimulator ? (
         <AirtimeBenefitSimulator
           embedded
+          packageMode={packageMode}
           editingSubmission={editingSubmission}
           onUpdated={async () => {
             setShowSimulator(false);
@@ -499,7 +529,7 @@ const UserBenefits = () => {
         <div className="row d-flex flex-column flex-md-row justify-content-around m-auto">
           {currentUser.EmploymentCategory === "Temporary" && (
             <h3 className="text-center mt-5 text-danger benefits-empty-state">
-              Your Staff Benefits Information will be shown here once you get one
+              Your {benefitLabel} Benefits Information will be shown here once you get one
             </h3>
           )}
 
@@ -556,8 +586,8 @@ const UserBenefits = () => {
                 </Box>
               ) : (
                 <h3 className="text-center mt-5 text-danger benefits-empty-state">
-                  Your Staff Benefits Information will be shown here once you get
-                  one
+                  Your {benefitLabel} Benefits Information will be shown here once
+                  you get one
                 </h3>
               )}
 

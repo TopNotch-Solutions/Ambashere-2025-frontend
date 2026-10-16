@@ -60,6 +60,7 @@ const Sidebar = ({ openSidebarToggle, OpenSidebar }) => {
       "/user/Airtime": "2",
       "/user/Devices": "3",
       "/user/Benefits": "4",
+      "/user/SpectraBenefits": "4b",
       "/user/Profile": "5",
       "/user/Support": "10",
       "/user/SelfHelp": "6",
@@ -222,9 +223,16 @@ const Sidebar = ({ openSidebarToggle, OpenSidebar }) => {
       {
         to: "user/Benefits",
         icon: <AssignmentIcon />,
-        label: "Airtime Benefits",
+        label: "Device Benefits",
         restrictedTo: "Permanent",
         key: "4",
+      },
+      {
+        to: "user/SpectraBenefits",
+        icon: <AssignmentIcon />,
+        label: "Spectra Benefits",
+        restrictedTo: "Permanent",
+        key: "4b",
       },
       // {
       //   to: "user/LostForm",

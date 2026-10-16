@@ -19,9 +19,9 @@ import Swal from "sweetalert2";
 import "../../../assets/style/global/handsetBenefitSimulator.css";
 import {
   AIRTIME_MSISDN_HELPER,
-  AIRTIME_TRANSACTION_TYPES,
   OWNERSHIP_TRANSFER_IN_MSISDN_HELPER,
   PACKAGE_CHANGE_MSISDN_HELPER,
+  getTransactionTypesForMode,
   isOwnershipTransferInTransaction,
   isOwnershipTransferTransaction,
   isPackageChangeTransaction,
@@ -40,13 +40,26 @@ import {
 } from "../../../utils/renewalPackageAllowance";
 import { calculatePmt } from "../../../utils/calculatePmt";
 import { fireSwal } from "../../../utils/swalHelpers";
+import {
+  filterContractsByMode,
+  filterPackagesByMode,
+  isValidSpectraAccountNumber,
+  normalizeSpectraAccountNumber,
+  SPECTRA_ACCOUNT_NUMBER_LABEL,
+} from "../../../utils/spectraPackages";
 
 const AirtimeBenefitSimulator = ({
   embedded = false,
   onApplySimulation,
   editingSubmission = null,
   onUpdated,
+  packageMode = "airtime",
 }) => {
+  const isSpectraMode = packageMode === "spectra";
+  const accountFieldLabel = isSpectraMode
+    ? SPECTRA_ACCOUNT_NUMBER_LABEL
+    : "MSISDN";
+  const transactionTypeOptions = getTransactionTypesForMode(packageMode);
   const [packages, setPackages] = useState([]);
   const [devices, setDevices] = useState([]);
   const [numberOfContracts, setNumberOfContracts] = useState(1);
@@ -58,6 +71,8 @@ const AirtimeBenefitSimulator = ({
       packagePrice: "",
       subscriptionType: "New",
       msisdn: "",
+      lineOfSightConducted: "",
+      installationLocation: "",
     },
   ]);
   const [airtimeAllocation, setAirtimeAllocation] = useState("");
@@ -121,7 +136,9 @@ const AirtimeBenefitSimulator = ({
           axiosInstance.get(`/packages/packageList?t=${Date.now()}`),
           axiosInstance.get("/pricelist/device-price-list"),
         ]);
-        setPackages(packagesResponse.data || []);
+        setPackages(
+          filterPackagesByMode(packagesResponse.data || [], packageMode)
+        );
         setDevices(devicesResponse?.data?.data || []);
       } catch (error) {
         console.error("Error fetching simulator data:", error);
@@ -132,7 +149,7 @@ const AirtimeBenefitSimulator = ({
       }
     };
     fetchData();
-  }, []);
+  }, [packageMode]);
 
   useEffect(() => {
     const fetchAirtimeAllocation = async () => {
@@ -166,7 +183,12 @@ const AirtimeBenefitSimulator = ({
             : null
         );
         setCurrentContracts(
-          Array.isArray(response.data.contracts) ? response.data.contracts : []
+          filterContractsByMode(
+            Array.isArray(response.data.contracts)
+              ? response.data.contracts
+              : [],
+            packageMode
+          )
         );
       } catch (error) {
         console.error("Failed to load available allowance", error);
@@ -175,11 +197,11 @@ const AirtimeBenefitSimulator = ({
     };
 
     fetchAvailableAllowance();
-  }, [employeeCode]);
+  }, [employeeCode, packageMode]);
 
   const renewalContractMap = useMemo(
-    () => buildRenewalContractMap(currentContracts),
-    [currentContracts]
+    () => buildRenewalContractMap(currentContracts, { packageMode }),
+    [currentContracts, packageMode]
   );
 
   const getMsisdnOptionsForContract = (subscriptionType) =>
@@ -205,9 +227,19 @@ const AirtimeBenefitSimulator = ({
         packagePrice: "",
         subscriptionType: "",
         msisdn: "",
+        lineOfSightConducted:
+          editingSubmission?.line_of_sight_conducted === true ||
+          editingSubmission?.line_of_sight_conducted === 1
+            ? "Yes"
+            : editingSubmission?.line_of_sight_conducted === false ||
+                editingSubmission?.line_of_sight_conducted === 0
+              ? "No"
+              : "",
+        installationLocation:
+          editingSubmission?.installation_location || "",
       },
     ]);
-  }, [isEditing, editingSubmissionId]);
+  }, [isEditing, editingSubmissionId, editingSubmission]);
 
   const getPackageMonthlyCost = (contract) => {
     const selectedPkg = packages.find(
@@ -255,14 +287,19 @@ const AirtimeBenefitSimulator = ({
   const getRenewalHelperText = (contract) => {
     if (!requiresListedMsisdn(contract.subscriptionType)) return undefined;
     const msisdnOptions = getMsisdnOptionsForContract(contract.subscriptionType);
+    const accountKey = isSpectraMode
+      ? normalizeSpectraAccountNumber(contract.msisdn)
+      : normalizeAirtimeMsisdn(contract.msisdn);
     const listedOnType = msisdnOptions.some(
-      (option) => option.msisdn === normalizeAirtimeMsisdn(contract.msisdn)
+      (option) => option.msisdn === accountKey
     );
     if (!listedOnType) {
       if (isPackageChangeTransaction(contract.subscriptionType)) {
         return "Select an MSISDN with a free device (N$ 0.00 or not set) to apply package-change rules";
       }
-      return "Select an MSISDN from active contracts to apply renewal package rules";
+      return isSpectraMode
+        ? `Select or type a ${SPECTRA_ACCOUNT_NUMBER_LABEL} — matching an existing account applies renewal/upgrade credit rules`
+        : "Select an MSISDN from active contracts to apply renewal/upgrade package rules";
     }
     if (isPackageWaivedForRenewal(contract)) {
       return "Same package — already running, not deducted from allowance";
@@ -289,6 +326,11 @@ const AirtimeBenefitSimulator = ({
     }
     if (isPackageChangeTransaction(contract.subscriptionType)) {
       return PACKAGE_CHANGE_MSISDN_HELPER;
+    }
+    if (isSpectraMode) {
+      return requiresListedMsisdn(contract.subscriptionType)
+        ? `Select an existing ${SPECTRA_ACCOUNT_NUMBER_LABEL} or type one.`
+        : `Enter the ${SPECTRA_ACCOUNT_NUMBER_LABEL}.`;
     }
     return AIRTIME_MSISDN_HELPER;
   };
@@ -419,7 +461,9 @@ const AirtimeBenefitSimulator = ({
         contract.subscriptionType
       );
       const allowsDevice =
-        !ownershipTransfer && packageAllowsDevice(selectedPkg);
+        !isSpectraMode &&
+        !ownershipTransfer &&
+        packageAllowsDevice(selectedPkg);
       const devicePmt = allowsDevice ? getDevicePmtCost(contract) : 0;
       // Allowance / remaining / top-up use package + device PMT.
       const monthly = Number((packageCost + devicePmt).toFixed(2));
@@ -450,13 +494,20 @@ const AirtimeBenefitSimulator = ({
         ownershipTransfer,
         topUp,
         canSelectDevice:
+          !isSpectraMode &&
           !ownershipTransfer &&
           packageWithinLimit &&
           !!contract.selectedPackage &&
           allowsDevice,
       };
     });
-  }, [contractData, packages, baseLimitBudget, renewalContractMap]);
+  }, [
+    contractData,
+    packages,
+    baseLimitBudget,
+    renewalContractMap,
+    isSpectraMode,
+  ]);
 
   const monthlyPayment = useMemo(
     () =>
@@ -502,6 +553,8 @@ const AirtimeBenefitSimulator = ({
           packageError: "",
           subscriptionType: "New",
           msisdn: "",
+          lineOfSightConducted: "",
+          installationLocation: "",
         });
       }
       return newData.slice(0, numContracts);
@@ -522,7 +575,12 @@ const AirtimeBenefitSimulator = ({
       let updatedContract = { ...updatedData[index], [field]: value };
 
       if (field === "subscriptionType") {
-        if (requiresTypedMsisdn(value)) {
+        if (isSpectraMode) {
+          // Spectra: free-form account — keep any non-empty entry across types.
+          updatedContract.msisdn = normalizeSpectraAccountNumber(
+            updatedContract.msisdn
+          );
+        } else if (requiresTypedMsisdn(value)) {
           // Ownership Transfer In: typed MSISDN — clear any listed selection.
           updatedContract.msisdn = "";
         } else if (!requiresListedMsisdn(value)) {
@@ -537,7 +595,7 @@ const AirtimeBenefitSimulator = ({
             updatedContract.msisdn = "";
           }
         }
-        if (isOwnershipTransferTransaction(value)) {
+        if (isSpectraMode || isOwnershipTransferTransaction(value)) {
           updatedContract = clearDeviceSelection(updatedContract);
         }
         const remainingWithCredit = getRemainingBeforeContract(index, [
@@ -569,7 +627,9 @@ const AirtimeBenefitSimulator = ({
       }
 
       if (field === "msisdn") {
-        updatedContract.msisdn = normalizeAirtimeMsisdn(value).slice(0, 9);
+        updatedContract.msisdn = isSpectraMode
+          ? normalizeSpectraAccountNumber(value).slice(0, 64)
+          : normalizeAirtimeMsisdn(value).slice(0, 9);
         const remainingWithCredit = getRemainingBeforeContract(index, [
           ...updatedData.slice(0, index),
           updatedContract,
@@ -724,6 +784,15 @@ const AirtimeBenefitSimulator = ({
     .filter((contract) => !!contract.selectedPackage)
     .every((contract) => {
       if (!contract.subscriptionType) return false;
+      if (isSpectraMode) {
+        const los = String(contract.lineOfSightConducted || "").trim();
+        const location = String(contract.installationLocation || "").trim();
+        if (los !== "Yes" && los !== "No") return false;
+        if (!location) return false;
+      }
+      if (isSpectraMode) {
+        return isValidSpectraAccountNumber(contract.msisdn);
+      }
       const msisdn = normalizeAirtimeMsisdn(contract.msisdn);
       if (requiresTypedMsisdn(contract.subscriptionType)) {
         return isValidAirtimeMsisdn(msisdn);
@@ -754,18 +823,26 @@ const AirtimeBenefitSimulator = ({
         const selectedPkg = packages.find(
           (pkg) => pkg.PackageID === contract.selectedPackage
         );
-        const ownershipTransfer = isOwnershipTransferTransaction(
-          contract.subscriptionType
-        );
+        const skipDevice =
+          isSpectraMode ||
+          isOwnershipTransferTransaction(contract.subscriptionType);
         return {
           packageName: selectedPkg?.PackageName || "",
           packageID: contract.selectedPackage,
           packagePrice: contract.packagePrice,
-          deviceName: ownershipTransfer ? "" : contract.deviceName || "",
-          devicePrice: ownershipTransfer ? "" : contract.devicePrice || "",
+          deviceName: skipDevice ? "" : contract.deviceName || "",
+          devicePrice: skipDevice ? "" : contract.devicePrice || "",
           subscriptionType: contract.subscriptionType || "New",
-          msisdn: requiresMsisdn(contract.subscriptionType)
-            ? normalizeAirtimeMsisdn(contract.msisdn)
+          msisdn: isSpectraMode
+            ? normalizeSpectraAccountNumber(contract.msisdn)
+            : requiresMsisdn(contract.subscriptionType)
+              ? normalizeAirtimeMsisdn(contract.msisdn)
+              : "",
+          lineOfSightConducted: isSpectraMode
+            ? contract.lineOfSightConducted || ""
+            : "",
+          installationLocation: isSpectraMode
+            ? String(contract.installationLocation || "").trim()
             : "",
           topUp,
         };
@@ -826,20 +903,36 @@ const AirtimeBenefitSimulator = ({
     }
 
     const subscriptionType = contract.subscriptionType || "New";
-    const msisdn = requiresMsisdn(subscriptionType)
-      ? normalizeAirtimeMsisdn(contract.msisdn)
-      : "";
+    const msisdn = isSpectraMode
+      ? normalizeSpectraAccountNumber(contract.msisdn)
+      : requiresMsisdn(subscriptionType)
+        ? normalizeAirtimeMsisdn(contract.msisdn)
+        : "";
 
-    if (requiresTypedMsisdn(subscriptionType) && !isValidAirtimeMsisdn(msisdn)) {
+    if (isSpectraMode && !isValidSpectraAccountNumber(msisdn)) {
       Swal.fire({
         icon: "info",
-        title: "MSISDN required",
+        title: `${accountFieldLabel} required`,
+        text: getMsisdnFieldHelper(contract),
+      });
+      return;
+    }
+
+    if (
+      !isSpectraMode &&
+      requiresTypedMsisdn(subscriptionType) &&
+      !isValidAirtimeMsisdn(msisdn)
+    ) {
+      Swal.fire({
+        icon: "info",
+        title: `${accountFieldLabel} required`,
         text: OWNERSHIP_TRANSFER_IN_MSISDN_HELPER,
       });
       return;
     }
 
     if (
+      !isSpectraMode &&
       requiresListedMsisdn(subscriptionType) &&
       !getMsisdnOptionsForContract(subscriptionType).some(
         (option) => option.msisdn === msisdn
@@ -847,7 +940,7 @@ const AirtimeBenefitSimulator = ({
     ) {
       Swal.fire({
         icon: "info",
-        title: "MSISDN required",
+        title: `${accountFieldLabel} required`,
         text: getMsisdnFieldHelper(contract),
       });
       return;
@@ -869,7 +962,7 @@ const AirtimeBenefitSimulator = ({
         <p style="text-align:left;margin:0;"><strong>Package:</strong> ${selectedPkg.PackageName}</p>
         <p style="text-align:left;margin:0;"><strong>Device:</strong> ${contract.deviceName || "No device"}</p>
         <p style="text-align:left;margin:0;"><strong>Transaction type:</strong> ${subscriptionType}</p>
-        <p style="text-align:left;margin:0;"><strong>MSISDN:</strong> ${msisdn || "-"}</p>
+        <p style="text-align:left;margin:0;"><strong>${accountFieldLabel}:</strong> ${msisdn || "-"}</p>
         <p style="text-align:left;margin:0;"><strong>Package price:</strong> ${formatCurrency(calc.packageCost)}</p>
         <p style="text-align:left;margin:0;"><strong>Device price:</strong> ${formatCurrency(devicePrice)}</p>
         <p style="text-align:left;margin:0;"><strong>Contract monthly payment (PMT):</strong> ${formatCurrency(calc.deviceCost || 0)}</p>
@@ -922,7 +1015,16 @@ const AirtimeBenefitSimulator = ({
         MSISDN: msisdn || null,
         LimitCheck: calc.packageWithinLimit ? "Within Limit" : checkLimit,
         TopUpAmount: calc.topUp || 0,
+        ...(isSpectraMode
+          ? {
+              LineOfSightConducted: contract.lineOfSightConducted,
+              InstallationLocation: String(
+                contract.installationLocation || ""
+              ).trim(),
+            }
+          : {}),
         DeviceAssigned:
+          !isSpectraMode &&
           !isOwnershipTransferTransaction(subscriptionType) &&
           contract.deviceName
             ? {
@@ -1013,10 +1115,15 @@ const AirtimeBenefitSimulator = ({
       {!embedded && (
         <div className="handset-hero mb-4">
           <div>
-            <h2 className="handset-title">Airtime Benefit Simulator</h2>
+            <h2 className="handset-title">
+              {packageMode === "spectra"
+                ? "Spectra Benefit Simulator"
+                : "Airtime Benefit Simulator"}
+            </h2>
             <p className="handset-subtitle mb-0">
-              Simulate monthly payment across one or more contracts and check
-              whether your total remains within allocation limits.
+              {packageMode === "spectra"
+                ? "Simulate Spectra package monthly payments and check whether your total remains within allocation limits."
+                : "Simulate monthly payment across one or more contracts and check whether your total remains within allocation limits."}
             </p>
           </div>
         </div>
@@ -1136,7 +1243,7 @@ const AirtimeBenefitSimulator = ({
                       </strong>
                     </div>
                     <div className="current-request-item">
-                      <span>Current MSISDN</span>
+                      <span>Current {accountFieldLabel}</span>
                       <strong>
                         {editingSubmission?.msisdn ||
                           editingSubmission?.MSISDN ||
@@ -1276,7 +1383,7 @@ const AirtimeBenefitSimulator = ({
                           <MenuItem value="">
                             Select Transaction Type
                           </MenuItem>
-                          {AIRTIME_TRANSACTION_TYPES.map((option) => (
+                          {transactionTypeOptions.map((option) => (
                             <MenuItem key={option} value={option}>
                               {option}
                             </MenuItem>
@@ -1284,53 +1391,79 @@ const AirtimeBenefitSimulator = ({
                         </Select>
                       </FormControl>
                     </div>
-                    {requiresTypedMsisdn(contract.subscriptionType) && (
+                    {isSpectraMode && contract.subscriptionType ? (
                       <div className="col-md-6">
-                        <TextField
-                          label={isEditing ? "New MSISDN" : "MSISDN"}
-                          value={contract.msisdn || ""}
-                          onChange={(event) =>
-                            handleContractChange(
-                              index,
-                              "msisdn",
-                              event.target.value
-                            )
-                          }
-                          fullWidth
-                          margin="normal"
-                          placeholder="81XXXXXXX"
-                          inputProps={{ maxLength: 9, inputMode: "numeric" }}
-                          error={
-                            !!contract.msisdn &&
-                            !isValidAirtimeMsisdn(contract.msisdn)
-                          }
-                          helperText={
-                            !!contract.msisdn &&
-                            !isValidAirtimeMsisdn(contract.msisdn)
-                              ? "Enter a valid MSISDN starting with 81 (9 digits)"
-                              : getMsisdnFieldHelper(contract)
-                          }
-                        />
-                      </div>
-                    )}
-
-                    {requiresListedMsisdn(contract.subscriptionType) && (
-                      <div className="col-md-6">
-                        <FormControl fullWidth margin="normal">
-                          <InputLabel>
-                            {isEditing ? "New MSISDN" : "MSISDN"}
-                          </InputLabel>
-                          <Select
-                            value={
-                              getMsisdnOptionsForContract(
-                                contract.subscriptionType
-                              ).some(
-                                (option) => option.msisdn === contract.msisdn
-                              )
-                                ? contract.msisdn || ""
-                                : ""
+                        {requiresListedMsisdn(contract.subscriptionType) ? (
+                          <Autocomplete
+                            freeSolo
+                            options={getMsisdnOptionsForContract(
+                              contract.subscriptionType
+                            )}
+                            getOptionLabel={(option) => {
+                              if (typeof option === "string") return option;
+                              return option.packageName
+                                ? `${option.msisdn} — ${option.packageName}`
+                                : option.msisdn || "";
+                            }}
+                            isOptionEqualToValue={(option, value) => {
+                              const optionMsisdn =
+                                typeof option === "string"
+                                  ? option
+                                  : option?.msisdn;
+                              const valueMsisdn =
+                                typeof value === "string"
+                                  ? value
+                                  : value?.msisdn;
+                              return optionMsisdn === valueMsisdn;
+                            }}
+                            value={contract.msisdn || ""}
+                            onChange={(_event, newValue) => {
+                              const next =
+                                typeof newValue === "string"
+                                  ? newValue
+                                  : newValue?.msisdn || "";
+                              handleContractChange(index, "msisdn", next);
+                            }}
+                            onInputChange={(_event, newInputValue, reason) => {
+                              if (reason === "input" || reason === "clear") {
+                                handleContractChange(
+                                  index,
+                                  "msisdn",
+                                  newInputValue
+                                );
+                              }
+                            }}
+                            renderInput={(params) => (
+                              <TextField
+                                {...params}
+                                label={
+                                  isEditing
+                                    ? `New ${accountFieldLabel}`
+                                    : accountFieldLabel
+                                }
+                                margin="normal"
+                                fullWidth
+                                placeholder="Enter Spectra Account Number"
+                                inputProps={{
+                                  ...params.inputProps,
+                                  maxLength: 64,
+                                }}
+                                error={
+                                  !!contract.subscriptionType &&
+                                  !isValidSpectraAccountNumber(contract.msisdn)
+                                }
+                                helperText={getMsisdnFieldHelper(contract)}
+                              />
+                            )}
+                          />
+                        ) : (
+                          <TextField
+                            label={
+                              isEditing
+                                ? `New ${accountFieldLabel}`
+                                : accountFieldLabel
                             }
-                            label={isEditing ? "New MSISDN" : "MSISDN"}
+                            value={contract.msisdn || ""}
                             onChange={(event) =>
                               handleContractChange(
                                 index,
@@ -1338,60 +1471,196 @@ const AirtimeBenefitSimulator = ({
                                 event.target.value
                               )
                             }
+                            fullWidth
+                            margin="normal"
+                            placeholder="Enter Spectra Account Number"
+                            inputProps={{ maxLength: 64 }}
                             error={
-                              !!contract.msisdn &&
-                              !getMsisdnOptionsForContract(
-                                contract.subscriptionType
-                              ).some(
-                                (option) => option.msisdn === contract.msisdn
+                              !!contract.subscriptionType &&
+                              !isValidSpectraAccountNumber(contract.msisdn)
+                            }
+                            helperText={getMsisdnFieldHelper(contract)}
+                          />
+                        )}
+                      </div>
+                    ) : (
+                      <>
+                        {requiresTypedMsisdn(contract.subscriptionType) && (
+                          <div className="col-md-6">
+                            <TextField
+                              label={
+                                isEditing
+                                  ? `New ${accountFieldLabel}`
+                                  : accountFieldLabel
+                              }
+                              value={contract.msisdn || ""}
+                              onChange={(event) =>
+                                handleContractChange(
+                                  index,
+                                  "msisdn",
+                                  event.target.value
+                                )
+                              }
+                              fullWidth
+                              margin="normal"
+                              placeholder="81XXXXXXX"
+                              inputProps={{
+                                maxLength: 9,
+                                inputMode: "numeric",
+                              }}
+                              error={
+                                !!contract.msisdn &&
+                                !isValidAirtimeMsisdn(contract.msisdn)
+                              }
+                              helperText={
+                                !!contract.msisdn &&
+                                !isValidAirtimeMsisdn(contract.msisdn)
+                                  ? "Enter a valid MSISDN starting with 81 (9 digits)"
+                                  : getMsisdnFieldHelper(contract)
+                              }
+                            />
+                          </div>
+                        )}
+
+                        {requiresListedMsisdn(contract.subscriptionType) && (
+                          <div className="col-md-6">
+                            <FormControl fullWidth margin="normal">
+                              <InputLabel>
+                                {isEditing
+                                  ? `New ${accountFieldLabel}`
+                                  : accountFieldLabel}
+                              </InputLabel>
+                              <Select
+                                value={
+                                  getMsisdnOptionsForContract(
+                                    contract.subscriptionType
+                                  ).some(
+                                    (option) =>
+                                      option.msisdn === contract.msisdn
+                                  )
+                                    ? contract.msisdn || ""
+                                    : ""
+                                }
+                                label={
+                                  isEditing
+                                    ? `New ${accountFieldLabel}`
+                                    : accountFieldLabel
+                                }
+                                onChange={(event) =>
+                                  handleContractChange(
+                                    index,
+                                    "msisdn",
+                                    event.target.value
+                                  )
+                                }
+                                error={
+                                  !!contract.msisdn &&
+                                  !getMsisdnOptionsForContract(
+                                    contract.subscriptionType
+                                  ).some(
+                                    (option) =>
+                                      option.msisdn === contract.msisdn
+                                  )
+                                }
+                              >
+                                <MenuItem value="">
+                                  {getMsisdnOptionsForContract(
+                                    contract.subscriptionType
+                                  ).length
+                                    ? `Select ${accountFieldLabel}`
+                                    : isPackageChangeTransaction(
+                                        contract.subscriptionType
+                                      )
+                                      ? "No free-device contracts found"
+                                      : "No current contracts found"}
+                                </MenuItem>
+                                {getMsisdnOptionsForContract(
+                                  contract.subscriptionType
+                                ).map((option) => (
+                                  <MenuItem
+                                    key={option.msisdn}
+                                    value={option.msisdn}
+                                  >
+                                    {option.packageName
+                                      ? `${option.msisdn} — ${option.packageName}`
+                                      : option.msisdn}
+                                  </MenuItem>
+                                ))}
+                              </Select>
+                            </FormControl>
+                            <p
+                              className="MuiFormHelperText-root MuiFormHelperText-sizeMedium MuiFormHelperText-contained"
+                              style={{
+                                margin: "3px 14px 0",
+                                fontSize: "0.75rem",
+                                color:
+                                  !!contract.msisdn &&
+                                  !getMsisdnOptionsForContract(
+                                    contract.subscriptionType
+                                  ).some(
+                                    (option) =>
+                                      option.msisdn === contract.msisdn
+                                  )
+                                    ? "#d32f2f"
+                                    : "rgba(0, 0, 0, 0.6)",
+                              }}
+                            >
+                              {getMsisdnFieldHelper(contract)}
+                            </p>
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {isSpectraMode && (
+                      <div className="col-md-6">
+                        <FormControl fullWidth margin="normal" required>
+                          <InputLabel>
+                            Line-of-sight assessment conducted?
+                          </InputLabel>
+                          <Select
+                            value={contract.lineOfSightConducted || ""}
+                            label="Line-of-sight assessment conducted?"
+                            onChange={(event) =>
+                              handleContractChange(
+                                index,
+                                "lineOfSightConducted",
+                                event.target.value
                               )
                             }
                           >
-                            <MenuItem value="">
-                              {getMsisdnOptionsForContract(
-                                contract.subscriptionType
-                              ).length
-                                ? "Select MSISDN"
-                                : isPackageChangeTransaction(
-                                    contract.subscriptionType
-                                  )
-                                  ? "No free-device contracts found"
-                                  : "No current contracts found"}
-                            </MenuItem>
-                            {getMsisdnOptionsForContract(
-                              contract.subscriptionType
-                            ).map((option) => (
-                              <MenuItem key={option.msisdn} value={option.msisdn}>
-                                {option.packageName
-                                  ? `${option.msisdn} — ${option.packageName}`
-                                  : option.msisdn}
-                              </MenuItem>
-                            ))}
+                            <MenuItem value="">Select</MenuItem>
+                            <MenuItem value="Yes">Yes</MenuItem>
+                            <MenuItem value="No">No</MenuItem>
                           </Select>
                         </FormControl>
-                        <p
-                          className="MuiFormHelperText-root MuiFormHelperText-sizeMedium MuiFormHelperText-contained"
-                          style={{
-                            margin: "3px 14px 0",
-                            fontSize: "0.75rem",
-                            color:
-                              !!contract.msisdn &&
-                              !getMsisdnOptionsForContract(
-                                contract.subscriptionType
-                              ).some(
-                                (option) => option.msisdn === contract.msisdn
-                              )
-                                ? "#d32f2f"
-                                : "rgba(0, 0, 0, 0.6)",
-                          }}
-                        >
-                          {getMsisdnFieldHelper(contract)}
-                        </p>
+                      </div>
+                    )}
+
+                    {isSpectraMode && (
+                      <div className="col-md-6">
+                        <TextField
+                          label="Town / installation location"
+                          value={contract.installationLocation || ""}
+                          onChange={(event) =>
+                            handleContractChange(
+                              index,
+                              "installationLocation",
+                              event.target.value
+                            )
+                          }
+                          fullWidth
+                          margin="normal"
+                          required
+                          placeholder="e.g. Windhoek, Swakopmund"
+                          helperText="Town or location where the Spectra service will be installed"
+                        />
                       </div>
                     )}
                   </div>
 
-                  {!isOwnershipTransferTransaction(contract.subscriptionType) && (
+                  {!isSpectraMode &&
+                    !isOwnershipTransferTransaction(contract.subscriptionType) && (
                     <>
                       <div className="row">
                         <div className="col-md-6">

@@ -6,11 +6,26 @@ export const AIRTIME_TRANSACTION_TYPES = [
   "Ownership Transfer Out",
 ];
 
+/** Spectra Benefits: no package change / ownership transfers; Upgrade instead. */
+export const SPECTRA_TRANSACTION_TYPES = ["New", "Renewal", "Upgrade"];
+
+export const getTransactionTypesForMode = (packageMode = "airtime") =>
+  packageMode === "spectra"
+    ? SPECTRA_TRANSACTION_TYPES
+    : AIRTIME_TRANSACTION_TYPES;
+
 export const normalizeAirtimeMsisdn = (value) =>
   String(value || "").replace(/\D/g, "");
 
 export const isRenewalTransaction = (value) =>
   String(value || "").trim().toLowerCase() === "renewal";
+
+export const isUpgradeTransaction = (value) =>
+  String(value || "").trim().toLowerCase() === "upgrade";
+
+/** Upgrade uses the same allowance / MSISDN / waive rules as Renewal. */
+export const isRenewalLikeTransaction = (value) =>
+  isRenewalTransaction(value) || isUpgradeTransaction(value);
 
 export const isPackageChangeTransaction = (value) =>
   String(value || "").trim().toLowerCase() === "package change";
@@ -30,7 +45,7 @@ export const isOwnershipTransferTransaction = (value) =>
  * Ownership Transfer In is excluded — that number is typed in.
  */
 export const requiresListedMsisdn = (value) =>
-  isRenewalTransaction(value) ||
+  isRenewalLikeTransaction(value) ||
   isPackageChangeTransaction(value) ||
   isOwnershipTransferOutTransaction(value);
 

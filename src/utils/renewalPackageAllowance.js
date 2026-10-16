@@ -1,5 +1,5 @@
 import {
-  isRenewalTransaction,
+  isRenewalLikeTransaction,
   isPackageChangeTransaction,
   isOwnershipTransferOutTransaction,
   requiresListedMsisdn,
@@ -7,6 +7,10 @@ import {
   isValidAirtimeMsisdn,
   isZeroOrNullDevicePrice,
 } from "./airtimeMsisdn";
+import {
+  isValidSpectraAccountNumber,
+  normalizeSpectraAccountNumber,
+} from "./spectraPackages";
 
 export const normalizePackageName = (value) =>
   String(value || "")
@@ -24,17 +28,28 @@ const getContractDevicePrice = (contract) =>
 /**
  * Build MSISDN → active CDR contract map for renewal / package-change flows.
  * Prefers active status when duplicates exist.
+ * Spectra mode: free-form account numbers (not 81 MSISDN format).
  */
-export const buildRenewalContractMap = (contracts = []) => {
+export const buildRenewalContractMap = (
+  contracts = [],
+  { packageMode = "airtime" } = {}
+) => {
+  const isSpectraMode = packageMode === "spectra";
   const map = new Map();
 
   (contracts || [])
     .filter((contract) => !contract?.isSubmission)
     .forEach((contract) => {
-      const msisdn = normalizeAirtimeMsisdn(
-        contract.msisdn || contract.MSISDN || contract.staff_msisdn
-      );
-      if (!isValidAirtimeMsisdn(msisdn)) return;
+      const raw =
+        contract.msisdn || contract.MSISDN || contract.staff_msisdn || "";
+      const msisdn = isSpectraMode
+        ? normalizeSpectraAccountNumber(raw)
+        : normalizeAirtimeMsisdn(raw);
+      if (isSpectraMode) {
+        if (!isValidSpectraAccountNumber(msisdn)) return;
+      } else if (!isValidAirtimeMsisdn(msisdn)) {
+        return;
+      }
 
       const status = String(
         contract.subscription_status || contract.SubscriptionStatus || ""
@@ -79,7 +94,13 @@ export const buildRenewalContractMap = (contracts = []) => {
 
 export const getRenewalContractForMsisdn = (renewalMap, msisdn) => {
   if (!renewalMap) return null;
-  return renewalMap.get(normalizeAirtimeMsisdn(msisdn)) || null;
+  const trimKey = normalizeSpectraAccountNumber(msisdn);
+  const digitKey = normalizeAirtimeMsisdn(msisdn);
+  return (
+    renewalMap.get(trimKey) ||
+    (digitKey ? renewalMap.get(digitKey) : null) ||
+    null
+  );
 };
 
 export const doesSelectedPackageMatchRenewalContract = (
@@ -95,7 +116,8 @@ export const doesSelectedPackageMatchRenewalContract = (
 /**
  * MSISDN options for the selected transaction type.
  * - Package Change: only MSISDNs whose assigned device is 0.00 or null
- * - Renewal: MSISDNs with a billed device (price > 0)
+ * - Renewal / Upgrade: MSISDNs with a billed device (price > 0);
+ *   if none, fall back to all (package-only lines e.g. Spectra)
  * - Ownership Transfer Out: all listed MSISDNs
  * - Ownership Transfer In: none (typed manually)
  * - Other: none
@@ -110,8 +132,10 @@ export const getMsisdnOptionsForTransactionType = (
     return entries.filter((entry) => entry.isFreeDevice);
   }
 
-  if (isRenewalTransaction(subscriptionType)) {
-    return entries.filter((entry) => !entry.isFreeDevice);
+  if (isRenewalLikeTransaction(subscriptionType)) {
+    const billed = entries.filter((entry) => !entry.isFreeDevice);
+    // Package-only lines (e.g. Spectra) have no device — still list those MSISDNs.
+    return billed.length ? billed : entries;
   }
 
   if (isOwnershipTransferOutTransaction(subscriptionType)) {

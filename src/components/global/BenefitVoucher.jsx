@@ -18,9 +18,11 @@ import "../../assets/style/global/voucher.css";
 import UploadVoucher from "../../pages/admin/upload/UploadVoucher";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import {
+  getTransactionTypesForMode,
   isOwnershipTransferInTransaction,
   isOwnershipTransferTransaction,
   isRenewalTransaction,
+  isUpgradeTransaction,
   requiresMsisdn,
   isValidAirtimeMsisdn,
   normalizeAirtimeMsisdn,
@@ -33,11 +35,18 @@ import {
 } from "../../utils/renewalPackageAllowance";
 import { calculatePmt } from "../../utils/calculatePmt";
 import { fireSwal } from "../../utils/swalHelpers";
+import {
+  filterPackagesByMode,
+  isValidSpectraAccountNumber,
+  normalizeSpectraAccountNumber,
+  SPECTRA_ACCOUNT_NUMBER_LABEL,
+} from "../../utils/spectraPackages";
 
 const BenefitVoucher = ({
   open,
   handleClose,
   role,
+  packageMode = "airtime",
   prefillData = null,
   simulationMeta = null,
 }) => {
@@ -74,8 +83,11 @@ const BenefitVoucher = ({
   const isSimulationLocked =
     Array.isArray(prefillData) && prefillData.length > 0;
   const prefilledMsisdn =
-    (prefillData || []).find((item) => normalizeAirtimeMsisdn(item?.msisdn))
-      ?.msisdn || "";
+    (prefillData || []).find((item) =>
+      packageMode === "spectra"
+        ? isValidSpectraAccountNumber(item?.msisdn)
+        : normalizeAirtimeMsisdn(item?.msisdn)
+    )?.msisdn || "";
 
   useEffect(() => {
     const handle = async () => {
@@ -146,7 +158,7 @@ const BenefitVoucher = ({
           throw new Error("Failed to fetch dropdown values");
         }
 
-        const data = response.data;
+        const data = filterPackagesByMode(response.data || [], packageMode);
 
         // Add "Select Package" option if it's not in the data
         const dropdownOptions = data.some(
@@ -163,7 +175,7 @@ const BenefitVoucher = ({
     };
 
     fetchDropdownValuesFromDatabase();
-  }, []);
+  }, [packageMode]);
 
   // Download function for the contract
   const handleDownloadPDF = async () => {
@@ -236,6 +248,8 @@ const BenefitVoucher = ({
       column5: "",
       column6: prefill.subscriptionType || "New",
       packageID: prefill.packageID ?? selectedOption?.PackageID ?? null,
+      lineOfSightConducted: prefill.lineOfSightConducted || "",
+      installationLocation: prefill.installationLocation || "",
     };
   };
 
@@ -280,7 +294,10 @@ const BenefitVoucher = ({
         },
         {
           id: 11,
-          dropdown: "Service Account/ MSISDN",
+          dropdown:
+            packageMode === "spectra"
+              ? SPECTRA_ACCOUNT_NUMBER_LABEL
+              : "Service Account/ MSISDN",
           column2: prefilledMsisdn
             ? prefilledMsisdn
             : userData.staffWithAirtimeAllocation[0].ServicePlan === "PostPaid"
@@ -586,15 +603,19 @@ const BenefitVoucher = ({
       (row) => row.id === packageRow.id + 5
     );
     const prefill = prefillData?.[packageRow.id - 1];
-    return normalizeAirtimeMsisdn(
+    const raw =
       prefill?.msisdn ||
-        packageRow.column4 ||
-        equipmentRow?.column4 ||
-        msisdnRef.current[packageRow.id + 5]?.value
-    );
+      packageRow.column4 ||
+      equipmentRow?.column4 ||
+      msisdnRef.current[packageRow.id + 5]?.value;
+    return packageMode === "spectra"
+      ? normalizeSpectraAccountNumber(raw)
+      : normalizeAirtimeMsisdn(raw);
   };
 
-  const renewalContractMap = buildRenewalContractMap(renewalContracts);
+  const renewalContractMap = buildRenewalContractMap(renewalContracts, {
+    packageMode,
+  });
 
   const getPackageRowSelectedName = (packageRow) => {
     if (
@@ -856,28 +877,43 @@ const BenefitVoucher = ({
           }
           const monthlyPrice = parseFloat(packageRow.column2);
           const prefill = prefillData?.[packageRow.id - 1];
-          const packageMsisdn = normalizeAirtimeMsisdn(
+          const packageMsisdnRaw =
             prefill?.msisdn ||
-              packageRow.column4 ||
-              msisdnRef.current[packageRow.id + 5]?.value
-          );
+            packageRow.column4 ||
+            msisdnRef.current[packageRow.id + 5]?.value;
+          const packageMsisdn =
+            packageMode === "spectra"
+              ? normalizeSpectraAccountNumber(packageMsisdnRaw)
+              : normalizeAirtimeMsisdn(packageMsisdnRaw);
 
-          if (
-            requiresMsisdn(packageRow.column6) &&
-            !isValidAirtimeMsisdn(packageMsisdn)
-          ) {
+          const accountLabel =
+            packageMode === "spectra"
+              ? SPECTRA_ACCOUNT_NUMBER_LABEL
+              : "MSISDN";
+          const needsAccountNumber =
+            packageMode === "spectra" || requiresMsisdn(packageRow.column6);
+          const accountInvalid =
+            packageMode === "spectra"
+              ? !isValidSpectraAccountNumber(packageMsisdn)
+              : !isValidAirtimeMsisdn(packageMsisdn);
+          if (needsAccountNumber && accountInvalid) {
             const typeLabel = isRenewalTransaction(packageRow.column6)
               ? "Renewal"
+              : isUpgradeTransaction(packageRow.column6)
+                ? "Upgrade"
               : isOwnershipTransferInTransaction(packageRow.column6)
                 ? "Ownership Transfer In"
                 : isOwnershipTransferTransaction(packageRow.column6)
                   ? "Ownership Transfer Out"
-                  : "Package Change";
-            const actionHint = isOwnershipTransferInTransaction(
-              packageRow.column6
-            )
-              ? "entering a valid MSISDN"
-              : "selecting an MSISDN from your current contracts";
+                  : packageMode === "spectra"
+                    ? packageRow.column6 || "Spectra"
+                    : "Package Change";
+            const actionHint =
+              packageMode === "spectra"
+                ? `entering a valid ${accountLabel}`
+                : isOwnershipTransferInTransaction(packageRow.column6)
+                  ? `entering a valid ${accountLabel}`
+                  : `selecting a ${accountLabel} from your current contracts`;
             throw new Error(
               `${typeLabel} requires ${actionHint} ${
                 packageRow.dropdown && packageRow.dropdown !== "Select Package"
@@ -901,6 +937,31 @@ const BenefitVoucher = ({
             },
             rows
           );
+          if (packageMode === "spectra") {
+            const los = String(packageRow.lineOfSightConducted || "").trim();
+            const location = String(
+              packageRow.installationLocation || ""
+            ).trim();
+            if (los !== "Yes" && los !== "No") {
+              throw new Error(
+                `Please indicate whether a line-of-sight assessment has been conducted ${
+                  packageRow.dropdown && packageRow.dropdown !== "Select Package"
+                    ? `for Package: ${packageRow.dropdown}`
+                    : `in row ${packageRow.id}`
+                }.`
+              );
+            }
+            if (!location) {
+              throw new Error(
+                `Please provide the town/location for Spectra installation ${
+                  packageRow.dropdown && packageRow.dropdown !== "Select Package"
+                    ? `for Package: ${packageRow.dropdown}`
+                    : `in row ${packageRow.id}`
+                }.`
+              );
+            }
+          }
+
           selectedPackagesDetails.push({
             id: packageRow.id,
             PackageID: packageID,
@@ -914,6 +975,14 @@ const BenefitVoucher = ({
             AdjustedMonthlyPrice: isRenewalPackageWaived ? 0 : monthlyPrice,
             RenewalPackageCredit: packageCredit,
             MSISDN: packageMsisdn || null,
+            LineOfSightConducted:
+              packageMode === "spectra"
+                ? packageRow.lineOfSightConducted
+                : undefined,
+            InstallationLocation:
+              packageMode === "spectra"
+                ? String(packageRow.installationLocation || "").trim()
+                : undefined,
           });
         }
       }
@@ -925,9 +994,10 @@ const BenefitVoucher = ({
       }
 
       // --- 4. Validate and Aggregate Device Details (Rows 6-8) ---
+      // Spectra Benefits has no device selection.
       const selectedDevicesDetails = [];
 
-      for (let i = 0; i < 3; i++) {
+      for (let i = 0; i < 3 && packageMode !== "spectra"; i++) {
         const deviceIdx = 6 + i;
         const linkedPackage = selectedPackagesDetails.find(
           (pkg) => pkg.id + 5 === deviceIdx
@@ -1029,14 +1099,24 @@ const BenefitVoucher = ({
 
       let msisdn = "";
       if (prefilledMsisdn) {
-        msisdn = normalizeAirtimeMsisdn(prefilledMsisdn);
+        msisdn =
+          packageMode === "spectra"
+            ? normalizeSpectraAccountNumber(prefilledMsisdn)
+            : normalizeAirtimeMsisdn(prefilledMsisdn);
       } else if (role === 1) {
-        msisdn = normalizeAirtimeMsisdn(
+        const adminAccountRaw =
           rows.find((row) => row.id === 11)?.column2 ||
-            rows.find((row) => row.id === 11)?.column3
-        );
+          rows.find((row) => row.id === 11)?.column3;
+        msisdn =
+          packageMode === "spectra"
+            ? normalizeSpectraAccountNumber(adminAccountRaw)
+            : normalizeAirtimeMsisdn(adminAccountRaw);
         if (!msisdn) {
-          throw new Error("MSISDN is missing. Admin must fill this field.");
+          throw new Error(
+            packageMode === "spectra"
+              ? `${SPECTRA_ACCOUNT_NUMBER_LABEL} is missing. Admin must fill this field.`
+              : "MSISDN is missing. Admin must fill this field."
+          );
         }
       } else {
         msisdn =
@@ -1129,6 +1209,12 @@ const BenefitVoucher = ({
           DeviceAssigned: pkg.DeviceAssigned,
           DisplayName: pkg.DisplayName,
           MSISDN: pkg.MSISDN || msisdn || null,
+          ...(packageMode === "spectra"
+            ? {
+                LineOfSightConducted: pkg.LineOfSightConducted,
+                InstallationLocation: pkg.InstallationLocation,
+              }
+            : {}),
         })),
       };
 
@@ -1421,7 +1507,8 @@ const BenefitVoucher = ({
     },
     {
       field: "column4",
-      headerName: "MSISDN",
+      headerName:
+        packageMode === "spectra" ? SPECTRA_ACCOUNT_NUMBER_LABEL : "MSISDN",
       width: 150,
       editable: role === 1,
       renderCell: (params) => {
@@ -1435,7 +1522,13 @@ const BenefitVoucher = ({
                 handleInputChange(event, params.row.id, "column4")
               }
               ref={(el) => (msisdnRef.current[params.row.id] = el)}
-              placeholder={isSimulationLocked ? "" : "Enter Device MSISDN"}
+              placeholder={
+                isSimulationLocked
+                  ? ""
+                  : packageMode === "spectra"
+                    ? `Enter ${SPECTRA_ACCOUNT_NUMBER_LABEL}`
+                    : "Enter Device MSISDN"
+              }
               readOnly={isSimulationLocked}
               disabled={isSimulationLocked}
             />
@@ -1513,13 +1606,7 @@ const BenefitVoucher = ({
               }
             >
               <option value="">Select Transaction Type</option>
-              {[
-                "New",
-                "Renewal",
-                "Package Change",
-                "Ownership Transfer In",
-                "Ownership Transfer Out",
-              ].map((option) => (
+              {getTransactionTypesForMode(packageMode).map((option) => (
                 <option key={option} value={option}>
                   {option}
                 </option>
