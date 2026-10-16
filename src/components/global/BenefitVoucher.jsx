@@ -890,8 +890,8 @@ const BenefitVoucher = ({
             packageMode === "spectra"
               ? SPECTRA_ACCOUNT_NUMBER_LABEL
               : "MSISDN";
-          const needsAccountNumber =
-            packageMode === "spectra" || requiresMsisdn(packageRow.column6);
+          // Spectra New: account optional. Renewal/Upgrade (and airtime listed/typed): required.
+          const needsAccountNumber = requiresMsisdn(packageRow.column6);
           const accountInvalid =
             packageMode === "spectra"
               ? !isValidSpectraAccountNumber(packageMsisdn)

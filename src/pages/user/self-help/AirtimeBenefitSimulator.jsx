@@ -576,10 +576,14 @@ const AirtimeBenefitSimulator = ({
 
       if (field === "subscriptionType") {
         if (isSpectraMode) {
-          // Spectra: free-form account — keep any non-empty entry across types.
-          updatedContract.msisdn = normalizeSpectraAccountNumber(
-            updatedContract.msisdn
-          );
+          // Spectra New has no account field — clear. Renewal/Upgrade keep typed value.
+          if (!requiresListedMsisdn(value)) {
+            updatedContract.msisdn = "";
+          } else {
+            updatedContract.msisdn = normalizeSpectraAccountNumber(
+              updatedContract.msisdn
+            );
+          }
         } else if (requiresTypedMsisdn(value)) {
           // Ownership Transfer In: typed MSISDN — clear any listed selection.
           updatedContract.msisdn = "";
@@ -791,6 +795,8 @@ const AirtimeBenefitSimulator = ({
         if (!location) return false;
       }
       if (isSpectraMode) {
+        // New: account optional. Renewal/Upgrade: required.
+        if (!requiresListedMsisdn(contract.subscriptionType)) return true;
         return isValidSpectraAccountNumber(contract.msisdn);
       }
       const msisdn = normalizeAirtimeMsisdn(contract.msisdn);
@@ -909,7 +915,11 @@ const AirtimeBenefitSimulator = ({
         ? normalizeAirtimeMsisdn(contract.msisdn)
         : "";
 
-    if (isSpectraMode && !isValidSpectraAccountNumber(msisdn)) {
+    if (
+      isSpectraMode &&
+      requiresListedMsisdn(subscriptionType) &&
+      !isValidSpectraAccountNumber(msisdn)
+    ) {
       Swal.fire({
         icon: "info",
         title: `${accountFieldLabel} required`,
@@ -1391,97 +1401,72 @@ const AirtimeBenefitSimulator = ({
                         </Select>
                       </FormControl>
                     </div>
-                    {isSpectraMode && contract.subscriptionType ? (
+                    {isSpectraMode &&
+                    requiresListedMsisdn(contract.subscriptionType) ? (
                       <div className="col-md-6">
-                        {requiresListedMsisdn(contract.subscriptionType) ? (
-                          <Autocomplete
-                            freeSolo
-                            options={getMsisdnOptionsForContract(
-                              contract.subscriptionType
-                            )}
-                            getOptionLabel={(option) => {
-                              if (typeof option === "string") return option;
-                              return option.packageName
-                                ? `${option.msisdn} — ${option.packageName}`
-                                : option.msisdn || "";
-                            }}
-                            isOptionEqualToValue={(option, value) => {
-                              const optionMsisdn =
-                                typeof option === "string"
-                                  ? option
-                                  : option?.msisdn;
-                              const valueMsisdn =
-                                typeof value === "string"
-                                  ? value
-                                  : value?.msisdn;
-                              return optionMsisdn === valueMsisdn;
-                            }}
-                            value={contract.msisdn || ""}
-                            onChange={(_event, newValue) => {
-                              const next =
-                                typeof newValue === "string"
-                                  ? newValue
-                                  : newValue?.msisdn || "";
-                              handleContractChange(index, "msisdn", next);
-                            }}
-                            onInputChange={(_event, newInputValue, reason) => {
-                              if (reason === "input" || reason === "clear") {
-                                handleContractChange(
-                                  index,
-                                  "msisdn",
-                                  newInputValue
-                                );
-                              }
-                            }}
-                            renderInput={(params) => (
-                              <TextField
-                                {...params}
-                                label={
-                                  isEditing
-                                    ? `New ${accountFieldLabel}`
-                                    : accountFieldLabel
-                                }
-                                margin="normal"
-                                fullWidth
-                                placeholder="Enter Spectra Account Number"
-                                inputProps={{
-                                  ...params.inputProps,
-                                  maxLength: 64,
-                                }}
-                                error={
-                                  !!contract.subscriptionType &&
-                                  !isValidSpectraAccountNumber(contract.msisdn)
-                                }
-                                helperText={getMsisdnFieldHelper(contract)}
-                              />
-                            )}
-                          />
-                        ) : (
-                          <TextField
-                            label={
-                              isEditing
-                                ? `New ${accountFieldLabel}`
-                                : accountFieldLabel
-                            }
-                            value={contract.msisdn || ""}
-                            onChange={(event) =>
+                        <Autocomplete
+                          freeSolo
+                          options={getMsisdnOptionsForContract(
+                            contract.subscriptionType
+                          )}
+                          getOptionLabel={(option) => {
+                            if (typeof option === "string") return option;
+                            return option.packageName
+                              ? `${option.msisdn} — ${option.packageName}`
+                              : option.msisdn || "";
+                          }}
+                          isOptionEqualToValue={(option, value) => {
+                            const optionMsisdn =
+                              typeof option === "string"
+                                ? option
+                                : option?.msisdn;
+                            const valueMsisdn =
+                              typeof value === "string"
+                                ? value
+                                : value?.msisdn;
+                            return optionMsisdn === valueMsisdn;
+                          }}
+                          value={contract.msisdn || ""}
+                          onChange={(_event, newValue) => {
+                            const next =
+                              typeof newValue === "string"
+                                ? newValue
+                                : newValue?.msisdn || "";
+                            handleContractChange(index, "msisdn", next);
+                          }}
+                          onInputChange={(_event, newInputValue, reason) => {
+                            if (reason === "input" || reason === "clear") {
                               handleContractChange(
                                 index,
                                 "msisdn",
-                                event.target.value
-                              )
+                                newInputValue
+                              );
                             }
-                            fullWidth
-                            margin="normal"
-                            placeholder="Enter Spectra Account Number"
-                            inputProps={{ maxLength: 64 }}
-                            error={
-                              !!contract.subscriptionType &&
-                              !isValidSpectraAccountNumber(contract.msisdn)
-                            }
-                            helperText={getMsisdnFieldHelper(contract)}
-                          />
-                        )}
+                          }}
+                          renderInput={(params) => (
+                            <TextField
+                              {...params}
+                              label={
+                                isEditing
+                                  ? `New ${accountFieldLabel}`
+                                  : accountFieldLabel
+                              }
+                              margin="normal"
+                              fullWidth
+                              required
+                              placeholder="Enter Spectra Account Number"
+                              inputProps={{
+                                ...params.inputProps,
+                                maxLength: 64,
+                              }}
+                              error={
+                                !!contract.subscriptionType &&
+                                !isValidSpectraAccountNumber(contract.msisdn)
+                              }
+                              helperText={getMsisdnFieldHelper(contract)}
+                            />
+                          )}
+                        />
                       </div>
                     ) : (
                       <>
