@@ -909,11 +909,10 @@ const BenefitVoucher = ({
                     ? packageRow.column6 || "Spectra"
                     : "Package Change";
             const actionHint =
-              packageMode === "spectra"
+              packageMode === "spectra" ||
+              isOwnershipTransferInTransaction(packageRow.column6)
                 ? `entering a valid ${accountLabel}`
-                : isOwnershipTransferInTransaction(packageRow.column6)
-                  ? `entering a valid ${accountLabel}`
-                  : `selecting a ${accountLabel} from your current contracts`;
+                : `selecting or entering a valid ${accountLabel}`;
             throw new Error(
               `${typeLabel} requires ${actionHint} ${
                 packageRow.dropdown && packageRow.dropdown !== "Select Package"

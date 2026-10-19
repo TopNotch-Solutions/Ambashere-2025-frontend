@@ -25,6 +25,12 @@ const getContractDevicePrice = (contract) =>
   contract?.device_price ??
   null;
 
+const getContractPayoutBalance = (contract) =>
+  contract?.device_payout_balance ??
+  contract?.PayoutBalance ??
+  contract?.DevicePayoutBalance ??
+  null;
+
 /**
  * Build MSISDN → active CDR contract map for renewal / package-change flows.
  * Prefers active status when duplicates exist.
@@ -72,13 +78,20 @@ export const buildRenewalContractMap = (
             contract.package_price
         ) || 0;
       const deviceInitialCost = getContractDevicePrice(contract);
+      const devicePayoutBalance = getContractPayoutBalance(contract);
+      const isZeroPayout = isZeroOrNullDevicePrice(devicePayoutBalance);
+      const isFreeDevice = isZeroOrNullDevicePrice(deviceInitialCost);
 
       const entry = {
         msisdn,
         packageName,
         packageMonthly,
         deviceInitialCost,
-        isFreeDevice: isZeroOrNullDevicePrice(deviceInitialCost),
+        devicePayoutBalance,
+        isZeroPayout,
+        isFreeDevice,
+        // Package Change: only lines with no outstanding payout (and free/zero device).
+        isPackageChangeEligible: isZeroPayout && isFreeDevice,
         status,
         contract,
       };
@@ -115,8 +128,8 @@ export const doesSelectedPackageMatchRenewalContract = (
 
 /**
  * MSISDN options for the selected transaction type.
- * - Package Change: only MSISDNs whose assigned device is 0.00 or null
- * - Renewal / Upgrade: MSISDNs with a billed device (price > 0);
+ * - Package Change: only MSISDNs with payout amount 0.00/null and free device
+ * - Renewal / Upgrade: MSISDNs with outstanding payout (> 0) or billed device;
  *   if none, fall back to all (package-only lines e.g. Spectra)
  * - Ownership Transfer Out: all listed MSISDNs
  * - Ownership Transfer In: none (typed manually)
@@ -129,10 +142,12 @@ export const getMsisdnOptionsForTransactionType = (
   const entries = Array.from(renewalMap?.values?.() || []);
 
   if (isPackageChangeTransaction(subscriptionType)) {
-    return entries.filter((entry) => entry.isFreeDevice);
+    return entries.filter((entry) => entry.isPackageChangeEligible);
   }
 
   if (isRenewalLikeTransaction(subscriptionType)) {
+    const withPayout = entries.filter((entry) => !entry.isZeroPayout);
+    if (withPayout.length) return withPayout;
     const billed = entries.filter((entry) => !entry.isFreeDevice);
     // Package-only lines (e.g. Spectra) have no device — still list those MSISDNs.
     return billed.length ? billed : entries;
@@ -143,6 +158,28 @@ export const getMsisdnOptionsForTransactionType = (
   }
 
   return [];
+};
+
+/** True when a typed/selected MSISDN is allowed for the transaction type. */
+export const isMsisdnAllowedForTransactionType = (
+  renewalMap,
+  subscriptionType,
+  msisdn
+) => {
+  if (!requiresListedMsisdn(subscriptionType)) return true;
+  const normalized = normalizeAirtimeMsisdn(msisdn);
+  if (!isValidAirtimeMsisdn(normalized)) return false;
+
+  const entry = getRenewalContractForMsisdn(renewalMap, normalized);
+
+  if (isPackageChangeTransaction(subscriptionType)) {
+    // Known contract with payout > 0 (or billed device) cannot be used.
+    if (entry && !entry.isPackageChangeEligible) return false;
+    return true;
+  }
+
+  // Renewal / Ownership Out: valid format is enough; credit rules use map match.
+  return true;
 };
 
 /**

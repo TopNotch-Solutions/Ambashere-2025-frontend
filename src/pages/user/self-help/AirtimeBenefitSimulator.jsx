@@ -37,6 +37,7 @@ import {
   getMsisdnOptionsForTransactionType,
   getRenewalPackageCredit,
   isRenewalSamePackageWaived,
+  isMsisdnAllowedForTransactionType,
 } from "../../../utils/renewalPackageAllowance";
 import { calculatePmt } from "../../../utils/calculatePmt";
 import { fireSwal } from "../../../utils/swalHelpers";
@@ -211,7 +212,10 @@ const AirtimeBenefitSimulator = ({
         packageName: entry.packageName,
         packageMonthly: entry.packageMonthly,
         deviceInitialCost: entry.deviceInitialCost,
+        devicePayoutBalance: entry.devicePayoutBalance,
         isFreeDevice: entry.isFreeDevice,
+        isZeroPayout: entry.isZeroPayout,
+        isPackageChangeEligible: entry.isPackageChangeEligible,
         status: entry.status,
       })
     );
@@ -295,11 +299,13 @@ const AirtimeBenefitSimulator = ({
     );
     if (!listedOnType) {
       if (isPackageChangeTransaction(contract.subscriptionType)) {
-        return "Select an MSISDN with a free device (N$ 0.00 or not set) to apply package-change rules";
+        return isSpectraMode
+          ? `Select or type a ${SPECTRA_ACCOUNT_NUMBER_LABEL} with no outstanding payout`
+          : "This MSISDN has an outstanding payout (above N$ 0.00) or is not eligible for Package Change. Choose a line with payout amount N$ 0.00.";
       }
       return isSpectraMode
         ? `Select or type a ${SPECTRA_ACCOUNT_NUMBER_LABEL} — matching an existing account applies renewal/upgrade credit rules`
-        : "Select an MSISDN from active contracts to apply renewal/upgrade package rules";
+        : "Select or type an MSISDN — matching an existing contract applies renewal/upgrade credit rules";
     }
     if (isPackageWaivedForRenewal(contract)) {
       return "Same package — already running, not deducted from allowance";
@@ -590,13 +596,12 @@ const AirtimeBenefitSimulator = ({
         } else if (!requiresListedMsisdn(value)) {
           updatedContract.msisdn = "";
         } else {
-          const allowed = getMsisdnOptionsForTransactionType(
-            renewalContractMap,
-            value
-          );
+          // Listed types: keep a valid typed MSISDN (select or type).
           const current = normalizeAirtimeMsisdn(updatedContract.msisdn);
-          if (!allowed.some((option) => option.msisdn === current)) {
+          if (current && !isValidAirtimeMsisdn(current)) {
             updatedContract.msisdn = "";
+          } else {
+            updatedContract.msisdn = current;
           }
         }
         if (isSpectraMode || isOwnershipTransferTransaction(value)) {
@@ -804,8 +809,10 @@ const AirtimeBenefitSimulator = ({
         return isValidAirtimeMsisdn(msisdn);
       }
       if (requiresListedMsisdn(contract.subscriptionType)) {
-        return getMsisdnOptionsForContract(contract.subscriptionType).some(
-          (option) => option.msisdn === msisdn
+        return isMsisdnAllowedForTransactionType(
+          renewalContractMap,
+          contract.subscriptionType,
+          msisdn
         );
       }
       return true;
@@ -944,13 +951,15 @@ const AirtimeBenefitSimulator = ({
     if (
       !isSpectraMode &&
       requiresListedMsisdn(subscriptionType) &&
-      !getMsisdnOptionsForContract(subscriptionType).some(
-        (option) => option.msisdn === msisdn
+      !isMsisdnAllowedForTransactionType(
+        renewalContractMap,
+        subscriptionType,
+        msisdn
       )
     ) {
       Swal.fire({
         icon: "info",
-        title: `${accountFieldLabel} required`,
+        title: `${accountFieldLabel} not allowed`,
         text: getMsisdnFieldHelper(contract),
       });
       return;
@@ -1509,89 +1518,89 @@ const AirtimeBenefitSimulator = ({
 
                         {requiresListedMsisdn(contract.subscriptionType) && (
                           <div className="col-md-6">
-                            <FormControl fullWidth margin="normal">
-                              <InputLabel>
-                                {isEditing
-                                  ? `New ${accountFieldLabel}`
-                                  : accountFieldLabel}
-                              </InputLabel>
-                              <Select
-                                value={
-                                  getMsisdnOptionsForContract(
-                                    contract.subscriptionType
-                                  ).some(
-                                    (option) =>
-                                      option.msisdn === contract.msisdn
-                                  )
-                                    ? contract.msisdn || ""
-                                    : ""
-                                }
-                                label={
-                                  isEditing
-                                    ? `New ${accountFieldLabel}`
-                                    : accountFieldLabel
-                                }
-                                onChange={(event) =>
+                            <Autocomplete
+                              freeSolo
+                              options={getMsisdnOptionsForContract(
+                                contract.subscriptionType
+                              )}
+                              getOptionLabel={(option) => {
+                                if (typeof option === "string") return option;
+                                return option.packageName
+                                  ? `${option.msisdn} — ${option.packageName}`
+                                  : option.msisdn || "";
+                              }}
+                              isOptionEqualToValue={(option, value) => {
+                                const optionMsisdn =
+                                  typeof option === "string"
+                                    ? option
+                                    : option?.msisdn;
+                                const valueMsisdn =
+                                  typeof value === "string"
+                                    ? value
+                                    : value?.msisdn;
+                                return optionMsisdn === valueMsisdn;
+                              }}
+                              value={contract.msisdn || ""}
+                              onChange={(_event, newValue) => {
+                                const next =
+                                  typeof newValue === "string"
+                                    ? newValue
+                                    : newValue?.msisdn || "";
+                                handleContractChange(index, "msisdn", next);
+                              }}
+                              onInputChange={(_event, newInputValue, reason) => {
+                                if (reason === "input" || reason === "clear") {
                                   handleContractChange(
                                     index,
                                     "msisdn",
-                                    event.target.value
-                                  )
+                                    newInputValue
+                                  );
                                 }
-                                error={
-                                  !!contract.msisdn &&
-                                  !getMsisdnOptionsForContract(
-                                    contract.subscriptionType
-                                  ).some(
-                                    (option) =>
-                                      option.msisdn === contract.msisdn
-                                  )
-                                }
-                              >
-                                <MenuItem value="">
-                                  {getMsisdnOptionsForContract(
-                                    contract.subscriptionType
-                                  ).length
-                                    ? `Select ${accountFieldLabel}`
-                                    : isPackageChangeTransaction(
-                                        contract.subscriptionType
-                                      )
-                                      ? "No free-device contracts found"
-                                      : "No current contracts found"}
-                                </MenuItem>
-                                {getMsisdnOptionsForContract(
-                                  contract.subscriptionType
-                                ).map((option) => (
-                                  <MenuItem
-                                    key={option.msisdn}
-                                    value={option.msisdn}
-                                  >
-                                    {option.packageName
-                                      ? `${option.msisdn} — ${option.packageName}`
-                                      : option.msisdn}
-                                  </MenuItem>
-                                ))}
-                              </Select>
-                            </FormControl>
-                            <p
-                              className="MuiFormHelperText-root MuiFormHelperText-sizeMedium MuiFormHelperText-contained"
-                              style={{
-                                margin: "3px 14px 0",
-                                fontSize: "0.75rem",
-                                color:
-                                  !!contract.msisdn &&
-                                  !getMsisdnOptionsForContract(
-                                    contract.subscriptionType
-                                  ).some(
-                                    (option) =>
-                                      option.msisdn === contract.msisdn
-                                  )
-                                    ? "#d32f2f"
-                                    : "rgba(0, 0, 0, 0.6)",
                               }}
-                            >
-                              {getMsisdnFieldHelper(contract)}
-                            </p>
+                              noOptionsText={
+                                isPackageChangeTransaction(
+                                  contract.subscriptionType
+                                )
+                                  ? "No contracts with payout N$ 0.00 found"
+                                  : "No current contracts found — you can still type an MSISDN"
+                              }
+                              renderInput={(params) => {
+                                const msisdnInvalid =
+                                  !!contract.msisdn &&
+                                  !isMsisdnAllowedForTransactionType(
+                                    renewalContractMap,
+                                    contract.subscriptionType,
+                                    contract.msisdn
+                                  );
+                                return (
+                                  <TextField
+                                    {...params}
+                                    label={
+                                      isEditing
+                                        ? `New ${accountFieldLabel}`
+                                        : accountFieldLabel
+                                    }
+                                    margin="normal"
+                                    fullWidth
+                                    required
+                                    placeholder="81XXXXXXX"
+                                    inputProps={{
+                                      ...params.inputProps,
+                                      maxLength: 9,
+                                      inputMode: "numeric",
+                                    }}
+                                    error={msisdnInvalid}
+                                    helperText={
+                                      msisdnInvalid
+                                        ? !isValidAirtimeMsisdn(contract.msisdn)
+                                          ? "Enter a valid MSISDN starting with 81 (9 digits)"
+                                          : getMsisdnFieldHelper(contract)
+                                        : getMsisdnFieldHelper(contract)
+                                    }
+                                  />
+                                );
+                              }}
+                            />
                           </div>
                         )}
                       </>

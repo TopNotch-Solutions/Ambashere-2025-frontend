@@ -71,10 +71,10 @@ export const isZeroOrNullDevicePrice = (value) => {
 };
 
 export const AIRTIME_MSISDN_HELPER =
-  "Select an MSISDN from your current contracts.";
+  "Select an MSISDN from your current contracts, or type a valid MSISDN (81 + 7 digits).";
 
 export const PACKAGE_CHANGE_MSISDN_HELPER =
-  "Package Change applies when the device on the selected MSISDN is free (N$ 0.00 or not set).";
+  "Select or type an MSISDN with payout amount N$ 0.00 (no outstanding device payout). Lines with payout above 0.00 cannot be used for Package Change.";
 
 export const OWNERSHIP_TRANSFER_IN_MSISDN_HELPER =
   "Enter the MSISDN being transferred into your contracts (e.g. 81XXXXXXX).";
