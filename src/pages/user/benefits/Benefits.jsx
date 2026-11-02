@@ -206,10 +206,12 @@ const UserBenefits = ({ packageMode = "airtime" }) => {
     return normalized !== "" && normalized !== "null" && normalized !== "undefined";
   };
 
+  // Eligibility for Proceed is decided in the simulator (Within Limit after
+  // renewal/upgrade package waive + credit). Do not require Available >=
+  // cheapest package here — that blocked same-package renewals when the
+  // existing line already consumed most of the 70% allocation.
   const canSimulateAirtimeBenefit =
-    availableAllowance != null &&
-    minPackagePrice != null &&
-    Number(availableAllowance) >= Number(minPackagePrice);
+    availableAllowance != null && minPackagePrice != null;
 
   useEffect(() => {
     const fetchData = async () => {
