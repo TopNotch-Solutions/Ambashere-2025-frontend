@@ -25,6 +25,34 @@ export function isSpectraPackage(name) {
   );
 }
 
+/** Packages whose name starts with "Upgrade" (e.g. "Upgrade Spectra …"). */
+export function isUpgradeNamedPackage(name) {
+  return String(name || "")
+    .trim()
+    .toLowerCase()
+    .startsWith("upgrade");
+}
+
+/**
+ * New / Renewal must not use Upgrade-named packages.
+ * Upgrade transaction type may use them.
+ */
+export function isSpectraPackageAllowedForTransaction(
+  packageName,
+  subscriptionType
+) {
+  const type = String(subscriptionType || "")
+    .trim()
+    .toLowerCase();
+  if (type === "new" || type === "renewal") {
+    return !isUpgradeNamedPackage(packageName);
+  }
+  return true;
+}
+
+export const SPECTRA_UPGRADE_PACKAGE_BLOCKED_MESSAGE =
+  "Upgrade packages cannot be used with New or Renewal. Change the transaction type to Upgrade, or select a different package.";
+
 export function getContractPackageName(contract) {
   return (
     contract?.PackageName ||

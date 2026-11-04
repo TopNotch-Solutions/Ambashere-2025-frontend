@@ -21,6 +21,7 @@ import {
   getTransactionTypesForMode,
   isOwnershipTransferInTransaction,
   isOwnershipTransferTransaction,
+  isRenewalLikeTransaction,
   isRenewalTransaction,
   isUpgradeTransaction,
   requiresMsisdn,
@@ -37,9 +38,12 @@ import { calculatePmt } from "../../utils/calculatePmt";
 import { fireSwal } from "../../utils/swalHelpers";
 import {
   filterPackagesByMode,
+  isSpectraPackageAllowedForTransaction,
+  isUpgradeNamedPackage,
   isValidSpectraAccountNumber,
   normalizeSpectraAccountNumber,
   SPECTRA_ACCOUNT_NUMBER_LABEL,
+  SPECTRA_UPGRADE_PACKAGE_BLOCKED_MESSAGE,
 } from "../../utils/spectraPackages";
 
 const BenefitVoucher = ({
@@ -246,7 +250,7 @@ const BenefitVoucher = ({
       column3: "",
       column4: prefill.msisdn || "",
       column5: "",
-      column6: prefill.subscriptionType || "New",
+      column6: prefill.subscriptionType || "Select Type",
       packageID: prefill.packageID ?? selectedOption?.PackageID ?? null,
       lineOfSightConducted: prefill.lineOfSightConducted || "",
       installationLocation: prefill.installationLocation || "",
@@ -518,11 +522,24 @@ const BenefitVoucher = ({
         if (selectedOption) {
           const price = selectedOption.MonthlyPrice;
           const packageID = selectedOption.PackageID;
+          const forceUpgrade =
+            packageMode === "spectra" && isUpgradeNamedPackage(value);
 
           setRows((prevRows) =>
             prevRows.map((row) =>
               row.id === rowId
-                ? { ...row, dropdown: value, column2: `${price}`, packageID }
+                ? {
+                    ...row,
+                    dropdown: value,
+                    column2: `${price}`,
+                    packageID,
+                    ...(forceUpgrade
+                      ? {
+                          column6: "Upgrade",
+                          lineOfSightConducted: "Yes",
+                        }
+                      : {}),
+                  }
                 : row
             )
           );
@@ -937,18 +954,30 @@ const BenefitVoucher = ({
             rows
           );
           if (packageMode === "spectra") {
-            const los = String(packageRow.lineOfSightConducted || "").trim();
+            if (
+              !isSpectraPackageAllowedForTransaction(
+                packageRow.dropdown,
+                packageRow.column6
+              )
+            ) {
+              throw new Error(SPECTRA_UPGRADE_PACKAGE_BLOCKED_MESSAGE);
+            }
             const location = String(
               packageRow.installationLocation || ""
             ).trim();
-            if (los !== "Yes" && los !== "No") {
-              throw new Error(
-                `Please indicate whether a line-of-sight assessment has been conducted ${
-                  packageRow.dropdown && packageRow.dropdown !== "Select Package"
-                    ? `for Package: ${packageRow.dropdown}`
-                    : `in row ${packageRow.id}`
-                }.`
-              );
+            // Renewal / Upgrade: LOS is always Yes (hidden in simulator).
+            if (!isRenewalLikeTransaction(packageRow.column6)) {
+              const los = String(packageRow.lineOfSightConducted || "").trim();
+              if (los !== "Yes" && los !== "No") {
+                throw new Error(
+                  `Please indicate whether a line-of-sight assessment has been conducted ${
+                    packageRow.dropdown &&
+                    packageRow.dropdown !== "Select Package"
+                      ? `for Package: ${packageRow.dropdown}`
+                      : `in row ${packageRow.id}`
+                  }.`
+                );
+              }
             }
             if (!location) {
               throw new Error(
@@ -976,7 +1005,9 @@ const BenefitVoucher = ({
             MSISDN: packageMsisdn || null,
             LineOfSightConducted:
               packageMode === "spectra"
-                ? packageRow.lineOfSightConducted
+                ? isRenewalLikeTransaction(packageRow.column6)
+                  ? "Yes"
+                  : packageRow.lineOfSightConducted
                 : undefined,
             InstallationLocation:
               packageMode === "spectra"

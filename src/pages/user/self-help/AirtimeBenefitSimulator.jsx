@@ -25,6 +25,7 @@ import {
   isOwnershipTransferInTransaction,
   isOwnershipTransferTransaction,
   isPackageChangeTransaction,
+  isRenewalLikeTransaction,
   isValidAirtimeMsisdn,
   normalizeAirtimeMsisdn,
   requiresListedMsisdn,
@@ -44,9 +45,12 @@ import { fireSwal } from "../../../utils/swalHelpers";
 import {
   filterContractsByMode,
   filterPackagesByMode,
+  isSpectraPackageAllowedForTransaction,
+  isUpgradeNamedPackage,
   isValidSpectraAccountNumber,
   normalizeSpectraAccountNumber,
   SPECTRA_ACCOUNT_NUMBER_LABEL,
+  SPECTRA_UPGRADE_PACKAGE_BLOCKED_MESSAGE,
 } from "../../../utils/spectraPackages";
 
 const AirtimeBenefitSimulator = ({
@@ -70,7 +74,7 @@ const AirtimeBenefitSimulator = ({
       devicePrice: "",
       deviceName: "",
       packagePrice: "",
-      subscriptionType: "New",
+      subscriptionType: "",
       msisdn: "",
       lineOfSightConducted: "",
       installationLocation: "",
@@ -557,7 +561,7 @@ const AirtimeBenefitSimulator = ({
           netOption: "",
           netAdditionalRow: false,
           packageError: "",
-          subscriptionType: "New",
+          subscriptionType: "",
           msisdn: "",
           lineOfSightConducted: "",
           installationLocation: "",
@@ -589,6 +593,29 @@ const AirtimeBenefitSimulator = ({
             updatedContract.msisdn = normalizeSpectraAccountNumber(
               updatedContract.msisdn
             );
+          }
+          // Renewal / Upgrade: line-of-sight is always Yes (field hidden).
+          if (isRenewalLikeTransaction(value)) {
+            updatedContract.lineOfSightConducted = "Yes";
+          }
+          // New / Renewal cannot use packages that start with "Upgrade".
+          const selectedPkgForType = packages.find(
+            (pkg) => pkg.PackageID === updatedContract.selectedPackage
+          );
+          if (
+            selectedPkgForType &&
+            !isSpectraPackageAllowedForTransaction(
+              selectedPkgForType.PackageName,
+              value
+            )
+          ) {
+            updatedContract.packageError =
+              SPECTRA_UPGRADE_PACKAGE_BLOCKED_MESSAGE;
+          } else if (
+            updatedContract.packageError ===
+            SPECTRA_UPGRADE_PACKAGE_BLOCKED_MESSAGE
+          ) {
+            updatedContract.packageError = "";
           }
         } else if (requiresTypedMsisdn(value)) {
           // Ownership Transfer In: typed MSISDN — clear any listed selection.
@@ -705,6 +732,17 @@ const AirtimeBenefitSimulator = ({
               )}). Choose a cheaper package — top-up cannot cover package overage.`,
             });
           } else {
+            // Spectra: packages starting with "Upgrade" force transaction type Upgrade.
+            if (
+              isSpectraMode &&
+              isUpgradeNamedPackage(selectedPkg?.PackageName)
+            ) {
+              updatedContract.subscriptionType = "Upgrade";
+              updatedContract.lineOfSightConducted = "Yes";
+              updatedContract.msisdn = normalizeSpectraAccountNumber(
+                updatedContract.msisdn
+              );
+            }
             updatedContract = clearDeviceSelection({
               ...updatedContract,
               showNetOption:
@@ -794,12 +832,22 @@ const AirtimeBenefitSimulator = ({
     .every((contract) => {
       if (!contract.subscriptionType) return false;
       if (isSpectraMode) {
-        const los = String(contract.lineOfSightConducted || "").trim();
         const location = String(contract.installationLocation || "").trim();
-        if (los !== "Yes" && los !== "No") return false;
         if (!location) return false;
-      }
-      if (isSpectraMode) {
+        // Renewal / Upgrade: LOS is auto Yes. New: user must answer Yes/No.
+        if (!isRenewalLikeTransaction(contract.subscriptionType)) {
+          const los = String(contract.lineOfSightConducted || "").trim();
+          if (los !== "Yes" && los !== "No") return false;
+        }
+        const selectedPkgName = getSelectedPackageName(contract);
+        if (
+          !isSpectraPackageAllowedForTransaction(
+            selectedPkgName,
+            contract.subscriptionType
+          )
+        ) {
+          return false;
+        }
         // New: account optional. Renewal/Upgrade: required.
         if (!requiresListedMsisdn(contract.subscriptionType)) return true;
         return isValidSpectraAccountNumber(contract.msisdn);
@@ -845,14 +893,16 @@ const AirtimeBenefitSimulator = ({
           packagePrice: contract.packagePrice,
           deviceName: skipDevice ? "" : contract.deviceName || "",
           devicePrice: skipDevice ? "" : contract.devicePrice || "",
-          subscriptionType: contract.subscriptionType || "New",
+          subscriptionType: contract.subscriptionType || "",
           msisdn: isSpectraMode
             ? normalizeSpectraAccountNumber(contract.msisdn)
             : requiresMsisdn(contract.subscriptionType)
               ? normalizeAirtimeMsisdn(contract.msisdn)
               : "",
           lineOfSightConducted: isSpectraMode
-            ? contract.lineOfSightConducted || ""
+            ? isRenewalLikeTransaction(contract.subscriptionType)
+              ? "Yes"
+              : contract.lineOfSightConducted || ""
             : "",
           installationLocation: isSpectraMode
             ? String(contract.installationLocation || "").trim()
@@ -915,7 +965,7 @@ const AirtimeBenefitSimulator = ({
       return;
     }
 
-    const subscriptionType = contract.subscriptionType || "New";
+    const subscriptionType = contract.subscriptionType || "";
     const msisdn = isSpectraMode
       ? normalizeSpectraAccountNumber(contract.msisdn)
       : requiresMsisdn(subscriptionType)
@@ -1036,7 +1086,9 @@ const AirtimeBenefitSimulator = ({
         TopUpAmount: calc.topUp || 0,
         ...(isSpectraMode
           ? {
-              LineOfSightConducted: contract.lineOfSightConducted,
+              LineOfSightConducted: isRenewalLikeTransaction(subscriptionType)
+                ? "Yes"
+                : contract.lineOfSightConducted,
               InstallationLocation: String(
                 contract.installationLocation || ""
               ).trim(),
@@ -1318,6 +1370,16 @@ const AirtimeBenefitSimulator = ({
                         (device) =>
                           (parseFloat(device.amount) || 0) <= deviceLimit
                       );
+                // Always include Upgrade-named packages so selecting one can
+                // auto-set transaction type to Upgrade.
+                const packagesForContract = sortedPackages;
+                const upgradePackageBlocked =
+                  isSpectraMode &&
+                  selectedPkg &&
+                  !isSpectraPackageAllowedForTransaction(
+                    selectedPkg.PackageName,
+                    contract.subscriptionType
+                  );
 
                 return (
                 <div key={index} className="contract-section">
@@ -1326,7 +1388,7 @@ const AirtimeBenefitSimulator = ({
                   <div className="row">
                     <div className="col-md-6">
                       <Autocomplete
-                        options={sortedPackages}
+                        options={packagesForContract}
                         getOptionLabel={(option) => option?.PackageName || ""}
                         getOptionDisabled={(option) =>
                           !isPackageWithinLimit(
@@ -1334,11 +1396,7 @@ const AirtimeBenefitSimulator = ({
                             remainingBefore
                           )
                         }
-                        value={
-                          sortedPackages.find(
-                            (pkg) => pkg.PackageID === contract.selectedPackage
-                          ) || null
-                        }
+                        value={selectedPkg || null}
                         onChange={(_, selectedOption) =>
                           handleContractChange(
                             index,
@@ -1355,9 +1413,14 @@ const AirtimeBenefitSimulator = ({
                             label={isEditing ? "New Package" : "Select Package"}
                             margin="normal"
                             fullWidth
-                            error={!!contract.packageError}
+                            error={
+                              !!contract.packageError || upgradePackageBlocked
+                            }
                             helperText={
                               contract.packageError ||
+                              (upgradePackageBlocked
+                                ? SPECTRA_UPGRADE_PACKAGE_BLOCKED_MESSAGE
+                                : null) ||
                               `Packages over remaining allowance (${formatCurrency(
                                 remainingBefore
                               )}) cannot be selected`
@@ -1606,7 +1669,8 @@ const AirtimeBenefitSimulator = ({
                       </>
                     )}
 
-                    {isSpectraMode && (
+                    {isSpectraMode &&
+                      !isRenewalLikeTransaction(contract.subscriptionType) && (
                       <div className="col-md-6">
                         <FormControl fullWidth margin="normal" required>
                           <InputLabel>
