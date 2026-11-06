@@ -654,6 +654,10 @@
   font-size: 0.92rem;
 }
 
+.support-attachment-certified {
+  color: #dc2626;
+}
+
 .support-attachment-input {
   display: block;
   width: 100%;

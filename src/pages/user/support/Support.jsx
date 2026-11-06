@@ -90,7 +90,7 @@ const regularSupportTopics = [
     title: "Subscription Cancellation",
     value: SUBSCRIPTION_CANCELLATION,
     description:
-      "Cancel an active subscription plan. Attach a scanned ID.",
+      "Cancel an active subscription plan. Attach a certified scanned ID.",
   },
 ];
 
@@ -555,6 +555,7 @@ const Support = () => {
                     htmlFor="support-id-attachment"
                     className="support-attachment-label"
                   >
+                    <span className="support-attachment-certified">Certified</span>{" "}
                     Scanned ID attachment (PDF)
                   </label>
                   <input
