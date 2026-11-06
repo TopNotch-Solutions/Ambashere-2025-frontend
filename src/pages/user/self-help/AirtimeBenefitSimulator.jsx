@@ -210,7 +210,9 @@ const AirtimeBenefitSimulator = ({
   );
 
   const getMsisdnOptionsForContract = (subscriptionType) =>
-    getMsisdnOptionsForTransactionType(renewalContractMap, subscriptionType).map(
+    getMsisdnOptionsForTransactionType(renewalContractMap, subscriptionType, {
+      packageMode,
+    }).map(
       (entry) => ({
         msisdn: entry.msisdn,
         packageName: entry.packageName,
@@ -302,6 +304,14 @@ const AirtimeBenefitSimulator = ({
       (option) => option.msisdn === accountKey
     );
     if (!listedOnType) {
+      if (
+        !isSpectraMode &&
+        accountKey &&
+        renewalContractMap.get(accountKey) &&
+        !renewalContractMap.get(accountKey).isZeroPayout
+      ) {
+        return "This MSISDN has an outstanding payout (above N$ 0.00). Choose a line with payout amount N$ 0.00.";
+      }
       if (isPackageChangeTransaction(contract.subscriptionType)) {
         return isSpectraMode
           ? `Select or type a ${SPECTRA_ACCOUNT_NUMBER_LABEL} with no outstanding payout`
@@ -860,7 +870,8 @@ const AirtimeBenefitSimulator = ({
         return isMsisdnAllowedForTransactionType(
           renewalContractMap,
           contract.subscriptionType,
-          msisdn
+          msisdn,
+          { packageMode }
         );
       }
       return true;
@@ -1004,7 +1015,8 @@ const AirtimeBenefitSimulator = ({
       !isMsisdnAllowedForTransactionType(
         renewalContractMap,
         subscriptionType,
-        msisdn
+        msisdn,
+        { packageMode }
       )
     ) {
       Swal.fire({
@@ -1620,20 +1632,15 @@ const AirtimeBenefitSimulator = ({
                                   );
                                 }
                               }}
-                              noOptionsText={
-                                isPackageChangeTransaction(
-                                  contract.subscriptionType
-                                )
-                                  ? "No contracts with payout N$ 0.00 found"
-                                  : "No current contracts found — you can still type an MSISDN"
-                              }
+                              noOptionsText="No contracts with payout N$ 0.00 found"
                               renderInput={(params) => {
                                 const msisdnInvalid =
                                   !!contract.msisdn &&
                                   !isMsisdnAllowedForTransactionType(
                                     renewalContractMap,
                                     contract.subscriptionType,
-                                    contract.msisdn
+                                    contract.msisdn,
+                                    { packageMode }
                                   );
                                 return (
                                   <TextField

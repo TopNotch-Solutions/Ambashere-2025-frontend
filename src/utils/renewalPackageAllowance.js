@@ -128,18 +128,34 @@ export const doesSelectedPackageMatchRenewalContract = (
 
 /**
  * MSISDN options for the selected transaction type.
- * - Package Change: only MSISDNs with payout amount 0.00/null and free device
- * - Renewal / Upgrade: MSISDNs with outstanding payout (> 0) or billed device;
- *   if none, fall back to all (package-only lines e.g. Spectra)
+ * Device Benefits (airtime):
+ * - Renewal, Package Change, Ownership Transfer Out: payout 0/null only.
+ *   Outstanding payout is not listed. Device price does not hide the line.
+ * Spectra keeps the previous rules:
+ * - Package Change: payout 0/null and free device
+ * - Renewal / Upgrade: outstanding payout, else billed device, else all
  * - Ownership Transfer Out: all listed MSISDNs
- * - Ownership Transfer In: none (typed manually)
- * - Other: none
+ * Ownership Transfer In and other types: none (typed manually or not required)
  */
 export const getMsisdnOptionsForTransactionType = (
   renewalMap,
-  subscriptionType
+  subscriptionType,
+  { packageMode = "airtime" } = {}
 ) => {
   const entries = Array.from(renewalMap?.values?.() || []);
+  const isDeviceBenefit = packageMode !== "spectra";
+
+  if (isDeviceBenefit) {
+    if (
+      isRenewalLikeTransaction(subscriptionType) ||
+      isPackageChangeTransaction(subscriptionType) ||
+      isOwnershipTransferOutTransaction(subscriptionType)
+    ) {
+      return entries.filter((entry) => entry.isZeroPayout);
+    }
+
+    return [];
+  }
 
   if (isPackageChangeTransaction(subscriptionType)) {
     return entries.filter((entry) => entry.isPackageChangeEligible);
@@ -164,7 +180,8 @@ export const getMsisdnOptionsForTransactionType = (
 export const isMsisdnAllowedForTransactionType = (
   renewalMap,
   subscriptionType,
-  msisdn
+  msisdn,
+  { packageMode = "airtime" } = {}
 ) => {
   if (!requiresListedMsisdn(subscriptionType)) return true;
   const normalized = normalizeAirtimeMsisdn(msisdn);
@@ -172,13 +189,25 @@ export const isMsisdnAllowedForTransactionType = (
 
   const entry = getRenewalContractForMsisdn(renewalMap, normalized);
 
-  if (isPackageChangeTransaction(subscriptionType)) {
-    // Known contract with payout > 0 (or billed device) cannot be used.
-    if (entry && !entry.isPackageChangeEligible) return false;
+  if (!entry) return true;
+
+  if (packageMode !== "spectra") {
+    // Device Benefits: a known line with payout above 0 cannot be used.
+    if (
+      isRenewalLikeTransaction(subscriptionType) ||
+      isPackageChangeTransaction(subscriptionType) ||
+      isOwnershipTransferOutTransaction(subscriptionType)
+    ) {
+      return entry.isZeroPayout;
+    }
     return true;
   }
 
-  // Renewal / Ownership Out: valid format is enough; credit rules use map match.
+  if (isPackageChangeTransaction(subscriptionType)) {
+    return entry.isPackageChangeEligible;
+  }
+
+  // Spectra Renewal / Ownership Out: valid format is enough.
   return true;
 };
 
